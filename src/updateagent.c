@@ -24,7 +24,7 @@ int main(int argc, char ** argv) {
     ua.ua_type          = UA;
     ua.url              = URL;
 
-    if (!ua_handler_start(&ua))
+    if (ua_handler_start(&ua))
         DBG("Updateagent start failed!");
 
     while (1) {
