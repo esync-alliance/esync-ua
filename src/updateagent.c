@@ -5,6 +5,7 @@
 #include "updateagent.h"
 #include "handler.h"
 #include "config.h"
+#include "debug.h"
 
 int get_version(char * pkgName, char ** version);
 int set_version(char * pkgName, char * version);
@@ -23,7 +24,8 @@ int main(int argc, char ** argv) {
     ua.ua_type          = UA;
     ua.url              = URL;
 
-    ua_handler_start(&ua);
+    if (!ua_handler_start(&ua))
+        DBG("Updateagent start failed!");
 
     while (1) {
         sleep(60);

@@ -75,7 +75,7 @@ static int get_json_string(json_object * json, char ** value, const char * node,
     while (node) {
         BOLT_IF(!json_object_object_get_ex(jObject, node, &aux) ||
                 !(json_object_is_type(aux, json_type_object) || json_object_is_type(aux, json_type_string)),
-                E_UA_ERR, "No %s property in %s", node, json_object_to_json_string_ext(json, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+                E_UA_ERR, "No %s property in %s", node, json_object_to_json_string(json));
 
         node = va_arg( ap, const char* );
         jObject = aux;
@@ -103,7 +103,7 @@ static int get_json_int64(json_object * json, int64_t * value, const char * node
     while (node) {
         BOLT_IF(!json_object_object_get_ex(jObject, node, &aux) ||
                 !(json_object_is_type(aux, json_type_object) || json_object_is_type(aux, json_type_int)),
-                E_UA_ERR, "No %s property in %s", node, json_object_to_json_string_ext(json, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+                E_UA_ERR, "No %s property in %s", node, json_object_to_json_string(json));
 
         node = va_arg( ap, const char* );
         jObject = aux;

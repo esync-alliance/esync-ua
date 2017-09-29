@@ -33,18 +33,25 @@ typedef void (*ua_do_post_install)();
 
 typedef struct update_agent {
 
+    // gets the version of package installed
     ua_do_get_version       do_get_version;
 
+    // sets the new version of the package
     ua_do_set_version       do_set_version;
 
+    // (optional) to perform pre install actions
     ua_do_pre_install       do_pre_install;
 
+    // to perform install operation
     ua_do_install           do_install;
 
+    // (optional) to perform additional actions after install
     ua_do_post_install      do_post_install;
 
+    // specifies the updateagent type
     char *                  ua_type;
 
+    // specifies the URL of the broker
     char *                  url;
 
 } update_agent_t;

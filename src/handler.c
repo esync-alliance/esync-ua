@@ -41,7 +41,8 @@ void ua_handler_stop(void) {
 
 int ua_send_message(json_object * jsonObj) {
 
-    DBG("Sending : %s\n", json_object_to_json_string_ext(jsonObj, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+    char buffer [5000];
+    DBG("Sending : %s\n", json_object_to_json_string(jsonObj));
     return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
 }
 
@@ -102,8 +103,8 @@ static void process_query_package(json_object * jsonObj) {
     char * replyId;
     char * installedVer;
 
-    if (!get_type_from_json(jsonObj, &nodeType) ||
-            !get_pkg_name_from_json(jsonObj, &packageName) ||
+    if (!get_pkg_type_from_json(jsonObj, &nodeType) &&
+            !get_pkg_name_from_json(jsonObj, &packageName) &&
             !get_replyid_from_json(jsonObj, &replyId)) {
 
         (*uah->do_get_version)(packageName, &installedVer);
@@ -112,7 +113,7 @@ static void process_query_package(json_object * jsonObj) {
 
         json_object * pkgObject = json_object_new_object();
         json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
-        json_object_object_add(pkgObject, "name", json_object_new_string(nodeType));
+        json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
         json_object_object_add(pkgObject, "version", json_object_new_string(SAFE_STR(installedVer)));
 
         json_object * bodyObject = json_object_new_object();
@@ -138,8 +139,8 @@ static void process_ready_download(json_object * jsonObj) {
     char * packageName;
     char * installVersion;
 
-    if (!get_type_from_json(jsonObj, &nodeType) ||
-            !get_pkg_name_from_json(jsonObj, &packageName) ||
+    if (!get_pkg_type_from_json(jsonObj, &nodeType) &&
+            !get_pkg_name_from_json(jsonObj, &packageName) &&
             !get_pkg_version_from_json(jsonObj, &installVersion)) {
 
         DBG("DMClient informs that package %s having version %s is available for download\n", packageName, installVersion);
@@ -171,9 +172,9 @@ static void process_ready_update(json_object * jsonObj) {
     char * installVersion;
     char * downloadFile;
 
-    if (!get_type_from_json(jsonObj, &nodeType) ||
-            !get_pkg_name_from_json(jsonObj, &packageName) ||
-            !get_pkg_version_from_json(jsonObj, &installVersion) ||
+    if (!get_pkg_type_from_json(jsonObj, &nodeType) &&
+            !get_pkg_name_from_json(jsonObj, &packageName) &&
+            !get_pkg_version_from_json(jsonObj, &installVersion) &&
             !get_file_from_json(jsonObj, installVersion, &downloadFile)) {
 
         pre_update_action(nodeType, packageName, installVersion);
