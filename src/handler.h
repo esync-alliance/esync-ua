@@ -20,8 +20,8 @@ int ua_handler_start(update_agent_t * ua);
 void ua_handler_stop(void);
 
 void handle_status(int status);
-void handle_delivered(char * msg, int ok);
+void handle_delivered(const char * msg, int ok);
 void handle_presence(int connected, int disconnected);
-void handle_message(char * msg);
+void handle_message(const char * msg);
 
 #endif /* _UA_HANDLER_H_ */

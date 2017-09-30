@@ -1,0 +1,38 @@
+
+
+** Building **
+
+*** json-c ***
+
+json-c library must be built first.
+Use the following command:
+
+$ git submodule init
+
+$ git submodule update
+
+$ ( rm -rf json-c-build && cp -fr json-c json-c-build && \
+     cd json-c-build && autoreconf -f -i && \
+       CFLAGS="-fPIC -fvisibility=hidden -Wno-error" \
+       CPPFLAGS="-include $(pwd)/../json-c-rename.h" \
+       ./configure --enable-static --disable-shared && make -j )
+
+
+
+*** updateagent ***
+
+If building updateagent binary for the first time, edit config.cmk file to change any make variables necessary. You most likely need to change XL4BUS_DIR.
+
+After configuring make process, use cmake to compile the binaries. The
+recommended approach is for the first time build:
+
+$ mkdir build && ( cd build && cmake .. && make )
+
+For incremental build:
+
+$ ( cd build && make )
+
+For clean build (or when changing CMakeLists.txt):
+
+$ rm -rf build && mkdir build && ( cd build && cmake .. && make )
+

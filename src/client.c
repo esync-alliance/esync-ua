@@ -2,8 +2,8 @@
  * client.c
  */
 
-#include "client.h"
 #include "config.h"
+#include "client.h"
 #include "debug.h"
 #include "handler.h"
 
@@ -53,7 +53,7 @@ void xl4bus_client_stop(void) {
 }
 
 
-int xl4bus_client_send_msg(char * message) {
+int xl4bus_client_send_msg(const char * message) {
 
 	xl4bus_message_t xl4bus_message;
 

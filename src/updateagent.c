@@ -2,6 +2,7 @@
  * updateagent.c
  */
 
+#include "ua_version.h"
 #include "updateagent.h"
 #include "handler.h"
 #include "config.h"
@@ -14,6 +15,8 @@ install_state_t do_install(char * pkgName, char * version, char * pkgFile);
 int debug = 1;
 
 int main(int argc, char ** argv) {
+
+    printf("updateagent %s\n", BUILD_VERSION);
 
     update_agent_t ua;
     memset(&ua, 0, sizeof(update_agent_t));

@@ -1,0 +1,7 @@
+build
+cmake-build*
+config.cmk
+.idea/workspace.xml
+.idea/tasks.xml
+json-c-build
+ua_version.h
