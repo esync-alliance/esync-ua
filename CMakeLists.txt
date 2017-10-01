@@ -54,12 +54,12 @@ set(SOURCE_FILES
     src/updateagent.c
     src/handler.c
     src/utils.c
-    src/client.c
+    src/uaclient.c
 
     src/updateagent.h
     src/handler.h
     src/utils.h
-    src/client.h
+    src/uaclient.h
     src/config.h
     src/debug.h
 )

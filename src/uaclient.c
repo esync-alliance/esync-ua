@@ -1,9 +1,9 @@
 /*
- * client.c
+ * uaclient.c
  */
 
 #include "config.h"
-#include "client.h"
+#include "uaclient.h"
 #include "debug.h"
 #include "handler.h"
 

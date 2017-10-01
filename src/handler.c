@@ -4,7 +4,7 @@
 
 #include "config.h"
 #include "handler.h"
-#include "client.h"
+#include "uaclient.h"
 #include "utils.h"
 #include "debug.h"
 
