@@ -1,12 +1,11 @@
 /*
  * handler.c
  */
-
-#include "config.h"
 #include "handler.h"
-#include "uaclient.h"
 #include "utils.h"
+#include "config.h"
 #include "debug.h"
+#include "uaclient.h"
 
 static void process_query_package(json_object * jsonObj);
 static void process_ready_download(json_object * jsonObj);
@@ -25,50 +24,61 @@ update_agent_t * uah;
 
 int ua_handler_start(update_agent_t * ua) {
 
-    if (!ua->url || !ua->ua_type || !ua->do_get_version || !ua->do_set_version || !ua->do_install)
-        return E_UA_ERR;
+    if (!ua->do_get_version || !ua->do_set_version || !ua->do_install || !ua->url
+#ifdef USE_XL4BUS_TRUST
+            || !ua->ua_type
+#else
+            || !ua->cert_dir
+#endif
+             )
+        return E_UA_ARG;
 
     uah = ua;
 
-    return xl4bus_client_start(uah->url, uah->ua_type);
+    return xl4bus_client_start(uah->url, ua->cert_dir, uah->ua_type);
+
 }
 
 
 void ua_handler_stop(void) {
 
     xl4bus_client_stop();
+
 }
 
 
 int ua_send_message(json_object * jsonObj) {
 
-    //char buffer [5000];
-    DBG("Sending : %s\n", json_object_to_json_string(jsonObj));
+    DBG("Sending : %s", json_object_to_json_string(jsonObj));
     return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
+
 }
 
 
 void handle_status(int status) {
 
-    DBG("Status : %d\n", status);
+    DBG("Status : %d", status);
+
 }
 
 
 void handle_delivered(const char * msg, int ok) {
 
-    DBG("%s\n", ok ? "Message delivered" : "Message Not delivered");
+    DBG("Message delivered %s", ok ? "OK" : "NOT OK");
+
 }
 
 
 void handle_presence(int connected, int disconnected) {
 
-    DBG("Connected : %d,  Disconnected : %d\n", connected, disconnected);
+    DBG("Connected : %d,  Disconnected : %d", connected, disconnected);
+
 }
 
 
 void handle_message(const char * msg) {
 
-    DBG("Message : %s\n", msg);
+    DBG("Message : %s", msg);
     json_object * json;
     char * type;
 
@@ -94,6 +104,7 @@ void handle_message(const char * msg) {
     } else {
         DBG("Json parsing error : %s", msg);
     }
+
 }
 
 
@@ -110,7 +121,7 @@ static void process_query_package(json_object * jsonObj) {
 
         (*uah->do_get_version)(packageName, &installedVer);
 
-        DBG("DMClient is querying version info of : %s Returning %s\n", packageName, installedVer);
+        DBG("DMClient is querying version info of : %s Returning %s", packageName, installedVer);
 
         json_object * pkgObject = json_object_new_object();
         json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
@@ -131,6 +142,7 @@ static void process_query_package(json_object * jsonObj) {
         json_object_put(bodyObject);
         json_object_put(jObject);
     }
+
 }
 
 
@@ -144,25 +156,28 @@ static void process_ready_download(json_object * jsonObj) {
             !get_pkg_name_from_json(jsonObj, &packageName) &&
             !get_pkg_version_from_json(jsonObj, &installVersion)) {
 
-        DBG("DMClient informs that package %s having version %s is available for download\n", packageName, installVersion);
-        DBG("Instructing DMClient to download it\n");
+        DBG("DMClient informs that package %s having version %s is available for download", packageName, installVersion);
+        DBG("Instructing DMClient to download it");
 
-        json_object * paraObject = json_object_new_object();
-        json_object_object_add(paraObject, "version", json_object_new_string(installVersion));
-        json_object_object_add(paraObject, "status", json_object_new_string("INSTALL_PENDING"));
-        json_object_object_add(paraObject, "package_name", json_object_new_string(packageName));
-        json_object_object_add(paraObject, "type", json_object_new_string(nodeType));
+        json_object * pkgObject = json_object_new_object();
+        json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
+        json_object_object_add(pkgObject, "status", json_object_new_string("INSTALL_PENDING"));
+        json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
+        json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
+
+        json_object * bodyObject = json_object_new_object();
+		json_object_object_add(bodyObject, "package", pkgObject);
 
         json_object * jObject = json_object_new_object();
-        json_object_object_add(jObject, "propertyName", json_object_new_string(UPDATE_STATUS));
-        json_object_object_add(jObject, "operation", json_object_new_string("status"));
-        json_object_object_add(jObject, "parameters", paraObject);
+        json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+        json_object_object_add(jObject, "body", bodyObject);
 
         ua_send_message(jObject);
 
-        json_object_put(paraObject);
+        json_object_put(bodyObject);
         json_object_put(jObject);
     }
+
 }
 
 
@@ -182,6 +197,7 @@ static void process_ready_update(json_object * jsonObj) {
         update_action(nodeType, packageName, installVersion, downloadFile);
         post_update_action();
     }
+
 }
 
 
@@ -208,21 +224,24 @@ static void pre_update_action(char * nodeType, char * packageName, char * instal
         state = (*uah->do_pre_install)(packageName, installVersion);
     }
 
-    json_object * paraObject = json_object_new_object();
-    json_object_object_add(paraObject, "version", json_object_new_string(installVersion));
-    json_object_object_add(paraObject, "status", json_object_new_string(install_state_string(state)));
-    json_object_object_add(paraObject, "package_name", json_object_new_string(packageName));
-    json_object_object_add(paraObject, "type", json_object_new_string(nodeType));
+    json_object * pkgObject = json_object_new_object();
+    json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
+    json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
+    json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
+    json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
+
+    json_object * bodyObject = json_object_new_object();
+	json_object_object_add(bodyObject, "package", pkgObject);
 
     json_object * jObject = json_object_new_object();
-    json_object_object_add(jObject, "propertyName", json_object_new_string(UPDATE_STATUS));
-    json_object_object_add(jObject, "operation", json_object_new_string("status"));
-    json_object_object_add(jObject, "parameters", paraObject);
+    json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+    json_object_object_add(jObject, "body", bodyObject);
 
     ua_send_message(jObject);
 
-    json_object_put(paraObject);
+    json_object_put(bodyObject);
     json_object_put(jObject);
+
 }
 
 static void update_action(char * nodeType, char * packageName, char * installVersion, char * downloadFile) {
@@ -233,21 +252,24 @@ static void update_action(char * nodeType, char * packageName, char * installVer
         (*uah->do_set_version)(packageName, installVersion);
     }
 
-    json_object * paraObject = json_object_new_object();
-    json_object_object_add(paraObject, "version", json_object_new_string(installVersion));
-    json_object_object_add(paraObject, "status", json_object_new_string(install_state_string(state)));
-    json_object_object_add(paraObject, "package_name", json_object_new_string(packageName));
-    json_object_object_add(paraObject, "type", json_object_new_string(nodeType));
+    json_object * pkgObject = json_object_new_object();
+    json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
+    json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
+    json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
+    json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
+
+    json_object * bodyObject = json_object_new_object();
+	json_object_object_add(bodyObject, "package", pkgObject);
 
     json_object * jObject = json_object_new_object();
-    json_object_object_add(jObject, "propertyName", json_object_new_string(UPDATE_STATUS));
-    json_object_object_add(jObject, "operation", json_object_new_string("status"));
-    json_object_object_add(jObject, "parameters", paraObject);
+    json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+    json_object_object_add(jObject, "body", bodyObject);
 
     ua_send_message(jObject);
 
-    json_object_put(paraObject);
+    json_object_put(bodyObject);
     json_object_put(jObject);
+
 }
 
 static void post_update_action(void) {
@@ -255,6 +277,7 @@ static void post_update_action(void) {
     if (uah->do_post_install) {
         (*uah->do_post_install)();
     }
+
 }
 
 
@@ -272,5 +295,6 @@ static char * install_state_string(install_state_t state) {
         case INSTALL_ROLLBACK   : str = "INSTALL_ROLLBACK";   break;
     }
     return str;
+
 }
 

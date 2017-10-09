@@ -17,7 +17,9 @@ typedef enum install_state {
 
 
 #define E_UA_OK         ( 0)
-#define E_UA_ERR        ( -1)
+#define E_UA_ERR        (-1)
+#define E_UA_MEMORY     (-2)
+#define E_UA_ARG        (-3)
 
 
 typedef int (*ua_do_get_version)(char * pkgName, char ** version);
@@ -53,6 +55,9 @@ typedef struct update_agent {
 
     // specifies the URL of the broker
     char *                  url;
+
+    // specifies certificate directory
+    char *                  cert_dir;
 
 } update_agent_t;
 

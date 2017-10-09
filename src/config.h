@@ -20,9 +20,6 @@
 #include <json.h>
 
 
-
 #define URL "tcp://localhost:9133"
-#define UA  "/ECU/TEST/701"
-
 
 #endif /* _UA_CONFIG_H_ */

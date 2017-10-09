@@ -2,7 +2,7 @@
 #define _UA_DEBUG_H_
 
 #include "config.h"
-
+#include "common.h"
 
 extern int debug;
 
@@ -17,21 +17,22 @@ extern int debug;
 
 #define DBG(a,b...) do { if (debug) { \
     _ltime_; \
-    printf("[%s] %s:%d " a, now, __FILE__, __LINE__, ## b); \
+    char * _str = f_asprintf("[%s] %s:%d " a, now, chop_path(__FILE__), __LINE__, ## b); \
+    if (_str) { \
+        printf("%s\n", _str); \
+        free(_str); \
+    } \
 } } while(0)
 
 #define DBG_SYS(a,b...) do { if (debug) { \
-    int _errno = pf_get_errno(); \
+    int _errno = errno; \
     _ltime_; \
-    printf("[%s] %s:%d error %s(%d): " a, now, __FILE__, __LINE__, strerror(_errno), _errno, ## b); \
+    char * _str = f_asprintf("[%s] %s:%d error %s(%d): " a, now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
+    if (_str) { \
+        printf("%s\n", _str); \
+        free(_str); \
+    } \
 } } while(0)
-
-static inline const char * chop_path(const char * path) {
-    const char * aux = strrchr(path, '/');
-    if (aux) { return aux + 1; }
-    return path;
-}
-
 
 #define BOLT_MEM(a) if (!(a)) { \
     err = E_UA_MEMORY; \
@@ -57,6 +58,12 @@ static inline const char * chop_path(const char * path) {
 #define BOLT_IF(cond, __err, msg, x...) if ((cond)) { err = (__err); DBG(msg ", setting err %d", ## x, err); break; } do{}while(0)
 #define BOLT_SYS(a, m, x...) if ((a)) { DBG_SYS(m, ## x); err = E_UA_SYS; break; } do{}while(0)
 #define BOLT_SUB(a) { err = (a); if (err != E_UA_OK) { BOLT_SAY(err, #a); }} do{}while(0)
-#define BOLT_MALLOC(var, how_much) { if (!((var) = malloc(how_much))) { BOLT_SAY(E_UA_MEMORY, "failed to alloc %d for %s", how_much, #var); } } do{}while(0)
+#define BOLT_MALLOC(var, how_much) { if (!((var) = f_malloc(how_much))) { BOLT_SAY(E_UA_MEMORY, "failed to alloc %d for %s", how_much, #var); } } do{}while(0)
+
+static inline const char * chop_path(const char * path) {
+    const char * aux = strrchr(path, '/');
+    if (aux) { return aux + 1; }
+    return path;
+}
 
 #endif // _UA_DEBUG_H_

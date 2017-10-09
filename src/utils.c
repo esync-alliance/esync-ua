@@ -13,52 +13,61 @@ static int get_json_int64(json_object * json, int64_t * value, const char * node
 int get_type_from_json(json_object * jsonObj, char ** value) {
 
     return get_json_string(jsonObj, value, "type", NULL);
+
 }
 
 
 int get_replyid_from_json(json_object * jsonObj, char ** value) {
 
     return get_json_string(jsonObj, value, "reply-id", NULL);
+
 }
 
 
 int get_pkg_version_from_json(json_object * jsonObj, char ** value) {
 
     return get_json_string(jsonObj, value, "body", "package", "version", NULL);
+
 }
 
 
 int get_pkg_type_from_json(json_object * jsonObj, char ** value) {
 
     return get_json_string(jsonObj, value, "body", "package", "type", NULL);
+
 }
 
 
 int get_pkg_name_from_json(json_object * jsonObj, char ** value) {
 
     return get_json_string(jsonObj, value, "body", "package", "name", NULL);
+
 }
 
 
 int get_file_from_json(json_object * jsonObj, char * version, char ** value) {
 
     return get_json_string(jsonObj, value, "body", "package", "version-list", version, "file", NULL);
+
 }
 
 
 int get_pkg_status_from_json(json_object * jsonObj, char ** value) {
 
     return get_json_string(jsonObj, value, "body", "package", "status", NULL);
+
 }
 
 int get_bytes_downloaded_from_json(json_object * jsonObj, int64_t * value) {
 
     return get_json_int64(jsonObj, value, "body", "downloaded-bytes", NULL);
+
 }
 
 int get_bytes_total_from_json(json_object * jsonObj, int64_t * value) {
 
     return get_json_int64(jsonObj, value, "body", "total-bytes", NULL);
+
 }
 
 
@@ -89,6 +98,7 @@ static int get_json_string(json_object * json, char ** value, const char * node,
     }
 
     return err;
+
 }
 
 static int get_json_int64(json_object * json, int64_t * value, const char * node, ... ) {
@@ -117,4 +127,5 @@ static int get_json_int64(json_object * json, int64_t * value, const char * node
     }
 
     return err;
+
 }

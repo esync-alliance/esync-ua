@@ -55,6 +55,7 @@ set(SOURCE_FILES
     src/handler.c
     src/utils.c
     src/uaclient.c
+    src/common.c
 
     src/updateagent.h
     src/handler.h
@@ -62,6 +63,7 @@ set(SOURCE_FILES
     src/uaclient.h
     src/config.h
     src/debug.h
+    src/common.h
 )
 
 add_executable(updateagent ${SOURCE_FILES})
