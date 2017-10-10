@@ -2,11 +2,11 @@
  * uaclient.c
  */
 
-#include "config.h"
 #include "uaclient.h"
-#include "debug.h"
 #include "handler.h"
-#include "common.h"
+#include <libxl4bus/low_level.h>
+#include <libxl4bus/high_level.h>
+
 
 static void on_xl4bus_message(struct xl4bus_client *client, xl4bus_message_t *msg);
 static void on_xl4bus_status(struct xl4bus_client * client, xl4bus_client_condition_t cond);

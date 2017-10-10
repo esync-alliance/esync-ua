@@ -6,8 +6,7 @@
 #include "updateagent.h"
 #include "handler.h"
 #include "config.h"
-#include "debug.h"
-#include "common.h"
+
 
 int get_version(char * pkgName, char ** version);
 int set_version(char * pkgName, char * version);

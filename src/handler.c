@@ -1,11 +1,11 @@
 /*
  * handler.c
  */
+
 #include "handler.h"
-#include "utils.h"
-#include "config.h"
-#include "debug.h"
 #include "uaclient.h"
+#include "utils.h"
+
 
 static void process_query_package(json_object * jsonObj);
 static void process_ready_download(json_object * jsonObj);
@@ -16,6 +16,7 @@ static void process_log_report(json_object * jsonObj);
 static void pre_update_action(char * nodeType, char * packageName, char * installVersion);
 static void update_action(char * nodeType, char * packageName, char * installVersion, char * downloadFile);
 static void post_update_action(void);
+static void send_update_status(char * nodeType, char * packageName, char * installVersion, install_state_t state);
 static char * install_state_string(install_state_t state);
 
 
@@ -159,23 +160,9 @@ static void process_ready_download(json_object * jsonObj) {
         DBG("DMClient informs that package %s having version %s is available for download", packageName, installVersion);
         DBG("Instructing DMClient to download it");
 
-        json_object * pkgObject = json_object_new_object();
-        json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
-        json_object_object_add(pkgObject, "status", json_object_new_string("INSTALL_PENDING"));
-        json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
-        json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
+        install_state_t state = INSTALL_PENDING;
+        send_update_status(nodeType, packageName, installVersion, state);
 
-        json_object * bodyObject = json_object_new_object();
-		json_object_object_add(bodyObject, "package", pkgObject);
-
-        json_object * jObject = json_object_new_object();
-        json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
-        json_object_object_add(jObject, "body", bodyObject);
-
-        ua_send_message(jObject);
-
-        json_object_put(bodyObject);
-        json_object_put(jObject);
     }
 
 }
@@ -224,25 +211,10 @@ static void pre_update_action(char * nodeType, char * packageName, char * instal
         state = (*uah->do_pre_install)(packageName, installVersion);
     }
 
-    json_object * pkgObject = json_object_new_object();
-    json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
-    json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
-    json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
-    json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
-
-    json_object * bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "package", pkgObject);
-
-    json_object * jObject = json_object_new_object();
-    json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
-    json_object_object_add(jObject, "body", bodyObject);
-
-    ua_send_message(jObject);
-
-    json_object_put(bodyObject);
-    json_object_put(jObject);
+    send_update_status(nodeType, packageName, installVersion, state);
 
 }
+
 
 static void update_action(char * nodeType, char * packageName, char * installVersion, char * downloadFile) {
 
@@ -252,6 +224,21 @@ static void update_action(char * nodeType, char * packageName, char * installVer
         (*uah->do_set_version)(packageName, installVersion);
     }
 
+    send_update_status(nodeType, packageName, installVersion, state);
+
+}
+
+
+static void post_update_action(void) {
+
+    if (uah->do_post_install) {
+        (*uah->do_post_install)();
+    }
+
+}
+
+static void send_update_status(char * nodeType, char * packageName, char * installVersion, install_state_t state) {
+
     json_object * pkgObject = json_object_new_object();
     json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
     json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
@@ -271,15 +258,6 @@ static void update_action(char * nodeType, char * packageName, char * installVer
     json_object_put(jObject);
 
 }
-
-static void post_update_action(void) {
-
-    if (uah->do_post_install) {
-        (*uah->do_post_install)();
-    }
-
-}
-
 
 static char * install_state_string(install_state_t state) {
 

@@ -1,10 +1,29 @@
+/*
+ * common.h
+ */
 
-#ifndef _XL4BROKER_COMMON_H_
-#define _XL4BROKER_COMMON_H_
+#ifndef _UA_COMMON_H_
+#define _UA_COMMON_H_
 
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <stdint.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
 #include <sys/types.h>
+#include "json-c-rename.h"
+#include <json.h>
 #include <libxl4bus/types.h>
+#include "updateagent.h"
+#include "debug.h"
+
 
 void debug_print(const char * msg);
 char * f_asprintf(char * fmt, ...);

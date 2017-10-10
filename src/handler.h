@@ -5,7 +5,8 @@
 #ifndef _UA_HANDLER_H_
 #define _UA_HANDLER_H_
 
-#include "updateagent.h"
+#include "common.h"
+
 
 #define QUERY_PACKAGE       "xl4.query-package"
 #define READY_DOWNLOAD      "xl4.ready-download"

@@ -1,8 +1,8 @@
 #ifndef _UA_DEBUG_H_
 #define _UA_DEBUG_H_
 
-#include "config.h"
 #include "common.h"
+
 
 extern int debug;
 

@@ -3,7 +3,7 @@
  */
 
 #include "utils.h"
-#include "debug.h"
+
 
 static int get_json_string(json_object * json, char ** value, const char * node, ... );
 static int get_json_int64(json_object * json, int64_t * value, const char * node, ... );
@@ -58,11 +58,13 @@ int get_pkg_status_from_json(json_object * jsonObj, char ** value) {
 
 }
 
+
 int get_bytes_downloaded_from_json(json_object * jsonObj, int64_t * value) {
 
     return get_json_int64(jsonObj, value, "body", "downloaded-bytes", NULL);
 
 }
+
 
 int get_bytes_total_from_json(json_object * jsonObj, int64_t * value) {
 
@@ -100,6 +102,7 @@ static int get_json_string(json_object * json, char ** value, const char * node,
     return err;
 
 }
+
 
 static int get_json_int64(json_object * json, int64_t * value, const char * node, ... ) {
 

@@ -1,18 +1,9 @@
-
-#define _GNU_SOURCE
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <errno.h>
-#include <unistd.h>
+/*
+ * common.c
+ */
 
 #include "common.h"
-#include "debug.h"
+
 
 static xl4bus_asn1_t * load_full(char * path);
 static char * simple_password (struct xl4bus_X509v3_Identity *);
