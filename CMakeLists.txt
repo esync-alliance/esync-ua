@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 project(updateagent)
+include(FindPkgConfig)
 include(FindLibZip.cmake)
 
 function(influence_pkg_spec TGT PREFIX)
@@ -30,6 +31,10 @@ function(join OUTPUT GLUE)
     endforeach()
     set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
 endfunction(join)
+
+if (NOT LIBZIP_FOUND STREQUAL "YES")
+    message(FATAL_ERROR "libzip library is required")
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -67,6 +72,12 @@ set(SOURCE_FILES
 )
 
 add_executable(updateagent ${SOURCE_FILES})
+
+pkg_check_modules(CJOSE REQUIRED cjose)
+pkg_check_modules(CARES REQUIRED libcares)
+
+influence_pkg(CJOSE)
+influence_pkg(CARES)
 
 if (DEBUG)
     set(myc "-g -ggdb -O0")
