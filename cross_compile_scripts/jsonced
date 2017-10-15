@@ -1,0 +1,13 @@
+/HAVE_MALLOC
+c
+D["HAVE_MALLOC"]=" 1"
+.
+/HAVE_REALLOC
+c
+D["HAVE_REALLOC"]=" 1"
+.
+/rpl_malloc
+d
+/rpl_realloc
+d
+wq

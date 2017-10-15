@@ -24,6 +24,7 @@ FIND_PATH(LIBZIP_INCLUDE_DIR zip.h
     /opt/include
     [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;OSG_ROOT]/include
     /usr/freeware/include
+    NO_DEFAULT_PATH
 )
 
 FIND_LIBRARY(LIBZIP_LIBRARY 
