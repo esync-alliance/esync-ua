@@ -30,7 +30,7 @@ rm -rf arm_build
 mkdir -p arm_build
 
 (cd arm_build && {
-    LIBZIP_DIR=${SYSROOT}/usr ${CMK} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=Linux ..
+    LIBZIP_DIR="${SYSROOT}/usr" ${CMK} -DCMAKE_FIND_ROOT_PATH=${SYSROOT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=Linux ..
     make
 }
 )
