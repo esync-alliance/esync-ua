@@ -1,52 +1,113 @@
 /*
- * handler.c
+ * hander.c
  */
 
 #include "handler.h"
-#include "uaclient.h"
+
+#include <xl4ua.h>
+#include <pthread.h>
 #include "utils.h"
+#include "xl4busclient.h"
 
-
-static void process_query_package(json_object * jsonObj);
-static void process_ready_download(json_object * jsonObj);
-static void process_ready_update(json_object * jsonObj);
-static void process_download_report(json_object * jsonObj);
-static void process_sota_report(json_object * jsonObj);
-static void process_log_report(json_object * jsonObj);
-static void pre_update_action(char * nodeType, char * packageName, char * installVersion);
-static void update_action(char * nodeType, char * packageName, char * installVersion, char * downloadFile);
-static void post_update_action(void);
-static void send_update_status(char * nodeType, char * packageName, char * installVersion, install_state_t state);
+static void process_message(ua_routine_t * uar, const char * msg, size_t len);
+static void process_query_package(ua_routine_t * uar, json_object * jsonObj);
+static void process_ready_download(ua_routine_t * uar, json_object * jsonObj);
+static void process_ready_update(ua_routine_t * uar, json_object * jsonObj);
+static void process_download_report(ua_routine_t * uar, json_object * jsonObj);
+static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
+static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
+static void pre_update_action(ua_routine_t * uar, char * pkgType, char * pkgName, char * pkgVersion);
+static void update_action(ua_routine_t * uar, char * pkgType, char * pkgName, char * pkgVersion, char * downloadFile);
+static void post_update_action(ua_routine_t * uar);
+static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion, install_state_t state);
 static char * install_state_string(install_state_t state);
+static void *update_runner(void * arg);
 
+ua_cfg_t ua_cfg;
+runner_info_t * registered_updater = 0;
 
-update_agent_t * uah;
+#define TRIM(x) do { size_t __l = strlen(x); if (x[__l-1]=="/") x[__l-1] = 0 } while (0)
 
+int ua_init(ua_cfg_t * in_cfg) {
 
-int ua_handler_start(update_agent_t * ua) {
+    int err = E_UA_OK;
 
-    if (!ua->do_get_version || !ua->do_set_version || !ua->do_install || !ua->url
+    do {
+
+        BOLT_IF(!in_cfg->url
 #ifdef USE_XL4BUS_TRUST
-            || !ua->ua_type
+                || !in_cfg->ua_type
 #else
-            || !ua->cert_dir
+                || !in_cfg->cert_dir
 #endif
-             )
-        return E_UA_ARG;
+                , E_UA_ARG, "configuration error");
 
-    uah = ua;
+        memcpy(&ua_cfg, in_cfg, sizeof(ua_cfg_t));
 
-    return xl4bus_client_start(uah->url, ua->cert_dir, uah->ua_type);
+        BOLT_SUB(xl4bus_client_init(&ua_cfg));
 
-}
+    } while (0);
 
-
-void ua_handler_stop(void) {
-
-    xl4bus_client_stop();
+    return err;
 
 }
 
+int ua_register(ua_handler_t * uah, int len) {
+
+    int err = E_UA_OK;
+    runner_info_t * ri = 0;
+    for (int i=0; i<len; i++) {
+        do {
+            ri = f_malloc(sizeof(runner_info_t));
+            ri->uar = (*(uah + i)->get_routine)();
+            ri->type = (uah + i)->type_handler;
+            ri->run = 1;
+            BOLT_IF(!ri->uar->on_get_version || !ri->uar->on_install || !strlen(ri->type), E_UA_ARG, "registration error");
+            BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock");
+            BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond");
+            BOLT_SYS(pthread_create(&ri->thread, 0, update_runner, ri), "pthread create");
+            HASH_ADD_STR(registered_updater, type, ri);
+        } while (0);
+
+        if (err) {
+            free(ri);
+            break;
+        }
+    }
+
+    return err;
+
+}
+
+int ua_unregister(ua_handler_t * uah, int len) {
+
+    int err = E_UA_OK;
+    runner_info_t * ri = 0;
+    for (int i=0; i<len; i++) {
+        do {
+            const char * type = (uah + i)->type_handler;
+            HASH_FIND_STR(registered_updater, type, ri);
+            ri->run = 0;
+            BOLT_SYS(pthread_mutex_unlock(&ri->lock), "unlock");
+            BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
+            BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
+            free(ri);
+        } while (0);
+
+        if (err) {
+            break;
+        }
+    }
+
+    return err;
+
+}
+
+int ua_stop() {
+
+    return xl4bus_client_stop();
+
+}
 
 int ua_send_message(json_object * jsonObj) {
 
@@ -77,7 +138,43 @@ void handle_presence(int connected, int disconnected) {
 }
 
 
-void handle_message(const char * msg) {
+void handle_message(const char * type, const char * msg, size_t len) {
+
+    runner_info_t * info;
+    HASH_FIND_STR(registered_updater, type, info);
+    if (info) {
+        pthread_mutex_lock(&info->lock);
+        msg_queue_t * xm = f_malloc(sizeof(msg_queue_t));
+        xm->msg = f_strdup(msg);
+        xm->msg_len = len;
+        DL_APPEND(info->que, xm);
+        pthread_cond_signal(&info->cond);
+        pthread_mutex_unlock(&info->lock);
+    } else {
+        DBG("Incoming message on non-registered %s : %s", type, msg);
+    }
+
+}
+
+static void *update_runner(void * arg) {
+
+    runner_info_t * info = arg;
+    while(info->run) {
+        msg_queue_t * mq;
+        pthread_mutex_lock(&info->lock);
+        while (!(mq = info->que))
+            pthread_cond_wait(&info->cond, &info->lock);
+        DL_DELETE(info->que, mq);
+        pthread_mutex_unlock(&info->lock);
+        process_message(info->uar, mq->msg, mq->msg_len);
+        free(mq->msg);
+        free(mq);
+    }
+
+}
+
+
+static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
 
     DBG("Message : %s", msg);
     json_object * json;
@@ -86,17 +183,17 @@ void handle_message(const char * msg) {
     if((json = json_tokener_parse(msg))) {
         if (get_type_from_json(json, &type) == E_UA_OK) {
             if (!strcmp(type, QUERY_PACKAGE)) {
-                process_query_package(json);
+                process_query_package(uar, json);
             } else if (!strcmp(type, READY_DOWNLOAD)) {
-                process_ready_download(json);
+                process_ready_download(uar, json);
             } else if (!strcmp(type, READY_UPDATE)) {
-                process_ready_update(json);
+                process_ready_update(uar, json);
             } else if (!strcmp(type, DOWNLOAD_REPORT)) {
-                process_download_report(json);
+                process_download_report(uar, json);
             } else if (!strcmp(type, SOTA_REPORT)) {
-                process_sota_report(json);
+                process_sota_report(uar, json);
             } else if (!strcmp(type, LOG_REPORT)) {
-                process_log_report(json);
+                process_log_report(uar, json);
             } else {
                 DBG("Unknown type %s received in %s", type, json_object_to_json_string(json));
             }
@@ -109,24 +206,24 @@ void handle_message(const char * msg) {
 }
 
 
-static void process_query_package(json_object * jsonObj) {
+static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
-    char * nodeType;
-    char * packageName;
+    char * pkgType;
+    char * pkgName;
     char * replyId;
     char * installedVer;
 
-    if (!get_pkg_type_from_json(jsonObj, &nodeType) &&
-            !get_pkg_name_from_json(jsonObj, &packageName) &&
+    if (!get_pkg_type_from_json(jsonObj, &pkgType) &&
+            !get_pkg_name_from_json(jsonObj, &pkgName) &&
             !get_replyid_from_json(jsonObj, &replyId)) {
 
-        (*uah->do_get_version)(packageName, &installedVer);
+        (*uar->on_get_version)(pkgName, &installedVer);
 
-        DBG("DMClient is querying version info of : %s Returning %s", packageName, installedVer);
+        DBG("DMClient is querying version info of : %s Returning %s", pkgName, installedVer);
 
         json_object * pkgObject = json_object_new_object();
-        json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
-        json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
+        json_object_object_add(pkgObject, "type", json_object_new_string(pkgType));
+        json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
         json_object_object_add(pkgObject, "version", json_object_new_string(SAFE_STR(installedVer)));
 
         json_object * bodyObject = json_object_new_object();
@@ -147,106 +244,105 @@ static void process_query_package(json_object * jsonObj) {
 }
 
 
-static void process_ready_download(json_object * jsonObj) {
+static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 
-    char * nodeType;
-    char * packageName;
-    char * installVersion;
+    char * pkgType;
+    char * pkgName;
+    char * pkgVersion;
 
-    if (!get_pkg_type_from_json(jsonObj, &nodeType) &&
-            !get_pkg_name_from_json(jsonObj, &packageName) &&
-            !get_pkg_version_from_json(jsonObj, &installVersion)) {
+    if (!get_pkg_type_from_json(jsonObj, &pkgType) &&
+            !get_pkg_name_from_json(jsonObj, &pkgName) &&
+            !get_pkg_version_from_json(jsonObj, &pkgVersion)) {
 
-        DBG("DMClient informs that package %s having version %s is available for download", packageName, installVersion);
+        DBG("DMClient informs that package %s having version %s is available for download", pkgName, pkgVersion);
         DBG("Instructing DMClient to download it");
 
         install_state_t state = INSTALL_PENDING;
-        send_update_status(nodeType, packageName, installVersion, state);
-
+        send_update_status(pkgType, pkgName, pkgVersion, state);
     }
 
 }
 
 
-static void process_ready_update(json_object * jsonObj) {
+static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
-    char * nodeType;
-    char * packageName;
-    char * installVersion;
-    char * downloadFile;
+    char * pkgType;
+    char * pkgName;
+    char * pkgVersion;
+    char * pkgFile;
 
-    if (!get_pkg_type_from_json(jsonObj, &nodeType) &&
-            !get_pkg_name_from_json(jsonObj, &packageName) &&
-            !get_pkg_version_from_json(jsonObj, &installVersion) &&
-            !get_file_from_json(jsonObj, installVersion, &downloadFile)) {
+    if (!get_pkg_type_from_json(jsonObj, &pkgType) &&
+            !get_pkg_name_from_json(jsonObj, &pkgName) &&
+            !get_pkg_version_from_json(jsonObj, &pkgVersion) &&
+            !get_file_from_json(jsonObj, pkgVersion, &pkgFile)) {
 
-        pre_update_action(nodeType, packageName, installVersion);
-        update_action(nodeType, packageName, installVersion, downloadFile);
-        post_update_action();
+        pre_update_action(uar, pkgType, pkgName, pkgVersion);
+        update_action(uar, pkgType, pkgName, pkgVersion, pkgFile);
+        post_update_action(uar);
     }
 
 }
 
 
-static void process_download_report(json_object * jsonObj) {
+static void process_download_report(ua_routine_t * uar, json_object * jsonObj) {
 
 }
 
 
-static void process_sota_report(json_object * jsonObj) {
+static void process_sota_report(ua_routine_t * uar, json_object * jsonObj) {
 
 }
 
 
-static void process_log_report(json_object * jsonObj) {
+static void process_log_report(ua_routine_t * uar, json_object * jsonObj) {
 
 }
 
 
-static void pre_update_action(char * nodeType, char * packageName, char * installVersion) {
+static void pre_update_action(ua_routine_t * uar, char * pkgType, char * pkgName, char * pkgVersion) {
 
     install_state_t state = INSTALL_INPROGRESS;
 
-    if (uah->do_pre_install) {
-        state = (*uah->do_pre_install)(packageName, installVersion);
+    if (uar->on_pre_install) {
+        state = (*uar->on_pre_install)(pkgName, pkgVersion);
     }
 
-    send_update_status(nodeType, packageName, installVersion, state);
+    send_update_status(pkgType, pkgName, pkgVersion, state);
 
 }
 
 
-static void update_action(char * nodeType, char * packageName, char * installVersion, char * downloadFile) {
+static void update_action(ua_routine_t * uar, char * pkgType, char * pkgName, char * pkgVersion, char * downloadFile) {
 
-    install_state_t state = (*uah->do_install)(packageName, installVersion, downloadFile);
+    install_state_t state = (*uar->on_install)(pkgName, pkgVersion, downloadFile);
 
-    if (state == INSTALL_COMPLETED) {
-        (*uah->do_set_version)(packageName, installVersion);
+    if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
+        (*uar->on_set_version)(pkgName, pkgVersion);
     }
 
-    send_update_status(nodeType, packageName, installVersion, state);
+    send_update_status(pkgType, pkgName, pkgVersion, state);
 
 }
 
 
-static void post_update_action(void) {
+static void post_update_action(ua_routine_t * uar) {
 
-    if (uah->do_post_install) {
-        (*uah->do_post_install)();
+    if (uar->on_post_install) {
+        (*uar->on_post_install)();
     }
 
 }
 
-static void send_update_status(char * nodeType, char * packageName, char * installVersion, install_state_t state) {
+static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion, install_state_t state) {
 
     json_object * pkgObject = json_object_new_object();
-    json_object_object_add(pkgObject, "version", json_object_new_string(installVersion));
+    json_object_object_add(pkgObject, "version", json_object_new_string(pkgVersion));
     json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
-    json_object_object_add(pkgObject, "name", json_object_new_string(packageName));
-    json_object_object_add(pkgObject, "type", json_object_new_string(nodeType));
+    json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
+    json_object_object_add(pkgObject, "type", json_object_new_string(pkgType));
 
     json_object * bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "package", pkgObject);
+    json_object_object_add(bodyObject, "package", pkgObject);
 
     json_object * jObject = json_object_new_object();
     json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
@@ -275,4 +371,3 @@ static char * install_state_string(install_state_t state) {
     return str;
 
 }
-

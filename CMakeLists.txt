@@ -1,25 +1,9 @@
 cmake_minimum_required(VERSION 3.6)
-project(updateagent)
-include(FindPkgConfig)
-include(FindLibZip.cmake)
+project(libxl4ua)
 
-function(influence_pkg_spec TGT PREFIX)
-
-    if (TARGET ${TGT})
-        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS})
-        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS_OTHER})
-
-        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS})
-        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS_OTHER})
-    endif()
-
-endfunction(influence_pkg_spec)
-
-function(influence_pkg PREFIX)
-    if (${PREFIX}_FOUND)
-        influence_pkg_spec(updateagent ${PREFIX})
-    endif()
-endfunction(influence_pkg)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
 
 # thanks to http://stackoverflow.com/questions/7172670
 function(join OUTPUT GLUE)
@@ -32,11 +16,52 @@ function(join OUTPUT GLUE)
     set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
 endfunction(join)
 
-if (NOT LIBZIP_FOUND STREQUAL "YES")
-    message(FATAL_ERROR "libzip library is required")
-endif()
+function(set_empty OUTPUT VAL)
+    if ((NOT DEFINED ${OUTPUT}) OR "${${OUTPUT}}" STREQUAL "")
+        set(${OUTPUT} "${VAL}" PARENT_SCOPE)
+    endif()
+endfunction(set_empty)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+function(targets_link_libraries)
+    set(LIB_MODE "zz")
+    foreach(arg ${ARGN})
+        if (${LIB_MODE} STREQUAL TRUE)
+            foreach(arg2 ${ARGN})
+                message("Applying ${arg2} to target ${arg}")
+                if ("${arg2}" STREQUAL "LIBRARIES")
+                    break()
+                endif()
+                if (TARGET ${arg2})
+                    target_link_libraries(${arg2} ${arg})
+                endif()
+            endforeach()
+        elseif("${arg}" STREQUAL "LIBRARIES")
+            message("Switching to targeting")
+            set(LIB_MODE TRUE)
+        else()
+            message("Delaying target ${arg}")
+        endif()
+    endforeach()
+    message("end targets_link_libraries")
+endfunction(targets_link_libraries)
+
+function(influence_pkg_spec TGT PREFIX)
+    if (TARGET ${TGT})
+        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS})
+        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS_OTHER})
+
+        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS})
+        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS_OTHER})
+    endif()
+endfunction(influence_pkg_spec)
+
+function(influence_pkg PREFIX)
+    if (${PREFIX}_FOUND)
+        influence_pkg_spec(ua-shared ${PREFIX})
+        influence_pkg_spec(ua-static ${PREFIX}_STATIC)
+        influence_pkg_spec(updateagent ${PREFIX})
+    endif()
+endfunction(influence_pkg)
 
 set(BUILD_CONFIG $ENV{BUILD_CONFIG})
 if (NOT BUILD_CONFIG)
@@ -47,60 +72,105 @@ message(STATUS "Using configuration file ${BUILD_CONFIG}")
 
 include(${BUILD_CONFIG})
 
+set_empty(BUILD_SHARED TRUE)
+set_empty(BUILD_STATIC TRUE)
+set_empty(BUILD_BINS TRUE)
+set_empty(WITH_EFENCE FALSE)
+
+set_empty(XL4_PROVIDE_THREADS 1)
+set_empty(XL4_PROVIDE_DEBUG 1)
+set_empty(XL4_PROVIDE_PRINTF 0)
+set_empty(XL4_SUPPORT_THREADS 1)
+set_empty(XL4_PROVIDE_GETTIMEOFDAY 1)
+set_empty(XL4_HAVE_GETTIMEOFDAY 1)
+set_empty(XL4_HAVE_STD_MALLOC 1)
+
+set(BCH ${CMAKE_BINARY_DIR}/build_config.h)
+
+configure_file(${CMAKE_SOURCE_DIR}/build_config.h.in ${BCH})
 configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
-include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/json-c-build)
+
+set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
+
+include_directories(SYSTEM ${XL4BUS_DIR})
+include_directories(SYSTEM ${XL4BUS_DIR}/../src/include)
+include_directories(SYSTEM ${JSON_C})
+include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR})
+link_directories(${XL4BUS_DIR})
 
 add_custom_command(OUTPUT PHONY ${CMAKE_BINARY_DIR}/ua_version.h COMMAND ${CMAKE_SOURCE_DIR}/make_version.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-set(SOURCE_FILES
+set(LIB_SOURCE ${LIB_SOURCE}
     PHONY
-    src/updateagent.c
+    ${BCH}
+    ${CMAKE_BINARY_DIR}/ua_version.h
     src/handler.c
     src/utils.c
-    src/uaclient.c
+    src/xl4busclient.c
     src/common.c
-
-    src/updateagent.h
     src/handler.h
     src/utils.h
-    src/uaclient.h
-    src/config.h
-    src/debug.h
+    src/xl4busclient.h
     src/common.h
+    src/debug.h
+    src/uthash.h
+    src/utlist.h
+    src/debug.h
+    src/include/xl4ua.h
 )
 
-add_executable(updateagent ${SOURCE_FILES})
-
-pkg_check_modules(CJOSE REQUIRED cjose)
-pkg_check_modules(CARES REQUIRED libcares)
-
-influence_pkg(CJOSE)
-influence_pkg(CARES)
-
-if (DEBUG)
-    set(myc "-g -ggdb -O0")
-else()
-    set(myc "-O3")
-endif()
-
-set(JSON_C_LIB ${CMAKE_SOURCE_DIR}/json-c-build/.libs/libjson-c.a)
+set(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a)
 if (NOT EXISTS ${JSON_C_LIB})
     message(FATAL_ERROR "You must build json-c sources first!")
 endif()
 
-set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${myc} --std=c99 -isystem${XL4BUS_DIR}/../src/include -isystem${XL4BUS_DIR} ")
-
-if (XL4BUS_RPATH)
-    set(XL4BUS_RPATH "-Wl,-R${XL4BUS_DIR}")
-else()
-    set(XL4BUS_RPATH "")
+if (XL4_PROVIDE_THREADS)
+    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+    find_package(Threads MODULE REQUIRED)
 endif()
 
-set(USE_LIB  "-L${XL4BUS_DIR}" "${XL4BUS_RPATH}" "-lxl4bus" "-lz" "-lm" ${LIBZIP_LIBRARY} ${JSON_C_LIB})
+if (BUILD_SHARED)
+    add_library(ua-shared SHARED ${LIB_SOURCE})
+    set_target_properties(ua-shared PROPERTIES OUTPUT_NAME ua CLEAN_DIRECT_OUTPUT 1)
+    if (XL4_PROVIDE_THREADS)
+        target_link_libraries(ua-shared Threads::Threads)
+    endif()
+    set(USE_LIB ua-shared)
+    target_link_libraries(ua-shared ${JSON_C_LIB})
+    install(TARGETS ua-shared LIBRARY DESTINATION lib)
+endif()
 
-target_link_libraries(updateagent ${USE_LIB})
+if (BUILD_STATIC)
+    file(GLOB EXT_OBJ ${JSON_C}/*.o)
+    add_library(ua-static STATIC ${LIB_SOURCE} ${EXT_OBJ})
+    set_target_properties(ua-static PROPERTIES OUTPUT_NAME ua CLEAN_DIRECT_OUTPUT 1)
+    if (XL4_PROVIDE_THREADS)
+        target_link_libraries(ua-static Threads::Threads)
+    endif()
+    if (NOT USE_LIB)
+        set(USE_LIB ua-static)
+    endif()
+    target_compile_definitions(ua-static PUBLIC HIDE_SYM)
+    install(TARGETS ua-static ARCHIVE DESTINATION lib)
+endif()
+
+if (BUILD_BINS)
+    add_executable(tmpl-updateagent
+            src/test_agents/updateagent.c
+            src/test_agents/tmpl_updateagent.c
+            src/test_agents/tmpl_updateagent.h
+    )
+
+    target_link_libraries(tmpl-updateagent ${USE_LIB} -lxl4bus -lm)
+
+    if (XL4_PROVIDE_THREADS)
+        target_link_libraries(tmpl-updateagent Threads::Threads)
+    else()
+        message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
+    endif()
+endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 

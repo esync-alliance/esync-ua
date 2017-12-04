@@ -1,11 +1,19 @@
+/*
+ * debug.h
+ */
+
 #ifndef _UA_DEBUG_H_
 #define _UA_DEBUG_H_
 
 #include "common.h"
 
+extern ua_cfg_t ua_cfg;
 
-extern int debug;
-
+#if !XL4_HAVE_GETTIMEOFDAY
+#define _ltime_ \
+    char now[1]; \
+    now[0] = 0
+#else
 #define _ltime_ \
     char now[20]; \
     struct tm tmnow; \
@@ -14,22 +22,25 @@ extern int debug;
     gettimeofday(&tv, 0); \
     localtime_r(&tv.tv_sec, &tmnow); \
     strftime(now, 19, "%m-%d:%H:%M:%S", &tmnow)
+#endif
 
-#define DBG(a,b...) do { if (debug) { \
+#define DBG(a,b...) do { if (ua_cfg.debug) { \
     _ltime_; \
     char * _str = f_asprintf("[%s] %s:%d " a, now, chop_path(__FILE__), __LINE__, ## b); \
     if (_str) { \
         printf("%s\n", _str); \
+        fflush(stdout); \
         free(_str); \
     } \
 } } while(0)
 
-#define DBG_SYS(a,b...) do { if (debug) { \
+#define DBG_SYS(a,b...) do { if (ua_cfg.debug) { \
     int _errno = errno; \
     _ltime_; \
     char * _str = f_asprintf("[%s] %s:%d error %s(%d): " a, now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
     if (_str) { \
         printf("%s\n", _str); \
+        fflush(stdout); \
         free(_str); \
     } \
 } } while(0)
@@ -66,4 +77,4 @@ static inline const char * chop_path(const char * path) {
     return path;
 }
 
-#endif // _UA_DEBUG_H_
+#endif /* _UA_DEBUG_H_ */
