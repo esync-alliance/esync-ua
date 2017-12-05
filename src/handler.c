@@ -67,6 +67,7 @@ int ua_register(ua_handler_t * uah, int len) {
             BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
             BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
             HASH_ADD_STR(registered_updater, type, ri);
+            DBG("Registered: %s", ri->type);
         } while (0);
 
         if (err) {
@@ -230,7 +231,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
         (*uar->on_get_version)(pkgName, &installedVer);
 
-        DBG("DMClient is querying version info of : %s Returning %s", pkgName, installedVer);
+        DBG("DMClient is querying version info of : %s Returning %s", pkgName, SAFE_STR(installedVer));
 
         json_object * pkgObject = json_object_new_object();
         json_object_object_add(pkgObject, "type", json_object_new_string(pkgType));
