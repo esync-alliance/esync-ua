@@ -19,23 +19,23 @@
 #define UPDATE_STATUS       "xl4.update-status"
 
 
-typedef struct msg_queue {
+typedef struct incoming_msg {
 
     char * msg;
     size_t msg_len;
 
-    struct msg_queue * next;
-    struct msg_queue * prev;
+    struct incoming_msg * next;
+    struct incoming_msg * prev;
 
-} msg_queue_t;
+} incoming_msg_t;
 
 typedef struct runner_info {
     pthread_t thread;
     pthread_mutex_t lock;
     pthread_cond_t cond;
     int run;
-    struct msg_queue * que;
-    char * type;                     //rkh: trimed
+    incoming_msg_t * queue;
+    char * type;
     ua_routine_t * uar;
     UT_hash_handle hh;
 } runner_info_t;

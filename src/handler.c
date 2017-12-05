@@ -21,7 +21,7 @@ static void update_action(ua_routine_t * uar, char * pkgType, char * pkgName, ch
 static void post_update_action(ua_routine_t * uar);
 static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion, install_state_t state);
 static char * install_state_string(install_state_t state);
-static void *update_runner(void * arg);
+void * runner_loop(void * arg);
 
 ua_cfg_t ua_cfg;
 runner_info_t * registered_updater = 0;
@@ -63,9 +63,9 @@ int ua_register(ua_handler_t * uah, int len) {
             ri->type = (uah + i)->type_handler;
             ri->run = 1;
             BOLT_IF(!ri->uar->on_get_version || !ri->uar->on_install || !strlen(ri->type), E_UA_ARG, "registration error");
-            BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock");
-            BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond");
-            BOLT_SYS(pthread_create(&ri->thread, 0, update_runner, ri), "pthread create");
+            BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
+            BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
+            BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
             HASH_ADD_STR(registered_updater, type, ri);
         } while (0);
 
@@ -88,9 +88,10 @@ int ua_unregister(ua_handler_t * uah, int len) {
             const char * type = (uah + i)->type_handler;
             HASH_FIND_STR(registered_updater, type, ri);
             ri->run = 0;
-            BOLT_SYS(pthread_mutex_unlock(&ri->lock), "unlock");
-            BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
+            BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
+            BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
             BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
+            BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
             free(ri);
         } while (0);
 
@@ -106,13 +107,6 @@ int ua_unregister(ua_handler_t * uah, int len) {
 int ua_stop() {
 
     return xl4bus_client_stop();
-
-}
-
-int ua_send_message(json_object * jsonObj) {
-
-    DBG("Sending : %s", json_object_to_json_string(jsonObj));
-    return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
 
 }
 
@@ -140,35 +134,52 @@ void handle_presence(int connected, int disconnected) {
 
 void handle_message(const char * type, const char * msg, size_t len) {
 
+    int err;
     runner_info_t * info;
-    HASH_FIND_STR(registered_updater, type, info);
-    if (info) {
-        pthread_mutex_lock(&info->lock);
-        msg_queue_t * xm = f_malloc(sizeof(msg_queue_t));
-        xm->msg = f_strdup(msg);
-        xm->msg_len = len;
-        DL_APPEND(info->que, xm);
-        pthread_cond_signal(&info->cond);
-        pthread_mutex_unlock(&info->lock);
-    } else {
-        DBG("Incoming message on non-registered %s : %s", type, msg);
-    }
+    do {
+        HASH_FIND_STR(registered_updater, type, info);
+        if (info) {
+            BOLT_SYS(pthread_mutex_lock(&info->lock), "lock failed");
+            incoming_msg_t * im = f_malloc(sizeof(incoming_msg_t));
+            im->msg = f_strdup(msg);
+            im->msg_len = len;
+            DL_APPEND(info->queue, im);
+            BOLT_SYS(pthread_cond_signal(&info->cond), "cond signal");
+            BOLT_SYS(pthread_mutex_unlock(&info->lock), "unlock failed");
+        } else {
+            DBG("Incoming message on non-registered %s : %s", type, msg);
+        }
+    } while (0);
 
 }
 
-static void *update_runner(void * arg) {
+int send_message(json_object * jsonObj) {
+
+    DBG("Sending : %s", json_object_to_json_string(jsonObj));
+    return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
+
+}
+
+void * runner_loop(void * arg) {
 
     runner_info_t * info = arg;
     while(info->run) {
-        msg_queue_t * mq;
-        pthread_mutex_lock(&info->lock);
-        while (!(mq = info->que))
+        incoming_msg_t * im;
+        if (pthread_mutex_lock(&info->lock)) {
+            DBG_SYS("lock failed");
+            continue;
+        }
+
+        while (!(im = info->queue))
             pthread_cond_wait(&info->cond, &info->lock);
-        DL_DELETE(info->que, mq);
+
+        DL_DELETE(info->queue, im);
         pthread_mutex_unlock(&info->lock);
-        process_message(info->uar, mq->msg, mq->msg_len);
-        free(mq->msg);
-        free(mq);
+
+        process_message(info->uar, im->msg, im->msg_len);
+
+        free(im->msg);
+        free(im);
     }
 
 }
@@ -234,7 +245,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
         json_object_object_add(jObject, "body", bodyObject);
 
-        ua_send_message(jObject);
+        send_message(jObject);
 
         json_object_put(pkgObject);
         json_object_put(bodyObject);
@@ -348,7 +359,7 @@ static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion
     json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
     json_object_object_add(jObject, "body", bodyObject);
 
-    ua_send_message(jObject);
+    send_message(jObject);
 
     json_object_put(bodyObject);
     json_object_put(jObject);
