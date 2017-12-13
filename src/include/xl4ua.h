@@ -12,8 +12,23 @@ typedef enum install_state {
     INSTALL_FAILED,
     INSTALL_POSTPONED,
     INSTALL_ABORTED,
-    INSTALL_ROLLBACK,
+    INSTALL_ROLLBACK
 } install_state_t;
+
+typedef enum log_type {
+    LOG_EVENT,
+    LOG_INFO,
+    LOG_WARN,
+    LOG_ERROR,
+    LOG_SEVERE
+} log_type_t;
+
+typedef struct log_data {
+    void * message;
+    int    compound;
+    char * binary;
+    char * timestamp;
+} log_data_t;
 
 
 #define E_UA_OK         ( 0)
@@ -98,6 +113,8 @@ XL4_PUB int ua_register(ua_handler_t * uah, int len);
 XL4_PUB int ua_unregister(ua_handler_t * uah, int len);
 
 XL4_PUB int ua_stop();
+
+XL4_PUB int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype);
 
 
 #endif /* _XL4UA_H_ */

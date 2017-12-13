@@ -21,6 +21,8 @@ static void update_action(ua_routine_t * uar, char * pkgType, char * pkgName, ch
 static void post_update_action(ua_routine_t * uar);
 static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion, install_state_t state);
 static char * install_state_string(install_state_t state);
+static char * log_type_string(log_type_t log);
+static int send_message(json_object * jsonObj);
 void * runner_loop(void * arg);
 
 ua_cfg_t ua_cfg;
@@ -94,6 +96,7 @@ int ua_unregister(ua_handler_t * uah, int len) {
             BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
             BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
             free(ri);
+            DBG("Unregistered: %s", type);
         } while (0);
 
         if (err) {
@@ -109,6 +112,47 @@ int ua_stop() {
 
     return xl4bus_client_stop();
 
+}
+
+int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype) {
+
+    int err = E_UA_OK;
+    char timestamp[30];
+
+    do {
+        BOLT_IF(!(pkgType && *pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
+
+        if (logdata->timestamp && *logdata->timestamp) {
+            strncpy(timestamp, logdata->timestamp, sizeof(timestamp));
+        } else {
+            time_t t = time(NULL);
+            strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", gmtime(&t));
+        }
+
+        json_object * bodyObject = json_object_new_object();
+        json_object_object_add(bodyObject, "type", json_object_new_string(pkgType));
+        json_object_object_add(bodyObject, "level", json_object_new_string(log_type_string(logtype)));
+        json_object_object_add(bodyObject, "timestamp", json_object_new_string(timestamp));
+
+        if (logdata->message) {
+            json_object_object_add(bodyObject, "message", json_object_get((json_object *)logdata->message));
+            json_object_object_add(bodyObject, "compound", json_object_new_boolean(logdata->compound? 1 : 0));
+        } else if (logdata->binary){
+            json_object_object_add(bodyObject, "binary", json_object_new_string(logdata->binary));
+        }
+
+        json_object * jObject = json_object_new_object();
+        json_object_object_add(jObject, "type", json_object_new_string(LOG_REPORT));
+        json_object_object_add(jObject, "body", bodyObject);
+
+        err = send_message(jObject);
+
+        json_object_put(bodyObject);
+        json_object_put(jObject);
+
+    } while(0);
+
+    return err;
 }
 
 
@@ -298,6 +342,19 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj) {
 
+    char * pkgName;
+    char * pkgVersion;
+    int64_t downloadedBytes;
+    int64_t totalBytes;
+
+    if (!get_pkg_name_from_json(jsonObj, &pkgName) &&
+                !get_pkg_version_from_json(jsonObj, &pkgVersion) &&
+                !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
+                !get_total_bytes_from_json(jsonObj, &totalBytes)) {
+
+        DBG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgName, pkgVersion, downloadedBytes, totalBytes);
+
+    }
 }
 
 
@@ -362,6 +419,7 @@ static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion
 
     send_message(jObject);
 
+    json_object_put(pkgObject);
     json_object_put(bodyObject);
     json_object_put(jObject);
 
@@ -370,8 +428,7 @@ static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion
 static char * install_state_string(install_state_t state) {
 
     char * str = NULL;
-    switch (state)
-    {
+    switch (state) {
         case INSTALL_PENDING    : str = "INSTALL_PENDING";    break;
         case INSTALL_INPROGRESS : str = "INSTALL_INPROGRESS"; break;
         case INSTALL_COMPLETED  : str = "INSTALL_COMPLETED";  break;
@@ -379,6 +436,20 @@ static char * install_state_string(install_state_t state) {
         case INSTALL_POSTPONED  : str = "INSTALL_POSTPONED";  break;
         case INSTALL_ABORTED    : str = "INSTALL_ABORTED";    break;
         case INSTALL_ROLLBACK   : str = "INSTALL_ROLLBACK";   break;
+    }
+    return str;
+
+}
+
+static char * log_type_string(log_type_t log) {
+
+    char * str = NULL;
+    switch (log) {
+        case LOG_EVENT      : str = "EVENT";    break;
+        case LOG_INFO       : str = "INFO"; break;
+        case LOG_WARN       : str = "WARN";  break;
+        case LOG_ERROR      : str = "ERROR";     break;
+        case LOG_SEVERE     : str = "SEVERE";  break;
     }
     return str;
 
