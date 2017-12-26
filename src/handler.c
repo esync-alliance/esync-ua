@@ -182,6 +182,7 @@ void handle_message(const char * type, const char * msg, size_t len) {
     int err;
     runner_info_t * info;
     do {
+        DBG("Incoming message : %s", msg);
         HASH_FIND_STR(registered_updater, type, info);
         if (info) {
             BOLT_SYS(pthread_mutex_lock(&info->lock), "lock failed");
@@ -232,32 +233,32 @@ void * runner_loop(void * arg) {
 
 static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
 
-    DBG("Message : %s", msg);
-    json_object * json;
     char * type;
+    enum json_tokener_error jErr;
 
-    if((json = json_tokener_parse(msg))) {
-        if (get_type_from_json(json, &type) == E_UA_OK) {
+    json_object * jObj = json_tokener_parse_verbose(msg, &jErr);
+    if(jErr == json_tokener_success) {
+        if (get_type_from_json(jObj, &type) == E_UA_OK) {
             if (!strcmp(type, QUERY_PACKAGE)) {
-                process_query_package(uar, json);
+                process_query_package(uar, jObj);
             } else if (!strcmp(type, READY_DOWNLOAD)) {
-                process_ready_download(uar, json);
+                process_ready_download(uar, jObj);
             } else if (!strcmp(type, READY_UPDATE)) {
-                process_ready_update(uar, json);
+                process_ready_update(uar, jObj);
             } else if (!strcmp(type, DOWNLOAD_REPORT)) {
-                process_download_report(uar, json);
+                process_download_report(uar, jObj);
             } else if (!strcmp(type, SOTA_REPORT)) {
-                process_sota_report(uar, json);
+                process_sota_report(uar, jObj);
             } else if (!strcmp(type, LOG_REPORT)) {
-                process_log_report(uar, json);
+                process_log_report(uar, jObj);
             } else {
-                DBG("Unknown type %s received in %s", type, json_object_to_json_string(json));
+                DBG("Unknown type %s received in %s", type, json_object_to_json_string(jObj));
             }
         }
-        json_object_put(json);
     } else {
-        DBG("Json parsing error : %s", msg);
+        DBG("Failed to parse json (%s): %s", json_tokener_error_desc(jErr), msg);
     }
+    json_object_put(jObj);
 
 }
 
@@ -275,12 +276,12 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
         (*uar->on_get_version)(pkgName, &installedVer);
 
-        DBG("DMClient is querying version info of : %s Returning %s", pkgName, SAFE_STR(installedVer));
+        DBG("DMClient is querying version info of : %s Returning %s", pkgName, NULL_STR(installedVer));
 
         json_object * pkgObject = json_object_new_object();
         json_object_object_add(pkgObject, "type", json_object_new_string(pkgType));
         json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
-        json_object_object_add(pkgObject, "version", json_object_new_string(SAFE_STR(installedVer)));
+        json_object_object_add(pkgObject, "version", json_object_new_string(NULL_STR(installedVer)));
 
         json_object * bodyObject = json_object_new_object();
         json_object_object_add(bodyObject, "package", pkgObject);

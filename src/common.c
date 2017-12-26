@@ -18,7 +18,6 @@ char * f_asprintf(char * fmt, ...) {
     }
 
     return ret;
-
 }
 
 char * f_strdup(const char * s) {
@@ -37,6 +36,14 @@ char * f_strndup(const void *s, size_t len) {
     return s2;
 }
 
+char * f_strcat(const char * s, const char * c) {
+    if (!s) { return 0; }
+    if (!c) { return s; }
+    size_t l = strlen(s) + strlen(c) + 1;
+    char * r = (char *) f_realloc(s, l);
+    return strcat(r, c);
+}
+
 void * f_malloc(size_t t) {
 
     void * r = malloc(t);
@@ -48,7 +55,6 @@ void * f_malloc(size_t t) {
     memset(r, 0, t);
 
     return r;
-
 }
 
 void * f_realloc(void * m, size_t t) {
@@ -60,7 +66,20 @@ void * f_realloc(void * m, size_t t) {
     }
 
     return r;
+}
 
+int z_strcmp(const char * s1, const char * s2) {
+
+    if (!s1) {
+        if (!s2) { return 0; }
+        return -1;
+    }
+
+    if (!s2) {
+        return 1;
+    }
+
+    return strcmp(s1, s2);
 }
 
 

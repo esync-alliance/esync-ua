@@ -62,7 +62,8 @@ extern ua_cfg_t ua_cfg;
     newsize = __size; \
 } do{}while(0)
 
-#define SAFE_STR(s) ((s && *s)?s:"null")
+#define SAFE_STR(s) ((s && *s)?(s):"")
+#define NULL_STR(s) ((s && *s)?(s):"null")
 
 #define BOLT(why) err = (why); DBG("setting err %d", err); break; do{}while(0)
 #define BOLT_SAY(__err, msg, x...) err = (__err); DBG(msg ", setting err %d", ## x, err); break; do{}while(0)

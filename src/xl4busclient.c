@@ -149,9 +149,17 @@ char *addr_to_string(xl4bus_address_t * addr) {
 static void on_xl4bus_message(xl4bus_client_t *client, xl4bus_message_t *msg) {
 
     if (msg && msg->data) {
-        for (xl4bus_address_t * a = msg->address; a; a=a->next) {
-            if (a->type == XL4BAT_UPDATE_AGENT)
-                handle_message(a->update_agent, msg->data, msg->data_len);
+        if (!z_strcmp(msg->content_type, "application/json")) {
+            if (msg->data_len <= 0) {
+                DBG("Empty incoming message (%d)?", msg->data_len);
+            } else {
+                for (xl4bus_address_t * a = msg->address; a; a=a->next) {
+                    if (a->type == XL4BAT_UPDATE_AGENT)
+                        handle_message(a->update_agent, msg->data, msg->data_len);
+                }
+            }
+        } else {
+            DBG("Skipping message with an unsupported content type %s", NULL_STR(msg->content_type));
         }
     }
 
