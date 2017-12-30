@@ -431,7 +431,7 @@ static char * install_state_string(install_state_t state) {
     char * str = NULL;
     switch (state) {
         case INSTALL_PENDING    : str = "INSTALL_PENDING";    break;
-        case INSTALL_INPROGRESS : str = "INSTALL_INPROGRESS"; break;
+        case INSTALL_INPROGRESS : str = "INSTALL_IN_PROGRESS"; break;
         case INSTALL_COMPLETED  : str = "INSTALL_COMPLETED";  break;
         case INSTALL_FAILED     : str = "INSTALL_FAILED";     break;
         case INSTALL_POSTPONED  : str = "INSTALL_POSTPONED";  break;
