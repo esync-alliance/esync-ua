@@ -21,6 +21,7 @@ char * f_asprintf(char * fmt, ...) {
 }
 
 char * f_strdup(const char * s) {
+
     if (!s) { return 0; }
     size_t l = strlen(s) + 1;
     char * r = f_malloc(l);
@@ -28,20 +29,13 @@ char * f_strdup(const char * s) {
 }
 
 char * f_strndup(const void *s, size_t len) {
+
     if (!s) { return 0; }
     char * s2 = f_malloc(len + 1);
     if (!s2) { return 0; }
     memcpy(s2, s, len);
     s2[len] = 0;
     return s2;
-}
-
-char * f_strcat(const char * s, const char * c) {
-    if (!s) { return 0; }
-    if (!c) { return s; }
-    size_t l = strlen(s) + strlen(c) + 1;
-    char * r = (char *) f_realloc(s, l);
-    return strcat(r, c);
 }
 
 void * f_malloc(size_t t) {

@@ -27,8 +27,6 @@ int main(int argc, char ** argv) {
     cfg.cert_dir     = cdir;
     cfg.debug        = 1;
     cfg.url          = "tcp://localhost:9133";
-    cfg.cache_dir	 = "/tmp/esync/";
-    cfg.backup_dir	 = "/data/sota/esync/";
 
     if (ua_init(&cfg)) {
         printf("Updateagent failed!");
