@@ -85,6 +85,9 @@ typedef struct ua_cfg {
     // specifies the backup directory
     char *					backup_dir;
 
+    // enables delta support
+    int                     delta;
+
     // enables debug messages
     int 					debug;
 

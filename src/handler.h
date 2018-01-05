@@ -6,8 +6,6 @@
 #define _UA_HANDLER_H_
 
 #include "common.h"
-#include "uthash.h"
-#include "utlist.h"
 
 
 #define QUERY_PACKAGE       "xl4.query-package"

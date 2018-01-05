@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.6)
 project(libxl4ua)
 
+include(FindPkgConfig)
+include(FindLibXml2)
+include(FindOpenSSL)
+include(FindLibZip.cmake)
+include(CMakeForceCompiler)
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -95,6 +101,9 @@ set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
 include_directories(SYSTEM ${XL4BUS_DIR})
 include_directories(SYSTEM ${XL4BUS_DIR}/../src/include)
 include_directories(SYSTEM ${JSON_C})
+include_directories(SYSTEM ${LIBZIP_INCLUDE_DIR})
+include_directories(SYSTEM ${LIBXML2_INCLUDE_DIR})
+include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR})
@@ -110,16 +119,34 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/utils.c
     src/xl4busclient.c
     src/common.c
+    src/misc.c
+    src/delta.c
+    src/xml.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
     src/common.h
+    src/misc.h
+    src/delta.h
+    src/xml.h
     src/debug.h
     src/uthash.h
     src/utlist.h
     src/debug.h
     src/include/xl4ua.h
 )
+
+if (NOT LIBXML2_FOUND)
+    message(FATAL_ERROR "I sorta need libxml2 dev package")
+endif()
+
+if (NOT OPENSSL_FOUND)
+    message(FATAL_ERROR "Though OpenSSL has been hammered at a lot recently, I still need it")
+endif()
+
+if (NOT LIBZIP_FOUND STREQUAL "YES")
+    message(FATAL_ERROR "libzip library is required")
+endif()
 
 set(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a)
 if (NOT EXISTS ${JSON_C_LIB})
@@ -163,7 +190,7 @@ if (BUILD_BINS)
             src/test_agents/tmpl_updateagent.h
     )
 
-    target_link_libraries(tmpl-updateagent ${USE_LIB} -lxl4bus -lm)
+    target_link_libraries(tmpl-updateagent ${USE_LIB} -lxl4bus -lm ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
 
     if (XL4_PROVIDE_THREADS)
         target_link_libraries(tmpl-updateagent Threads::Threads)

@@ -4,6 +4,7 @@
 
 #include "common.h"
 
+
 char * f_asprintf(char * fmt, ...) {
 
     char * ret;
@@ -20,6 +21,7 @@ char * f_asprintf(char * fmt, ...) {
     return ret;
 }
 
+
 char * f_strdup(const char * s) {
 
     if (!s) { return 0; }
@@ -27,6 +29,7 @@ char * f_strdup(const char * s) {
     char * r = f_malloc(l);
     return memcpy(r, s, l);
 }
+
 
 char * f_strndup(const void *s, size_t len) {
 
@@ -37,6 +40,7 @@ char * f_strndup(const void *s, size_t len) {
     s2[len] = 0;
     return s2;
 }
+
 
 void * f_malloc(size_t t) {
 
@@ -51,6 +55,7 @@ void * f_malloc(size_t t) {
     return r;
 }
 
+
 void * f_realloc(void * m, size_t t) {
 
     void * r = realloc(m, t);
@@ -61,6 +66,7 @@ void * f_realloc(void * m, size_t t) {
 
     return r;
 }
+
 
 int z_strcmp(const char * s1, const char * s2) {
 
@@ -77,5 +83,22 @@ int z_strcmp(const char * s1, const char * s2) {
 }
 
 
+char * f_dirname(const char * s) {
 
+    if (!s) { return 0; }
+    char * aux = f_strdup(s);
+    char * s2 = f_strdup(dirname(aux));
+    free(aux);
+    return s2;
+}
+
+
+char * f_basename(const char * s) {
+
+    if (!s) { return 0; }
+    char * aux = f_strdup(s);
+    char * s2 = f_strdup(basename(aux));
+    free(aux);
+    return s2;
+}
 

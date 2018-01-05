@@ -62,8 +62,6 @@ extern ua_cfg_t ua_cfg;
     newsize = __size; \
 } do{}while(0)
 
-#define SAFE_STR(s) ((s && *s)?(s):"")
-#define NULL_STR(s) ((s && *s)?(s):"null")
 
 #define BOLT(why) err = (why); DBG("setting err %d", err); break; do{}while(0)
 #define BOLT_SAY(__err, msg, x...) err = (__err); DBG(msg ", setting err %d", ## x, err); break; do{}while(0)
@@ -72,10 +70,5 @@ extern ua_cfg_t ua_cfg;
 #define BOLT_SUB(a) { err = (a); if (err != E_UA_OK) { BOLT_SAY(err, #a); }} do{}while(0)
 #define BOLT_MALLOC(var, how_much) { if (!((var) = f_malloc(how_much))) { BOLT_SAY(E_UA_MEMORY, "failed to alloc %d for %s", how_much, #var); } } do{}while(0)
 
-static inline const char * chop_path(const char * path) {
-    const char * aux = strrchr(path, '/');
-    if (aux) { return aux + 1; }
-    return path;
-}
 
 #endif /* _UA_DEBUG_H_ */
