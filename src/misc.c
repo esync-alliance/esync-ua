@@ -64,7 +64,7 @@ int rmdirp(const char* path) {
 
     do {
 
-        BOLT_IF(!(dir = opendir(path)), E_UA_ERR, "failed to open directory %s", path);
+        BOLT_SYS(!(dir = opendir(path)), "failed to open directory %s", path);
 
         while ((entry = readdir(dir)) != NULL) {
 
@@ -82,12 +82,13 @@ int rmdirp(const char* path) {
             free(filepath);
             if (err) break;
         }
+
         closedir(dir);
         BOLT_SYS(remove(path), "error removing directory: %s", path);
+
     } while (0);
 
     return err;
-
 }
 
 
@@ -152,9 +153,10 @@ int unzip(char * archive, char * path) {
             free(fpath);
             fpath = 0;
         }
-        BOLT_IF(zip_close(za), E_UA_ERR, "failed to close zip archive %s", archive);
 
     } while (0);
+
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s", archive); }
 
     if (err) {
         if(aux) free(aux);
@@ -185,8 +187,9 @@ int zip(char * archive, char * path) {
 
         err = S_ISREG(path_stat.st_mode) ? zip_archive_add_file(za, path, 0) : zip_archive_add_dir(za, path, 0);
 
-        BOLT_IF(zip_close(za), E_UA_ERR, "failed to close zip archive %s", archive);
     } while (0);
+
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s", archive); }
 
     if (err) {
         if (aux) free(aux);
@@ -294,6 +297,8 @@ int zip_find_file(char * archive, char * path) {
 
     } while (0);
 
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s", archive); }
+
     if (err) {
         if(aux) free(aux);
     }
@@ -364,7 +369,7 @@ int calc_sha256(const char * path, char outputBuffer[65]) {
 
     } while (0);
 
-    if (file && fclose(file)) DBG_SYS("closing file: %s", path);
+    if (file && fclose(file)) { err = E_UA_SYS; DBG_SYS("closing file: %s", path); }
 
     return err;
 }

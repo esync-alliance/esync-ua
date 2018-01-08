@@ -296,8 +296,9 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         if (ua_cfg.delta) {
 
             pkg_data_t *pd, *aux, *pkgData = NULL;
+            char * cap = get_delta_capability();
 
-            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(get_delta_capability()));
+            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(cap));
 
             char * pkgManifest = JOIN(ua_cfg.backup_dir, pkgType, pkgName, MANIFEST_PKG);
 
@@ -323,6 +324,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
                 json_object_object_add(pkgObject, "version-list", verListObject);
             }
 
+            free(cap);
             free (pkgManifest);
         }
 
