@@ -11,6 +11,18 @@ static char * get_zip_error(int ze);
 #define BUF_SIZE               4096
 
 
+uint64_t currentms() {
+
+    struct timespec tp;
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+
+    return ((uint64_t)tp.tv_sec) * 1000ULL +
+        tp.tv_nsec / 1000000ULL;
+
+}
+
+
 int mkdirp(char* path, int umask) {
 
     char * aux = path;

@@ -36,6 +36,7 @@ static inline char * join_path(const char * path, ... ) {
 }
 
 
+uint64_t currentms();
 int unzip(char * archive, char * path);
 int zip(char * archive, char * path);
 int zip_find_file(char * archive, char * path);

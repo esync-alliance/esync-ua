@@ -26,6 +26,7 @@ static int pre_update_action(ua_routine_t * uar, char * pkgType, char * pkgName,
 static int update_action(ua_routine_t * uar, char * pkgType, char * pkgName, char * pkgVersion, char * downloadFile);
 static void post_update_action(ua_routine_t * uar);
 static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion, install_state_t state, update_err_t * ue);
+static int backup_package(char * pkgType, char * pkgName, char * pkgVersion, char * pkgFile, int downloaded);
 static char * install_state_string(install_state_t state);
 static char * log_type_string(log_type_t log);
 static int send_message(json_object * jsonObj);
@@ -197,6 +198,7 @@ void handle_message(const char * type, const char * msg, size_t len) {
             incoming_msg_t * im = f_malloc(sizeof(incoming_msg_t));
             im->msg = f_strdup(msg);
             im->msg_len = len;
+            im->msg_ts = currentms();
             DL_APPEND(info->queue, im);
             BOLT_SYS(pthread_cond_signal(&info->cond), "cond signal");
             BOLT_SYS(pthread_mutex_unlock(&info->lock), "unlock failed");
@@ -232,7 +234,13 @@ void * runner_loop(void * arg) {
         DL_DELETE(info->queue, im);
         pthread_mutex_unlock(&info->lock);
 
-        process_message(info->uar, im->msg, im->msg_len);
+        uint64_t tnow = currentms();
+        uint64_t tout = im->msg_ts + MSG_TIMEOUT * 1000;
+
+        if (tnow < tout)
+            process_message(info->uar, im->msg, im->msg_len);
+        else
+            DBG("message timed out: %s", im->msg);
 
         free(im->msg);
         free(im);
@@ -367,8 +375,7 @@ static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
     char *pkgType, *pkgName, *pkgVersion, *pkgFile, *updateFile;
-    char *installedVer, *bname, *backupFile, *pkgManifest;
-    pkg_data_t * pd = NULL;
+    char *installedVer;
     int patched = 0;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgType) &&
@@ -376,23 +383,31 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             !get_pkg_version_from_json(jsonObj, &pkgVersion) &&
             !get_file_from_json(jsonObj, pkgVersion, &pkgFile)) {
 
-        pkgManifest = JOIN(ua_cfg.backup_dir, pkgType, pkgName, MANIFEST_PKG);
-        bname = f_basename(pkgFile);
-
         if (ua_cfg.delta && is_delta_package(pkgFile)) {
+
+            pkg_data_t * pd = NULL;
+            char * bname = f_basename(pkgFile);
+            char * pkgManifest = JOIN(ua_cfg.backup_dir, pkgType, pkgName, MANIFEST_PKG);
 
             updateFile = JOIN(ua_cfg.cache_dir, "delta", bname);
             (*uar->on_get_version)(pkgName, &installedVer);
 
             if (!(pd = get_pkg_data_manifest(pkgManifest, installedVer)) ||
                     !delta_reconstruct(pd->file, pkgFile, updateFile)) {
+
                 send_update_status(pkgType, pkgName, pkgVersion, INSTALL_FAILED, &(update_err_t){.incrementalFail = 1});
+
                 if (pd) free(pd);
+                free(bname);
                 free(pkgManifest);
                 free(updateFile);
                 return;
+
             }
+
             if (pd) free(pd);
+            free(bname);
+            free(pkgManifest);
 
             patched = 1;
 
@@ -401,44 +416,21 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             patched = 0;
         }
 
-        if (!pre_update_action(uar, pkgType, pkgName, pkgVersion)) {
+        if (pre_update_action(uar, pkgType, pkgName, pkgVersion)) {
+
             int r = update_action(uar, pkgType, pkgName, pkgVersion, updateFile);
+
             post_update_action(uar);
 
-            if(ua_cfg.delta && !r) {
+            if(ua_cfg.delta && r) {
 
-                pkg_data_t * pkgData = f_malloc(sizeof(pkg_data_t));
-                pkgData->type = pkgType;
-                pkgData->name = pkgName;
-                pkgData->version = pkgVersion;
-                pkgData->file = updateFile;
-                pkgData->downloaded = !patched;
-                calc_sha256(updateFile, pkgData->sha256);
+                backup_package(pkgType, pkgName, pkgVersion, updateFile, !patched);
 
-                backupFile = JOIN(ua_cfg.backup_dir, pkgType, pkgName, pkgVersion, bname);
-
-                DBG("Backing up package: %s", backupFile);
-
-                //clearing previous backup
-                //remove this after  ESYNC-1518 is implemented
-                char * pkgDir = JOIN(ua_cfg.backup_dir, pkgType, pkgName);
-                rmdirp(pkgDir);
-                free(pkgDir);
-
-                if (!copy_file(updateFile, backupFile))
-                    add_pkg_data_manifest(pkgManifest, pkgData);
-
-                //Todo: limit the backups
-
-                free(pkgData);
-                free(backupFile);
             }
         }
 
         if (patched) remove(updateFile);
 
-        free(pkgManifest);
-        free(bname);
         free(updateFile);
     }
 }
@@ -481,7 +473,7 @@ static int pre_update_action(ua_routine_t * uar, char * pkgType, char * pkgName,
 
     send_update_status(pkgType, pkgName, pkgVersion, state, 0);
 
-    return !(state == INSTALL_INPROGRESS);
+    return (state == INSTALL_INPROGRESS);
 }
 
 
@@ -495,7 +487,7 @@ static int update_action(ua_routine_t * uar, char * pkgType, char * pkgName, cha
 
     send_update_status(pkgType, pkgName, pkgVersion, state, 0);
 
-    return !(state == INSTALL_COMPLETED);
+    return (state == INSTALL_COMPLETED);
 }
 
 
@@ -537,6 +529,52 @@ static void send_update_status(char * pkgType, char * pkgName, char * pkgVersion
 
     json_object_put(jObject);
 
+}
+
+
+static int backup_package(char * pkgType, char * pkgName, char * pkgVersion, char * pkgFile, int downloaded) {
+
+    int err = E_UA_OK;
+
+    char * bname = f_basename(pkgFile);
+    char * pkgManifest = JOIN(ua_cfg.backup_dir, pkgType, pkgName, MANIFEST_PKG);
+    char * backupFile = JOIN(ua_cfg.backup_dir, pkgType, pkgName, pkgVersion, bname);
+
+    pkg_data_t * pkgData = f_malloc(sizeof(pkg_data_t));
+    pkgData->type = pkgType;
+    pkgData->name = pkgName;
+    pkgData->version = pkgVersion;
+    pkgData->file = pkgFile;
+    pkgData->downloaded = downloaded;
+
+    //clearing previous backup
+    //remove this after  ESYNC-1518 is implemented
+    char * pkgDir = JOIN(ua_cfg.backup_dir, pkgType, pkgName);
+    rmdirp(pkgDir);
+    free(pkgDir);
+
+
+    if (!calc_sha256(pkgFile, pkgData->sha256) ||
+            !copy_file(pkgFile, backupFile) ||
+            !add_pkg_data_manifest(pkgManifest, pkgData)) {
+
+        DBG("Backed up package: %s", backupFile);
+
+    } else {
+
+        DBG("Backing up failed: %s", backupFile);
+        err = E_UA_ERR;
+
+    }
+
+    //Todo: limit the backups
+
+    free(pkgData);
+    free(bname);
+    free(pkgManifest);
+    free(backupFile);
+
+    return err;
 }
 
 

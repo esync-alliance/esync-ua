@@ -7,6 +7,7 @@
 
 #include "common.h"
 
+#define MSG_TIMEOUT         10
 
 #define QUERY_PACKAGE       "xl4.query-package"
 #define READY_DOWNLOAD      "xl4.ready-download"
@@ -21,6 +22,7 @@ typedef struct incoming_msg {
 
     char * msg;
     size_t msg_len;
+    uint64_t msg_ts;
 
     struct incoming_msg * next;
     struct incoming_msg * prev;
