@@ -9,7 +9,7 @@ extern ua_cfg_t ua_cfg;
 
 char * get_delta_capability() {
 
-	int memory = 10;
+	int memory = 100;
 	char format[6] = "";
 	char compression[6] = "";
 

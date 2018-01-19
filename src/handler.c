@@ -554,8 +554,8 @@ static int backup_package(char * pkgType, char * pkgName, char * pkgVersion, cha
     free(pkgDir);
 
 
-    if (!calc_sha256(pkgFile, pkgData->sha256) ||
-            !copy_file(pkgFile, backupFile) ||
+    if (!calc_sha256(pkgFile, pkgData->sha256) &&
+            !copy_file(pkgFile, backupFile) &&
             !add_pkg_data_manifest(pkgManifest, pkgData)) {
 
         DBG("Backed up package: %s", backupFile);
