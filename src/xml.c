@@ -32,6 +32,9 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
     xmlChar * c;
     xmlNodePtr n, p;
+
+    if (!ptr) { return 0; }
+
     diff_info_t * diffInfo = f_malloc(sizeof(diff_info_t));
 
     for (n = xmlFirstElementChild(ptr); n; n = xmlNextElementSibling(n)) {
@@ -50,7 +53,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
         } else if (xmlStrEqual(n->name, XMLT "sha256")) {
 
             if ((p = get_xml_child(n, "old"))) {
-                if ((c = xmlNodeGetContent(n))) {
+                if ((c = xmlNodeGetContent(p))) {
                     if(!*diffInfo->sha256.old && (strlen((const char *)c) == (SHA256_STRING_LENGTH -1))) {
                         strcpy((char *)diffInfo->sha256.old, (const char *)c);
                     }
@@ -59,7 +62,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
             }
 
             if ((p = get_xml_child(n, "new"))) {
-                if ((c = xmlNodeGetContent(n))) {
+                if ((c = xmlNodeGetContent(p))) {
                     if(!*diffInfo->sha256.new && (strlen((const char *)c) == (SHA256_STRING_LENGTH -1))) {
                         strcpy((char *)diffInfo->sha256.new, (const char *)c);
                     }
@@ -119,7 +122,7 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
             if (TYPEQL(node->name, "added", DT_ADDED) || TYPEQL(node->name, "removed", DT_REMOVED)
                     || TYPEQL(node->name, "unchanged", DT_UNCHANGED) || TYPEQL(node->name, "changed", DT_CHANGED)) {
 
-                if ((di = get_xml_diff_info(node))) {
+                if ((di = get_xml_diff_info(get_xml_child(node, "file")))) {
                     di->type = typ;
                     DL_APPEND(*diffInfo, di);
                 }
@@ -141,6 +144,9 @@ static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
 
     xmlChar * c;
     xmlNodePtr n;
+
+    if (!ptr) { return 0; }
+
     pkg_data_t * pkgData = f_malloc(sizeof(pkg_data_t));
 
     for (n = xmlFirstElementChild(ptr); n; n = xmlNextElementSibling(n)) {

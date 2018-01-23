@@ -1,4 +1,6 @@
 build
+arm_src
+arm_build
 cmake-build*
 config.cmk
 .idea/workspace.xml

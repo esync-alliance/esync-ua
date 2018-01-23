@@ -104,6 +104,23 @@ int rmdirp(const char* path) {
 }
 
 
+int chkdirp(const char * path) {
+
+    int rc;
+    struct stat statb;
+    char * dir = f_dirname(path);
+
+    rc = stat(path, &statb);
+
+    if (rc || !S_ISDIR(statb.st_mode)) {
+        rc = mkdirp(dir, 0755);
+    }
+
+    free(dir);
+    return rc;
+}
+
+
 static char * get_zip_error(int ze) {
 
     int se = errno;
@@ -168,7 +185,7 @@ int unzip(char * archive, char * path) {
 
     } while (0);
 
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s", archive); }
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
     if (err) {
         if(aux) free(aux);
@@ -185,7 +202,6 @@ int zip(char * archive, char * path) {
     char * aux = 0;
     struct stat path_stat;
     struct zip * za = 0;
-    char * dname = f_dirname(archive);
 
     DBG("ziping %s to %s", path, archive);
 
@@ -193,7 +209,7 @@ int zip(char * archive, char * path) {
 
         BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
         BOLT_IF(!S_ISREG(path_stat.st_mode) && !S_ISDIR(path_stat.st_mode), E_UA_ERR, "path is not file or directory");
-        BOLT_SYS(mkdirp(dname, 0755) && (errno != EEXIST), "failed to make directory %s", dname);
+        BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
         BOLT_IF(!(za = zip_open(archive, ZIP_CREATE | ZIP_TRUNCATE, &zerr)), E_UA_ERR,
                             "failed to create zip file %s : %s", archive, aux = get_zip_error(zerr));
 
@@ -201,14 +217,12 @@ int zip(char * archive, char * path) {
 
     } while (0);
 
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s", archive); }
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
     if (err) {
         if (aux) free(aux);
         if (za) zip_discard(za);
     }
-
-    free(dname);
 
     return err;
 }
@@ -228,7 +242,7 @@ static int zip_archive_add_file(struct zip * za, char * path, char * base) {
         file = JOIN(SAFE_STR(base), bname);
         free(bname);
 
-        BOLT_IF(!(s = zip_source_file(za, path, 0, 0)), E_UA_ERR, "failed to source file %s: %s", path, zip_strerror(za));
+        BOLT_IF(!(s = zip_source_file(za, path, 0, 0)), E_UA_ERR, "failed to source file %s : %s", path, zip_strerror(za));
 
         if (zip_file_add(za, file, s, ZIP_FL_ENC_UTF_8) < 0) {
             zip_source_free(s);
@@ -309,7 +323,7 @@ int zip_find_file(char * archive, char * path) {
 
     } while (0);
 
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s", archive); }
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
     if (err) {
         if(aux) free(aux);
@@ -326,7 +340,6 @@ int copy_file(char *from, char *to) {
     FILE *in, *out;
     char buf[BUF_SIZE];
     size_t nread;
-    char * dname = f_dirname(to);
 
     DBG("copying file from %s to %s", from, to);
 
@@ -334,7 +347,7 @@ int copy_file(char *from, char *to) {
 
         BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
 
-        BOLT_SYS(mkdirp(dname, 0755) && (errno != EEXIST), "failed to make directory %s", dname);
+        BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
         BOLT_SYS(!(out = fopen(to, "w")), "creating file: %s", to);
 
         do {
@@ -346,7 +359,6 @@ int copy_file(char *from, char *to) {
 
     if (in && fclose(in)) DBG_SYS("closing file: %s", from);
     if (out && fclose(out)) DBG_SYS("closing file: %s", to);
-    free(dname);
 
     return err;
 }

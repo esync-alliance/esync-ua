@@ -147,6 +147,7 @@ static int patch_delta(diff_info_t * diffInfo, const char * old, const char * di
 #undef COMMAND
 
 	if (cmd) {
+	    chkdirp(new);
 	    DBG("Executing: %s", cmd);
 		err = system(cmd);
 		free(cmd);
@@ -176,6 +177,7 @@ static int uncompress(diff_compression_t cmp, const char * old, const char * new
 #undef COMMAND
 
 	if (cmd) {
+	    chkdirp(new);
 	    DBG("Executing: %s", cmd);
 		err = system(cmd);
 		free(cmd);

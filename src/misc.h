@@ -45,5 +45,6 @@ int calc_sha256(const char * path, char outputBuffer[65]);
 int is_cmd_runnable(const char *cmd);
 int mkdirp(char* path, int umask);
 int rmdirp(const char* path);
+int chkdirp(const char * path);
 
 #endif /* _UA_MISC_H_ */

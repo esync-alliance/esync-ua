@@ -52,6 +52,20 @@ if test ! -f libzip.ok; then
     touch libzip.ok
 fi
 
+#** libxml2
+
+if test ! -f libxml2.ok; then
+    rm -rf libxml2
+    git clone git://git.gnome.org/libxml2
+    cd libxml2
+    git checkout v2.9.2
+    autoreconf -f -i
+    ./configure --prefix=$USR --host=$TCH --without-lzma --without-python
+    make install
+    cd ..
+    touch libxml2.ok
+fi
+
 #** openssl
 
 if test ! -f openssl.ok; then
