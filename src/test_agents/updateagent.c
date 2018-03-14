@@ -23,8 +23,8 @@ static void _help()
             "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
             "  -b <path>  : path to backup directory (default: \"/data/sota/backup/\")\n"
             "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
-            "  -d         : enable delta reconstruction\n"
-            "  -v         : enable verbose\n"
+            "  -d         : enable verbose\n"
+            "  -D         : disable delta reconstruction\n"
             "  -h         : display this help and exit\n"
     );
     _exit(1);
@@ -40,7 +40,7 @@ int main(int argc, char ** argv) {
     memset(&cfg, 0, sizeof(ua_cfg_t));
 
     cfg.debug       = 0;
-    cfg.delta       = 0;
+    cfg.delta       = 1;
     cfg.cert_dir    = "./../pki/certs/updateagent";
     cfg.url         = "tcp://localhost:9133";
     cfg.cache_dir   = "/tmp/esync/";
@@ -64,10 +64,10 @@ int main(int argc, char ** argv) {
                 uah[0].type_handler = optarg;
                 break;
             case 'd':
-                cfg.delta = 1;
-                break;
-            case 'v':
                 cfg.debug = 1;
+                break;
+            case 'D':
+                cfg.delta = 0;
                 break;
             case 'h':
             default:
