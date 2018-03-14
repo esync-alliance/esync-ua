@@ -14,22 +14,68 @@ ua_handler_t uah[] = {
         {"/template", get_tmpl_routine }
 };
 
+static void _help()
+{
+    printf("%s",
+            "Usage: updateagent [OPTION...]\n\n"
+            "Options:\n"
+            "  -u <url>   : url of xl4bus broker (default: \"tcp://localhost:9133\")\n"
+            "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
+            "  -b <path>  : path to backup directory (default: \"/data/sota/backup/\")\n"
+            "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
+            "  -d         : enable delta reconstruction\n"
+            "  -v         : enable verbose\n"
+            "  -h         : display this help and exit\n"
+    );
+    _exit(1);
+}
+
+
 int main(int argc, char ** argv) {
 
-    printf("updateagent %s", BUILD_VERSION);
-    //todo take cert dir arg
+    printf("updateagent %s\n", BUILD_VERSION);
 
-    char * cdir = "./../pki/certs/updateagent";
-
+    int c = 0;
     ua_cfg_t cfg;
     memset(&cfg, 0, sizeof(ua_cfg_t));
 
-    cfg.cert_dir     = cdir;
-    cfg.debug        = 1;
-    cfg.url          = "tcp://localhost:9133";
-    cfg.delta        = 1;
-    cfg.cache_dir    = "/tmp/esync/";
-    cfg.backup_dir   = "/data/sota/esync/";
+    cfg.debug       = 0;
+    cfg.delta       = 0;
+    cfg.cert_dir    = "./../pki/certs/updateagent";
+    cfg.url         = "tcp://localhost:9133";
+    cfg.cache_dir   = "/tmp/esync/";
+    cfg.backup_dir  = "/data/sota/esync/";
+
+    while ((c = getopt(argc, argv, ":k:u:b:c:t:dvh")) != -1) {
+        switch (c) {
+            case 'k':
+                cfg.cert_dir = optarg;
+                break;
+            case 'u':
+                cfg.url = optarg;
+                break;
+            case 'b':
+                cfg.backup_dir = optarg;
+                break;
+            case 'c':
+                cfg.cache_dir = optarg;
+                break;
+            case 't':
+                uah[0].type_handler = optarg;
+                break;
+            case 'd':
+                cfg.delta = 1;
+                break;
+            case 'v':
+                cfg.debug = 1;
+                break;
+            case 'h':
+            default:
+                _help();
+                break;
+        }
+    }
+
 
     if (ua_init(&cfg)) {
         printf("Updateagent failed!");

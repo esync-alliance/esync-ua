@@ -51,7 +51,7 @@ typedef void (*ua_on_post_install)(void);
 
 typedef struct ua_routine {
 
-    // gets the version of package insta_UPDATEAGENT_H_lled
+    // gets the version of package installed
     ua_on_get_version       on_get_version;
 
     // sets the new version of the package
@@ -75,9 +75,6 @@ typedef struct ua_cfg {
 
     // specifies certificate directory
     char *                  cert_dir;
-
-    // specifies the updateagent type
-    char *                  ua_type;
 
     // specifies the cache directory
     char * 					cache_dir;
