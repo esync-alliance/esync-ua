@@ -94,18 +94,20 @@ int ua_register(ua_handler_t * uah, int len) {
 int ua_unregister(ua_handler_t * uah, int len) {
 
     int err = E_UA_OK;
-    runner_info_t * ri = 0;
     for (int i=0; i<len; i++) {
         do {
+            runner_info_t * ri = 0;
             const char * type = (uah + i)->type_handler;
             HASH_FIND_STR(registered_updater, type, ri);
-            ri->run = 0;
-            BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
-            BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
-            BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
-            BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
-            free(ri);
-            DBG("Unregistered: %s", type);
+            if (ri) {
+                ri->run = 0;
+                BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
+                BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
+                BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
+                BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
+                free(ri);
+                DBG("Unregistered: %s", type);
+            }
         } while (0);
 
         if (err) {
@@ -228,22 +230,24 @@ void * runner_loop(void * arg) {
             continue;
         }
 
-        while (!(im = info->queue))
+        while (info->run && !(im = info->queue))
             pthread_cond_wait(&info->cond, &info->lock);
 
-        DL_DELETE(info->queue, im);
-        pthread_mutex_unlock(&info->lock);
+        if (im) {
+            DL_DELETE(info->queue, im);
+            pthread_mutex_unlock(&info->lock);
 
-        uint64_t tnow = currentms();
-        uint64_t tout = im->msg_ts + MSG_TIMEOUT * 1000;
+            uint64_t tnow = currentms();
+            uint64_t tout = im->msg_ts + MSG_TIMEOUT * 1000;
 
-        if (tnow < tout)
-            process_message(info->uar, im->msg, im->msg_len);
-        else
-            DBG("message timed out: %s", im->msg);
+            if (tnow < tout)
+                process_message(info->uar, im->msg, im->msg_len);
+            else
+                DBG("message timed out: %s", im->msg);
 
-        free(im->msg);
-        free(im);
+            free(im->msg);
+            free(im);
+        }
     }
 
 }
