@@ -321,7 +321,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
                     json_object * versionObject = json_object_new_object();
                     json_object_object_add(versionObject, "file", json_object_new_string(pd->file));
-                    json_object_object_add(versionObject, "sha-256", json_object_new_string(pd->sha256));
+                    json_object_object_add(versionObject, "sha-256", json_object_new_string(pd->sha256b64));
                     json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pd->downloaded? 1:0));
                     json_object_object_add(verListObject, pd->version, versionObject);
 
@@ -552,13 +552,13 @@ static int backup_package(char * pkgType, char * pkgName, char * pkgVersion, cha
     pkgData->downloaded = downloaded;
 
     //clearing previous backup
-    //remove this after  ESYNC-1518 is implemented
+    //TODO: remove this after  ESYNC-1518 is implemented
     char * pkgDir = JOIN(ua_cfg.backup_dir, pkgType, pkgName);
     rmdirp(pkgDir);
     free(pkgDir);
 
 
-    if (!calc_sha256(pkgFile, pkgData->sha256) &&
+    if (!calc_sha256_b64(pkgFile, &pkgData->sha256b64) &&
             !copy_file(pkgFile, backupFile) &&
             !add_pkg_data_manifest(pkgManifest, pkgData)) {
 
@@ -573,6 +573,7 @@ static int backup_package(char * pkgType, char * pkgName, char * pkgVersion, cha
 
     //Todo: limit the backups
 
+    free(pkgData->sha256b64);
     free(pkgData);
     free(bname);
     free(pkgManifest);
@@ -594,8 +595,8 @@ static char * install_state_string(install_state_t state) {
         case INSTALL_ABORTED    : str = "INSTALL_ABORTED";     break;
         case INSTALL_ROLLBACK   : str = "INSTALL_ROLLBACK";    break;
     }
-    return str;
 
+    return str;
 }
 
 
@@ -609,6 +610,6 @@ static char * log_type_string(log_type_t log) {
         case LOG_ERROR      : str = "ERROR";  break;
         case LOG_SEVERE     : str = "SEVERE"; break;
     }
-    return str;
 
+    return str;
 }

@@ -22,6 +22,9 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <openssl/sha.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
 #include "json-c-rename.h"
 #include <json.h>
 #include <zip.h>

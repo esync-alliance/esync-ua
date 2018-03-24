@@ -8,7 +8,7 @@ static int zip_archive_add_file(struct zip *za, char *path, char *base);
 static int zip_archive_add_dir(struct zip *za, char *path, char *base);
 static char * get_zip_error(int ze);
 
-#define BUF_SIZE               4096
+#define STACK_BUF_SIZE               4096
 
 
 uint64_t currentms() {
@@ -141,7 +141,7 @@ static char * get_zip_error(int ze) {
 int unzip(char * archive, char * path) {
 
     int i, len, fd, zerr, err = E_UA_OK;
-    char buf[BUF_SIZE];
+    char buf[STACK_BUF_SIZE];
     long sum;
     char * aux = 0;
     char * fpath = 0;
@@ -338,7 +338,7 @@ int copy_file(char *from, char *to) {
 
     int err = E_UA_OK;
     FILE *in, *out;
-    char buf[BUF_SIZE];
+    char buf[STACK_BUF_SIZE];
     size_t nread;
 
     DBG("copying file from %s to %s", from, to);
@@ -364,16 +364,17 @@ int copy_file(char *from, char *to) {
 }
 
 
-int calc_sha256(const char * path, char outputBuffer[65]) {
+int calc_sha256(const char * path, char ** obuff) {
 
     int i, err = E_UA_OK;
     FILE *file;
     SHA256_CTX sha256;
-    char buf[BUF_SIZE];
+    char buf[STACK_BUF_SIZE];
     size_t nread;
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
     do {
+        *obuff = 0;
 
         BOLT_SYS(!(file = fopen(path, "rb")), "opening file: %s", path);
 
@@ -385,15 +386,64 @@ int calc_sha256(const char * path, char outputBuffer[65]) {
 
         SHA256_Final(hash, &sha256);
 
-        for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            sprintf(outputBuffer + (i * 2), "%02x", (unsigned char)hash[i]);
-        }
+        *obuff = f_malloc(sizeof(char) * SHA256_DIGEST_LENGTH);
+        memcpy(*obuff, hash, SHA256_DIGEST_LENGTH);
 
-        outputBuffer[64] = 0;
+        BOLT_SYS(fclose(file), "closing file: %s", path);
 
     } while (0);
 
-    if (file && fclose(file)) { err = E_UA_SYS; DBG_SYS("closing file: %s", path); }
+    if (err && *obuff) { free(*obuff); }
+
+    return err;
+}
+
+int calc_sha256_hash(const char * path, char ** obuff) {
+
+    int i, err;
+    char * sha256;
+
+    if (!(err = calc_sha256(path, &sha256))) {
+
+        *obuff = f_malloc(sizeof(char) * 65);
+
+        for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+            sprintf(*obuff + (i * 2), "%02x", (unsigned char)sha256[i]);
+        }
+
+        *obuff[64] = 0;
+
+        free(sha256);
+    }
+
+    return err;
+}
+
+
+int calc_sha256_b64(const char * path, char ** obuff) {
+
+    int err;
+    BIO *bmem, *b64;
+    BUF_MEM *bptr;
+    char * sha256;
+
+    if (!(err = calc_sha256(path, &sha256))) {
+
+        b64 = BIO_new(BIO_f_base64());
+        bmem = BIO_new(BIO_s_mem());
+        b64 = BIO_push(b64, bmem);
+
+        BIO_write(b64, sha256, SHA256_DIGEST_LENGTH);
+        BIO_flush(b64);
+        BIO_get_mem_ptr(b64, &bptr);
+
+        *obuff = f_malloc(bptr->length);
+        memcpy(*obuff, bptr->data, bptr->length - 1);
+        *obuff[bptr->length - 1] = 0;
+
+        BIO_free_all(b64);
+        free(sha256);
+    }
 
     return err;
 }

@@ -165,8 +165,8 @@ static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
         } else if (xmlStrEqual(n->name, XMLT "sha256")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                if(!*pkgData->sha256 && (strlen((const char *)c) == (SHA256_STRING_LENGTH -1))) {
-                    strcpy((char *)pkgData->sha256, (const char *)c);
+                if(!pkgData->sha256b64) {
+                    pkgData->sha256b64 = f_strdup((const char *)c);
                 }
                 xmlFree(c);
             }
@@ -208,12 +208,13 @@ static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
         }
     }
 
-    if (!S(pkgData->name) || !S(pkgData->type) || !S(pkgData->file) || !S(pkgData->version) || !S(pkgData->sha256)) {
+    if (!S(pkgData->name) || !S(pkgData->type) || !S(pkgData->file) || !S(pkgData->version) || !S(pkgData->sha256b64)) {
         DBG("Incomplete pkg node");
         if (pkgData->name) free(pkgData->name);
         if (pkgData->type) free(pkgData->type);
         if (pkgData->file) free(pkgData->file);
         if (pkgData->version) free(pkgData->version);
+        if (pkgData->sha256b64) free(pkgData->sha256b64);
         free(pkgData);
         pkgData = NULL;
     }
@@ -286,7 +287,7 @@ int add_pkg_data_manifest(char * xmlFile, pkg_data_t * pkgData) {
             xmlNewChild(node, NULL, XMLT "type", XMLT pd->type);
             xmlNewChild(node, NULL, XMLT "name", XMLT pd->name);
             xmlNewChild(node, NULL, XMLT "version", XMLT pd->version);
-            xmlNewChild(node, NULL, XMLT "sha256", XMLT pd->sha256);
+            xmlNewChild(node, NULL, XMLT "sha256", XMLT pd->sha256b64);
             xmlNewChild(node, NULL, XMLT "file", XMLT pd->file);
             xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pd->downloaded? "1":"0"));
 

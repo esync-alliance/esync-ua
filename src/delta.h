@@ -52,7 +52,7 @@ typedef struct pkg_data {
     char * type;
     char * name;
     char * version;
-    unsigned char sha256[SHA256_STRING_LENGTH];
+    char * sha256b64;
     char * file;
     int downloaded;
 

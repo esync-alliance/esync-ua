@@ -7,6 +7,7 @@ static int verify_file(const char * file, const char * sha256);
 static int uncompress(diff_compression_t cmp, const char * old, const char * new);
 extern ua_cfg_t ua_cfg;
 
+
 char * get_delta_capability() {
 
 	int memory = 100;
@@ -33,9 +34,12 @@ char * get_delta_capability() {
 	return f_asprintf("A:%s;B:%s;C:%d", format, compression, memory);
 }
 
+
 int is_delta_package(char *pkg) {
+
     return !zip_find_file(pkg, MANIFEST_DIFF);
 }
+
 
 int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg) {
 
@@ -112,8 +116,8 @@ int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg) {
 #undef FREEPATH
 
     return err;
-
 }
+
 
 static int patch_delta(diff_info_t * diffInfo, const char * old, const char * diff, const char * new) {
 
@@ -156,6 +160,7 @@ static int patch_delta(diff_info_t * diffInfo, const char * old, const char * di
 	return err;
 }
 
+
 static int uncompress(diff_compression_t cmp, const char * old, const char * new) {
 
 	int err = E_UA_OK;
@@ -186,19 +191,28 @@ static int uncompress(diff_compression_t cmp, const char * old, const char * new
 	return err;
 }
 
+
 static int verify_file(const char * file, const char * sha256) {
 
 	int err = E_UA_OK;
-	char hash[SHA256_STRING_LENGTH];
+	char * hash = 0;
 
-	calc_sha256(file, hash);
-	if (strcmp(hash, sha256))
-		err = E_UA_ERR;
+	if (!(err = calc_sha256_hash(file, &hash))) {
 
-	DBG("file verification %s : Expected: %s  Calculated: %s", file, sha256, hash);
+	    if (strncmp(hash, sha256, SHA256_STRING_LENGTH - 1)) {
+	        err = E_UA_ERR;
+	        DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
+	    }
+
+	    free(hash);
+
+	} else {
+	    DBG("SHA256 Hash calculation failed : %s", file);
+	}
 
 	return err;
 }
+
 
 diff_format_t diff_format_enum(const char * f) {
 
@@ -219,6 +233,7 @@ diff_format_t diff_format_enum(const char * f) {
 
     return 0;
 }
+
 
 diff_compression_t diff_compression_enum(const char * c) {
 
