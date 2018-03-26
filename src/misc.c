@@ -411,7 +411,7 @@ int calc_sha256_hash(const char * path, char ** obuff) {
             sprintf(*obuff + (i * 2), "%02x", (unsigned char)sha256[i]);
         }
 
-        *obuff[64] = 0;
+        *(*obuff + 64) = 0;
 
         free(sha256);
     }
@@ -439,7 +439,7 @@ int calc_sha256_b64(const char * path, char ** obuff) {
 
         *obuff = f_malloc(bptr->length);
         memcpy(*obuff, bptr->data, bptr->length - 1);
-        *obuff[bptr->length - 1] = 0;
+        *(*obuff + bptr->length - 1) = 0;
 
         BIO_free_all(b64);
         free(sha256);
