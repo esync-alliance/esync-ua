@@ -397,7 +397,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             (*uar->on_get_version)(pkgName, &installedVer);
 
             if (!(pd = get_pkg_data_manifest(pkgManifest, installedVer)) ||
-                    !delta_reconstruct(pd->file, pkgFile, updateFile)) {
+                    delta_reconstruct(pd->file, pkgFile, updateFile)) {
 
                 send_update_status(pkgType, pkgName, pkgVersion, INSTALL_FAILED, &(update_err_t){.incrementalFail = 1});
 
