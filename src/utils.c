@@ -44,16 +44,35 @@ int get_pkg_name_from_json(json_object * jsonObj, char ** value) {
 }
 
 
-int get_file_from_json(json_object * jsonObj, char * version, char ** value) {
+int get_pkg_file_from_json(json_object * jsonObj, char * version, char ** value) {
 
     return json_get_property(jsonObj, json_type_string, value, "body", "package", "version-list", version, "file", NULL);
 
 }
 
 
-int get_pkg_status_from_json(json_object * jsonObj, char ** value) {
+int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char ** value) {
 
-    return json_get_property(jsonObj, json_type_string, value, "body", "package", "status", NULL);
+    return json_get_property(jsonObj, json_type_string, value, "body", "package", "version-list", version, "sha-256", NULL);
+
+}
+
+int get_pkg_downloaded_from_json(json_object * jsonObj, char * version, int * value) {
+
+    return json_get_property(jsonObj, json_type_boolean, value, "body", "package", "version-list", version, "downloaded", NULL);
+
+}
+
+
+int get_pkg_rollback_version_from_json(json_object * jsonObj, char ** value) {
+
+    return json_get_property(jsonObj, json_type_string, value, "body", "package", "rollback-version", NULL);
+
+}
+
+int get_pkg_rollback_versions_from_json(json_object * jsonObj, json_object ** value) {
+
+    return json_get_property(jsonObj, json_type_array, value, "body", "package", "rollback-versions", NULL);
 
 }
 
@@ -71,6 +90,36 @@ int get_total_bytes_from_json(json_object * jsonObj, int64_t * value) {
 
 }
 
+int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char ** nextVer) {
+
+    int i, len, idx, err = E_UA_OK;
+    char * ver = 0;
+    *nextVer = 0;
+    idx = 0;
+
+    if ((len = json_object_array_length(jsonArr)) > 0) {
+
+        for (i = 0; i < len; i++) {
+            ver = (char*) json_object_get_string(json_object_array_get_idx(jsonArr, i));
+            if (!strcmp(currentVer, ver)) {
+                idx = i + 1;
+                break;
+            }
+        }
+
+        if (idx != len) {
+            *nextVer = (char*) json_object_get_string(json_object_array_get_idx(jsonArr, idx));
+        } else {
+            err = E_UA_ERR;
+        }
+
+    } else {
+        err = E_UA_ERR;
+    }
+
+    return err;
+}
+
 
 
 static int json_get_property(json_object * json, enum json_type typ, void * value, const char * node, ... ) {
@@ -81,6 +130,7 @@ static int json_get_property(json_object * json, enum json_type typ, void * valu
     va_start(ap, node);
 
     json_object * obj = json;
+    *(void**)value = 0;
 
     while (node) {
         BOLT_IF(!json_object_object_get_ex(obj, node, &aux), E_UA_ERR, "No %s property in %s", node, json_object_to_json_string(json));

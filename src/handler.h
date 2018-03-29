@@ -18,6 +18,28 @@
 #define UPDATE_STATUS       "xl4.update-status"
 
 
+typedef struct pkg_info {
+
+    char * type;
+    char * name;
+    char * version;
+    char * rollback_version;
+    json_object * rollback_versions;
+
+} pkg_info_t;
+
+typedef struct pkg_file {
+
+    char * version;
+    char * file;
+    char * sha256b64;
+    int downloaded;
+
+    struct pkg_file * next;
+    struct pkg_file * prev;
+
+} pkg_file_t;
+
 typedef struct incoming_msg {
 
     char * msg;
@@ -30,6 +52,7 @@ typedef struct incoming_msg {
 } incoming_msg_t;
 
 typedef struct runner_info {
+
     pthread_t thread;
     pthread_mutex_t lock;
     pthread_cond_t cond;
@@ -38,6 +61,7 @@ typedef struct runner_info {
     char * type;
     ua_routine_t * uar;
     UT_hash_handle hh;
+
 } runner_info_t;
 
 
