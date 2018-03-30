@@ -130,7 +130,6 @@ static int json_get_property(json_object * json, enum json_type typ, void * valu
     va_start(ap, node);
 
     json_object * obj = json;
-    *(void**)value = 0;
 
     while (node) {
         BOLT_IF(!json_object_object_get_ex(obj, node, &aux), E_UA_ERR, "No %s property in %s", node, json_object_to_json_string(json));

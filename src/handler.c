@@ -290,7 +290,7 @@ static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
 
 static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
-    pkg_info_t pkgInfo;
+    pkg_info_t pkgInfo = {0};
     char * replyId;
     char * installedVer;
 
@@ -359,7 +359,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
 static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 
-    pkg_info_t pkgInfo;
+    pkg_info_t pkgInfo = {0};
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -378,8 +378,8 @@ static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
     char *installedVer;
-    pkg_info_t pkgInfo;
-    pkg_file_t pkgFile, updateFile;
+    pkg_info_t pkgInfo = {0};
+    pkg_file_t updateFile, pkgFile = {0};
     install_state_t state;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
@@ -490,7 +490,7 @@ static int patch_delta(char * pkgName, char * version, char * diffFile, char ** 
 
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj) {
 
-    pkg_info_t pkgInfo;
+    pkg_info_t pkgInfo = {0};
     int64_t downloadedBytes, totalBytes;
 
     if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
