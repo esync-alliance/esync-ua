@@ -442,7 +442,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             } else {
                 if (S(pkgInfo.rollback_version)) {
                     state = INSTALL_ROLLBACK;
-                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, state, 0); //downloaded false
+                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, state, 0);
                     break;
                 }
             }
