@@ -12,39 +12,39 @@
 #define MANIFEST                "manifest.xml"
 
 typedef enum diff_type {
-	DT_ADDED = 1,
-	DT_REMOVED,
-	DT_CHANGED,
-	DT_UNCHANGED
+    DT_ADDED = 1,
+    DT_REMOVED,
+    DT_CHANGED,
+    DT_UNCHANGED
 } diff_type_t;
 
 typedef enum diff_format {
-	DF_BSDIFF = 1,
-	DF_ESDIFF,
-	DF_RFC3284,
-	DF_NONE
+    DF_BSDIFF = 1,
+    DF_ESDIFF,
+    DF_RFC3284,
+    DF_NONE
 } diff_format_t;
 
 typedef enum diff_compression {
-	DC_XZ = 1,
-	DC_BZIP2,
-	DC_GZIP,
-	DC_NONE
+    DC_XZ = 1,
+    DC_BZIP2,
+    DC_GZIP,
+    DC_NONE
 } diff_compression_t;
 
 typedef struct diff_info {
 
-	diff_type_t type;
-	char * name;
-	struct {
-		unsigned char old[SHA256_STRING_LENGTH];
-		unsigned char new[SHA256_STRING_LENGTH];
-	} sha256;
-	diff_format_t format;
-	diff_compression_t compression;
+    diff_type_t type;
+    char * name;
+    struct {
+        unsigned char old[SHA256_STRING_LENGTH];
+        unsigned char new[SHA256_STRING_LENGTH];
+    } sha256;
+    diff_format_t format;
+    diff_compression_t compression;
 
-	struct diff_info * next;
-	struct diff_info * prev;
+    struct diff_info * next;
+    struct diff_info * prev;
 } diff_info_t;
 
 typedef struct pkg_data {

@@ -77,24 +77,24 @@ typedef struct ua_cfg {
     char *                  cert_dir;
 
     // specifies the cache directory
-    char * 					cache_dir;
+    char *                  cache_dir;
 
     // specifies the backup directory
-    char *					backup_dir;
+    char *                  backup_dir;
 
     // enables delta support
     int                     delta;
 
     // enables debug messages
-    int 					debug;
+    int                     debug;
 
 } ua_cfg_t;
 
 typedef struct ua_handler {
 
-	char * type_handler;
+    char * type_handler;
 
-	ua_routine_t* (*get_routine)(void);
+    ua_routine_t* (*get_routine)(void);
 
 } ua_handler_t;
 

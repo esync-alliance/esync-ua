@@ -10,28 +10,28 @@ extern ua_cfg_t ua_cfg;
 
 char * get_delta_capability() {
 
-	int memory = 100;
-	char format[6] = "";
-	char compression[6] = "";
+    int memory = 100;
+    char format[6] = "";
+    char compression[6] = "";
 
-	if (!is_cmd_runnable("bspatch"))
-		strcat(format, "1,");
-	if (!is_cmd_runnable("xdelta3"))
-		strcat(format, "2,");
-	if (!is_cmd_runnable("espatch"))
-		strcat(format, "3,");
+    if (!is_cmd_runnable("bspatch"))
+        strcat(format, "1,");
+    if (!is_cmd_runnable("xdelta3"))
+        strcat(format, "2,");
+    if (!is_cmd_runnable("espatch"))
+        strcat(format, "3,");
 
-	if (!is_cmd_runnable("gzip"))
-		strcat(compression, "1,");
-	if (!is_cmd_runnable("bzip2"))
-		strcat(compression, "2,");
-	if (!is_cmd_runnable("xz"))
-		strcat(compression, "3,");
+    if (!is_cmd_runnable("gzip"))
+        strcat(compression, "1,");
+    if (!is_cmd_runnable("bzip2"))
+        strcat(compression, "2,");
+    if (!is_cmd_runnable("xz"))
+        strcat(compression, "3,");
 
-	format[strlen(format) - 1] = 0;
-	compression[strlen(compression) - 1] = 0;
+    format[strlen(format) - 1] = 0;
+    compression[strlen(compression) - 1] = 0;
 
-	return f_asprintf("A:%s;B:%s;C:%d", format, compression, memory);
+    return f_asprintf("A:%s;B:%s;C:%d", format, compression, memory);
 }
 
 
@@ -121,96 +121,96 @@ int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg) {
 
 static int patch_delta(diff_info_t * diffInfo, const char * old, const char * diff, const char * new) {
 
-	int err = E_UA_OK;
-	char * cmd = 0;
+    int err = E_UA_OK;
+    char * cmd = 0;
 
-	DBG("patching file old:%s diff:%s new:%s", old, diff, new);
+    DBG("patching file old:%s diff:%s new:%s", old, diff, new);
 
 #define COMMAND(NAME, O, D, N) f_asprintf("%s %s %s %s", NAME, O, D, N)
 
-	if (diffInfo->format == DF_BSDIFF) {
+    if (diffInfo->format == DF_BSDIFF) {
 
-		cmd = COMMAND("bspatch", old, new, diff);
+        cmd = COMMAND("bspatch", old, new, diff);
 
-	} else if (diffInfo->format == DF_ESDIFF) {
+    } else if (diffInfo->format == DF_ESDIFF) {
 
-		cmd = COMMAND("espatch", old, new, diff);
+        cmd = COMMAND("espatch", old, new, diff);
 
-	} else if (diffInfo->format == DF_RFC3284) {
+    } else if (diffInfo->format == DF_RFC3284) {
 
-	    char * diffp = f_asprintf("%s%s", diff, ".patch");
-		 if (!(err = uncompress(diffInfo->compression, diff, diffp)))
-			 cmd = COMMAND("xdelta3 -d -s", old, diffp, new);
-		 free(diffp);
+        char * diffp = f_asprintf("%s%s", diff, ".patch");
+         if (!(err = uncompress(diffInfo->compression, diff, diffp)))
+             cmd = COMMAND("xdelta3 -d -s", old, diffp, new);
+         free(diffp);
 
-	} else if (diffInfo->format == DF_NONE) {
+    } else if (diffInfo->format == DF_NONE) {
 
-		err = uncompress(diffInfo->compression, diff, new);
+        err = uncompress(diffInfo->compression, diff, new);
 
-	}
+    }
 #undef COMMAND
 
-	if (cmd) {
-	    chkdirp(new);
-	    DBG("Executing: %s", cmd);
-		err = system(cmd);
-		free(cmd);
-	}
+    if (cmd) {
+        chkdirp(new);
+        DBG("Executing: %s", cmd);
+        err = system(cmd);
+        free(cmd);
+    }
 
-	return err;
+    return err;
 }
 
 
 static int uncompress(diff_compression_t cmp, const char * old, const char * new) {
 
-	int err = E_UA_OK;
-	char * cmd = 0;
+    int err = E_UA_OK;
+    char * cmd = 0;
 
-	DBG("uncompressing file %s to %s", old, new);
+    DBG("uncompressing file %s to %s", old, new);
 
 #define COMMAND(NAME, O, N) f_asprintf("%s %s > %s", NAME, O, N)
 
-	if (cmp == DC_XZ) {
-		cmd = COMMAND("xz -cd", old, new);
-	} else if (cmp == DC_BZIP2) {
-		cmd = COMMAND("bzip2 -cd", old, new);
-	} else if (cmp == DC_GZIP) {
-		cmd = COMMAND("gzip -cd", old, new);
-	} else if (cmp == DC_NONE) {
-	    cmd = COMMAND("cat", old, new);
-	}
+    if (cmp == DC_XZ) {
+        cmd = COMMAND("xz -cd", old, new);
+    } else if (cmp == DC_BZIP2) {
+        cmd = COMMAND("bzip2 -cd", old, new);
+    } else if (cmp == DC_GZIP) {
+        cmd = COMMAND("gzip -cd", old, new);
+    } else if (cmp == DC_NONE) {
+        cmd = COMMAND("cat", old, new);
+    }
 #undef COMMAND
 
-	if (cmd) {
-	    chkdirp(new);
-	    DBG("Executing: %s", cmd);
-		err = system(cmd);
-		free(cmd);
-	}
+    if (cmd) {
+        chkdirp(new);
+        DBG("Executing: %s", cmd);
+        err = system(cmd);
+        free(cmd);
+    }
 
-	return err;
+    return err;
 }
 
 
 static int verify_file(const char * file, const char * sha256) {
 
-	int err = E_UA_OK;
-	char * hash = 0;
+    int err = E_UA_OK;
+    char * hash = 0;
 
-	if (!(err = calc_sha256_hash(file, &hash))) {
+    if (!(err = calc_sha256_hash(file, &hash))) {
 
-	    if (strncmp(hash, sha256, SHA256_STRING_LENGTH - 1)) {
-	        err = E_UA_ERR;
-	        DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
-	    }
+        if (strncmp(hash, sha256, SHA256_STRING_LENGTH - 1)) {
+            err = E_UA_ERR;
+            DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
+        }
 
-	    free(hash);
+        free(hash);
 
-	} else {
-	    DBG("SHA256 Hash calculation failed : %s", file);
-	}
+    } else {
+        DBG("SHA256 Hash calculation failed : %s", file);
+    }
 
-	return err;
+    return err;
 }
 
 
