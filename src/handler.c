@@ -24,7 +24,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj);
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
-static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
+static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static void post_update_action(ua_routine_t * uar);
 static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, install_state_t state, update_err_t * ue);
@@ -422,7 +422,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     updateFile.downloaded = 1;
                 }
 
-                if (pre_update_action(uar, &pkgInfo) == INSTALL_INPROGRESS) {
+                if (pre_update_action(uar, &pkgInfo, &updateFile) == INSTALL_INPROGRESS) {
 
                     state = update_action(uar, &pkgInfo, &updateFile);
 
@@ -514,12 +514,12 @@ static void process_log_report(ua_routine_t * uar, json_object * jsonObj) {
 }
 
 
-static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo) {
+static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     install_state_t state = INSTALL_INPROGRESS;
 
     if (uar->on_pre_install) {
-        state = (*uar->on_pre_install)(pkgInfo->name, pkgInfo->version);
+        state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file);
     }
 
     send_update_status(pkgInfo, 0, state, 0);
@@ -604,30 +604,33 @@ static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, insta
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
+    pkg_file_t backupFile;
 
     char * bname = f_basename(pkgFile->file);
     char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);
-    char * backupFile = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, pkgInfo->version, bname);
+    backupFile.file = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
+    backupFile.version = pkgFile->version;
+    backupFile.downloaded = pkgFile->downloaded;
 
-    if (!calc_sha256_b64(pkgFile->file, &pkgFile->sha256b64) &&
-            !copy_file(pkgFile->file, backupFile) &&
-            !add_pkg_file_manifest(pkgManifest, pkgFile)) {
+    if (!calc_sha256_b64(pkgFile->file, &backupFile.sha256b64) &&
+            !copy_file(pkgFile->file, backupFile.file) &&
+            !add_pkg_file_manifest(pkgManifest, &backupFile)) {
 
-        DBG("Backed up package: %s", backupFile);
+        DBG("Backed up package: %s", backupFile.file);
 
     } else {
 
-        DBG("Backing up failed: %s", backupFile);
+        DBG("Backing up failed: %s", backupFile.file);
         err = E_UA_ERR;
 
     }
 
     //Todo: limit the number of backups
 
-    free(pkgFile->sha256b64);
     free(bname);
     free(pkgManifest);
-    free(backupFile);
+    free(backupFile.file);
+    free(backupFile.sha256b64);
 
     return err;
 }
