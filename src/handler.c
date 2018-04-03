@@ -380,6 +380,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
     char *installedVer;
     pkg_info_t pkgInfo = {0};
     pkg_file_t updateFile, pkgFile = {0};
+    update_err_t updateErr = {0};
     install_state_t state;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
@@ -391,8 +392,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
         char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
         do {
-            memset(&updateFile, 0, sizeof(updateFile));
-            updateFile.version = S(pkgInfo.rollback_version)? pkgInfo.rollback_version : pkgInfo.version;
+            updateFile.version = pkgFile.version = S(pkgInfo.rollback_version)? pkgInfo.rollback_version : pkgInfo.version;
 
             if ((!get_pkg_file_from_json(jsonObj, updateFile.version, &pkgFile.file) &&
                     !get_pkg_sha256_from_json(jsonObj, updateFile.version, &pkgFile.sha256b64) &&
@@ -400,29 +400,29 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     (!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile))) {
 
                 if (S(pkgInfo.rollback_version)) {
-                    state = INSTALL_ROLLBACK;
-                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, state, 0);
+                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, state = INSTALL_ROLLBACK, 0);
                 }
 
-                if (ua_cfg.delta && is_delta_package(pkgFile.file)) {
+                if (pre_update_action(uar, &pkgInfo, &pkgFile) == INSTALL_INPROGRESS) {
 
-                    (*uar->on_get_version)(pkgInfo.name, &installedVer);
+                    if (ua_cfg.delta && is_delta_package(pkgFile.file)) {
 
-                    if (patch_delta(pkgInfo.name, installedVer, pkgFile.file, &updateFile.file)) {
+                        (*uar->on_get_version)(pkgInfo.name, &installedVer);
 
-                        send_update_status(&pkgInfo, 0, INSTALL_FAILED, &(update_err_t){.incremental_failed = 1});
-                        break;
+                        if (patch_delta(pkgInfo.name, installedVer, pkgFile.file, &updateFile.file)) {
+
+                            updateErr.incremental_failed = 1;
+                            state = INSTALL_FAILED;
+                            break;
+                        }
+
+                        updateFile.downloaded = 0;
+
+                    } else {
+
+                        updateFile.file = f_strdup(pkgFile.file);
+                        updateFile.downloaded = 1;
                     }
-
-                    updateFile.downloaded = 0;
-
-                } else {
-
-                    updateFile.file = f_strdup(pkgFile.file);
-                    updateFile.downloaded = 1;
-                }
-
-                if (pre_update_action(uar, &pkgInfo, &updateFile) == INSTALL_INPROGRESS) {
 
                     state = update_action(uar, &pkgInfo, &updateFile);
 
@@ -434,15 +434,13 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                     }
 
+                    if (!updateFile.downloaded) remove(updateFile.file);
+                    free(updateFile.file);
                 }
-
-                if (!updateFile.downloaded) remove(updateFile.file);
-                free(updateFile.file);
 
             } else {
                 if (S(pkgInfo.rollback_version)) {
-                    state = INSTALL_ROLLBACK;
-                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, state, 0);
+                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, state = INSTALL_ROLLBACK, 0);
                     break;
                 }
             }
@@ -451,8 +449,9 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_next_rollback_version(pkgInfo.rollback_versions, updateFile.version, &pkgInfo.rollback_version) &&
                 S(pkgInfo.rollback_version));
 
-        if ((state == INSTALL_FAILED) && pkgInfo.rollback_versions) {
-            send_update_status(&pkgInfo, 0, INSTALL_FAILED, &(update_err_t){.terminal_failure = 1});
+        if ((state == INSTALL_FAILED) && (updateErr.incremental_failed || updateErr.update_incapable ||
+                (pkgInfo.rollback_versions && (updateErr.terminal_failure = 1)))) {
+            send_update_status(&pkgInfo, 0, INSTALL_FAILED, &updateErr);
         }
 
         free(pkgManifest);
@@ -536,7 +535,9 @@ static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, p
         (*uar->on_set_version)(pkgInfo->name, pkgFile->version);
     }
 
-    send_update_status(pkgInfo, 0, state, 0);
+    if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+        send_update_status(pkgInfo, 0, state, 0);
+    }
 
     return state;
 }
