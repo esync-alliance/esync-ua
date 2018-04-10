@@ -21,7 +21,7 @@ static void _help()
             "Options:\n"
             "  -u <url>   : url of xl4bus broker (default: \"tcp://localhost:9133\")\n"
             "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
-            "  -b <path>  : path to backup directory (default: \"/data/sota/backup/\")\n"
+            "  -b <path>  : path to backup directory (default: \"/data/sota/esync/\")\n"
             "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
             "  -d         : enable verbose\n"
             "  -D         : disable delta reconstruction\n"
@@ -46,7 +46,7 @@ int main(int argc, char ** argv) {
     cfg.cache_dir   = "/tmp/esync/";
     cfg.backup_dir  = "/data/sota/esync/";
 
-    while ((c = getopt(argc, argv, ":k:u:b:c:t:dvh")) != -1) {
+    while ((c = getopt(argc, argv, ":k:u:b:c:t:dDh")) != -1) {
         switch (c) {
             case 'k':
                 cfg.cert_dir = optarg;
