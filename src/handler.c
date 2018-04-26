@@ -194,7 +194,7 @@ void handle_presence(int connected, int disconnected) {
 void handle_message(const char * type, const char * msg, size_t len) {
 
     int err;
-    runner_info_t * info;
+    runner_info_t * info = 0;
     do {
         DBG("Incoming message : %s", msg);
         HASH_FIND_STR(registered_updater, type, info);
@@ -291,8 +291,8 @@ static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
 static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
+    char * installedVer = 0;
     char * replyId;
-    char * installedVer;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -305,7 +305,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         json_object * pkgObject = json_object_new_object();
         json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo.type));
         json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo.name));
-        json_object_object_add(pkgObject, "version", json_object_new_string(NULL_STR(installedVer)));
+        json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
 
         if (ua_cfg.delta) {
 
@@ -392,7 +392,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
         char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
         do {
-            updateFile.version = pkgFile.version = S(pkgInfo.rollback_version)? pkgInfo.rollback_version : pkgInfo.version;
+            updateFile.version = pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
 
             if ((!get_pkg_file_from_json(jsonObj, updateFile.version, &pkgFile.file) &&
                     !get_pkg_sha256_from_json(jsonObj, updateFile.version, &pkgFile.sha256b64) &&
@@ -462,7 +462,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 static int patch_delta(char * pkgName, char * version, char * diffFile, char ** patchedFile) {
 
     int err = E_UA_OK;
-    pkg_file_t pkgFile;
+    pkg_file_t pkgFile = {0};
 
     char * bname = f_basename(diffFile);
     char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgName, MANIFEST_PKG);
@@ -605,7 +605,7 @@ static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, insta
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
-    pkg_file_t backupFile;
+    pkg_file_t backupFile = {0};
 
     char * bname = f_basename(pkgFile->file);
     char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);

@@ -223,8 +223,12 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
             if (node->type != XML_ELEMENT_NODE) { continue; }
 
             if (xmlStrEqual(node->name, XMLT "package")) {
-                if ((pf = get_xml_pkg_file(node)))
+                if ((pf = get_xml_pkg_file(node)) && (!access(pf->file, R_OK))) {
                     DL_APPEND(*pkgFile, pf);
+                } else {
+                    free(pf);
+                    //TODO: Remove from pkg manifest
+                }
             }
         }
 
