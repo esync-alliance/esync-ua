@@ -28,7 +28,7 @@ static install_state_t do_tmpl_install(char * pkgName, char * version, char * pk
 
 }
 
-static install_state_t do_tmpl_pre_install(char * pkgName, char * version) {
+static install_state_t do_tmpl_pre_install(char * pkgName, char * version, char * pkgFile) {
 
     return INSTALL_INPROGRESS;
 

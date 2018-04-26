@@ -6,8 +6,8 @@
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar * name);
 static diff_info_t* get_xml_diff_info(xmlNodePtr ptr);
-static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr);
-static pkg_data_t* get_pkg_data_xml(xmlNodePtr root, char * version);
+static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr);
+static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char * version);
 
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar * name) {
@@ -140,42 +140,24 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
 }
 
 
-static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
+static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr) {
 
     xmlChar * c;
     xmlNodePtr n;
 
     if (!ptr) { return 0; }
 
-    pkg_data_t * pkgData = f_malloc(sizeof(pkg_data_t));
+    pkg_file_t * pkgFile = f_malloc(sizeof(pkg_file_t));
 
     for (n = xmlFirstElementChild(ptr); n; n = xmlNextElementSibling(n)) {
 
         if (n->type != XML_ELEMENT_NODE) { continue; }
 
-        if (xmlStrEqual(n->name, XMLT "type")) {
+        if (xmlStrEqual(n->name, XMLT "sha256")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                if (!pkgData->type) {
-                    pkgData->type = f_strdup((const char *)c);
-                }
-                xmlFree(c);
-            }
-
-        } else if (xmlStrEqual(n->name, XMLT "sha256")) {
-
-            if ((c = xmlNodeGetContent(n))) {
-                if(!pkgData->sha256b64) {
-                    pkgData->sha256b64 = f_strdup((const char *)c);
-                }
-                xmlFree(c);
-            }
-
-        } else if (xmlStrEqual(n->name, XMLT "name")) {
-
-            if ((c = xmlNodeGetContent(n))) {
-                if (!pkgData->name) {
-                    pkgData->name = f_strdup((const char *)c);
+                if(!pkgFile->sha256b64) {
+                    pkgFile->sha256b64 = f_strdup((const char *)c);
                 }
                 xmlFree(c);
             }
@@ -183,8 +165,8 @@ static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
         } else if (xmlStrEqual(n->name, XMLT "version")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                if (!pkgData->version) {
-                    pkgData->version = f_strdup((const char *)c);
+                if (!pkgFile->version) {
+                    pkgFile->version = f_strdup((const char *)c);
                 }
                 xmlFree(c);
             }
@@ -192,8 +174,8 @@ static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
         } else if (xmlStrEqual(n->name, XMLT "file")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                if (!pkgData->file) {
-                    pkgData->file = f_strdup((const char *)c);
+                if (!pkgFile->file) {
+                    pkgFile->file = f_strdup((const char *)c);
                 }
                 xmlFree(c);
             }
@@ -201,32 +183,30 @@ static pkg_data_t* get_xml_pkg_info(xmlNodePtr ptr) {
         } else if (xmlStrEqual(n->name, XMLT "downloaded")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                pkgData->downloaded = atoi((const char *)c);
+                pkgFile->downloaded = atoi((const char *)c);
                 xmlFree(c);
             }
 
         }
     }
 
-    if (!S(pkgData->name) || !S(pkgData->type) || !S(pkgData->file) || !S(pkgData->version) || !S(pkgData->sha256b64)) {
+    if (!S(pkgFile->file) || !S(pkgFile->version) || !S(pkgFile->sha256b64)) {
         DBG("Incomplete pkg node");
-        if (pkgData->name) free(pkgData->name);
-        if (pkgData->type) free(pkgData->type);
-        if (pkgData->file) free(pkgData->file);
-        if (pkgData->version) free(pkgData->version);
-        if (pkgData->sha256b64) free(pkgData->sha256b64);
-        free(pkgData);
-        pkgData = NULL;
+        if (pkgFile->file) free(pkgFile->file);
+        if (pkgFile->version) free(pkgFile->version);
+        if (pkgFile->sha256b64) free(pkgFile->sha256b64);
+        free(pkgFile);
+        pkgFile = NULL;
     }
 
-    return pkgData;
+    return pkgFile;
 }
 
 
-int parse_pkg_manifest(char * xmlFile, pkg_data_t ** pkgData) {
+int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
 
     int err = E_UA_OK;
-    pkg_data_t * pd;
+    pkg_file_t * pf;
     xmlDocPtr doc = NULL;
     xmlNodePtr root, node = NULL;
 
@@ -243,8 +223,8 @@ int parse_pkg_manifest(char * xmlFile, pkg_data_t ** pkgData) {
             if (node->type != XML_ELEMENT_NODE) { continue; }
 
             if (xmlStrEqual(node->name, XMLT "package")) {
-                if ((pd = get_xml_pkg_info(node)))
-                    DL_APPEND(*pkgData, pd);
+                if ((pf = get_xml_pkg_file(node)))
+                    DL_APPEND(*pkgFile, pf);
             }
         }
 
@@ -259,11 +239,12 @@ int parse_pkg_manifest(char * xmlFile, pkg_data_t ** pkgData) {
 }
 
 
-int add_pkg_data_manifest(char * xmlFile, pkg_data_t * pkgData) {
+int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
     xmlDocPtr doc = NULL;
     xmlNodePtr root = NULL, node = NULL;
+    pkg_file_t * aux;
 
     do {
 
@@ -276,22 +257,20 @@ int add_pkg_data_manifest(char * xmlFile, pkg_data_t * pkgData) {
             xmlDocSetRootElement(doc, root);
         }
 
-        pkg_data_t * pd, * aux;
-        DL_FOREACH(pkgData, pd) {
-
-            if ((aux = get_pkg_data_xml(root, pd->version))) { free(aux); continue; }
-
-            DBG("Adding pkg entry for version: %s in %s", pd->version, xmlFile);
-
-            node = xmlNewChild(root, NULL, XMLT "package", NULL);
-            xmlNewChild(node, NULL, XMLT "type", XMLT pd->type);
-            xmlNewChild(node, NULL, XMLT "name", XMLT pd->name);
-            xmlNewChild(node, NULL, XMLT "version", XMLT pd->version);
-            xmlNewChild(node, NULL, XMLT "sha256", XMLT pd->sha256b64);
-            xmlNewChild(node, NULL, XMLT "file", XMLT pd->file);
-            xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pd->downloaded? "1":"0"));
-
+        if ((aux = get_xml_version_pkg_file(root, pkgFile->version))) {
+            free(aux); break;
+            //TODO: replace the entry
         }
+
+        DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
+
+        node = xmlNewChild(root, NULL, XMLT "package", NULL);
+        xmlNewChild(node, NULL, XMLT "version", XMLT pkgFile->version);
+        xmlNewChild(node, NULL, XMLT "sha256", XMLT pkgFile->sha256b64);
+        xmlNewChild(node, NULL, XMLT "file", XMLT pkgFile->file);
+        xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pkgFile->downloaded? "1":"0"));
+
+
         BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
 
     } while (0);
@@ -305,11 +284,11 @@ int add_pkg_data_manifest(char * xmlFile, pkg_data_t * pkgData) {
 }
 
 
-static pkg_data_t* get_pkg_data_xml(xmlNodePtr root, char * version) {
+static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char * version) {
 
     xmlChar * c;
     xmlNodePtr node, n;
-    pkg_data_t * pkgData = NULL;
+    pkg_file_t * pkgFile = NULL;
 
     for (node = xmlFirstElementChild(root); node; node = xmlNextElementSibling(node)) {
 
@@ -317,36 +296,40 @@ static pkg_data_t* get_pkg_data_xml(xmlNodePtr root, char * version) {
             if ((n = get_xml_child(node, XMLT "version"))) {
                 if ((c = xmlNodeGetContent(n))) {
                     if (xmlStrEqual(c, XMLT version)) {
-                        pkgData = get_xml_pkg_info(node);
+                        pkgFile = get_xml_pkg_file(node);
                     }
                     xmlFree(c);
                 }
             }
         }
 
-        if (pkgData) { break; }
+        if (pkgFile) { break; }
     }
 
-    return pkgData;
+    return pkgFile;
 }
 
 
-pkg_data_t* get_pkg_data_manifest(char * xmlFile, char * version) {
+int get_pkg_file_manifest(char * xmlFile, char * version, pkg_file_t * pkgFile) {
 
+    int err = E_UA_OK;
     xmlDocPtr doc = NULL;
     xmlNodePtr root = NULL;
-    pkg_data_t * pkgData = NULL;
+    pkg_file_t * pf = NULL;
 
-    if (xmlFile && !access(xmlFile, R_OK)) {
-        if ((doc = xmlReadFile(xmlFile, NULL, 0))) {
-            root = xmlDocGetRootElement(doc);
-            pkgData = get_pkg_data_xml(root, version);
-        } else {
-            DBG_SYS("Could not read xml file %s", xmlFile);
-        }
-    } else {
-        DBG("pkg manifest not available %s", xmlFile);
-    }
+    if (!xmlFile || !version || !pkgFile) return E_UA_ERR;
 
-    return pkgData;
+    do {
+        BOLT_SYS(access(xmlFile, R_OK), "pkg manifest not available %s", xmlFile);
+        BOLT_IF(!(doc = xmlReadFile(xmlFile, NULL, 0)), E_UA_ERR, "Could not read xml file %s", xmlFile);
+
+        root = xmlDocGetRootElement(doc);
+        BOLT_IF(!(pf = get_xml_version_pkg_file(root, version)), E_UA_ERR, "version %s not found in pkg_manifest %s", version, xmlFile);
+
+        memcpy(pkgFile, pf, sizeof(pkg_file_t));
+        free(pf);
+
+    } while (0);
+
+    return err;
 }

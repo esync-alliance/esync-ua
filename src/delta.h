@@ -47,18 +47,6 @@ typedef struct diff_info {
     struct diff_info * prev;
 } diff_info_t;
 
-typedef struct pkg_data {
-
-    char * type;
-    char * name;
-    char * version;
-    char * sha256b64;
-    char * file;
-    int downloaded;
-
-    struct pkg_data * next;
-    struct pkg_data * prev;
-} pkg_data_t;
 
 char * get_delta_capability();
 int is_delta_package(char *pkg);
