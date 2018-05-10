@@ -1,4 +1,5 @@
 build
+pki
 arm_src
 arm_build
 cmake-build*

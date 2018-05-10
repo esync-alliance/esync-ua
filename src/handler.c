@@ -613,7 +613,11 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     backupFile.version = pkgFile->version;
     backupFile.downloaded = pkgFile->downloaded;
 
-    if (!calc_sha256_b64(pkgFile->file, &backupFile.sha256b64) &&
+    if (!strcmp(pkgFile->file, backupFile.file)) {
+
+        DBG("Back up already exists: %s", backupFile.file);
+
+    } else if (!calc_sha256_b64(pkgFile->file, &backupFile.sha256b64) &&
             !copy_file(pkgFile->file, backupFile.file) &&
             !add_pkg_file_manifest(pkgManifest, &backupFile)) {
 
@@ -626,7 +630,7 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     }
 
-    //Todo: limit the number of backups
+    //Todo: limit the number of backups to avoid running out of space
 
     free(bname);
     free(pkgManifest);

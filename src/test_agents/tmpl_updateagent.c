@@ -2,22 +2,20 @@
  * tmpl_updateagent.c
  */
 
-#include <xl4ua.h>
-#include <string.h>
 #include "tmpl_updateagent.h"
 
-char version_string[10] = "";
+pkg_version_t * package_version = 0;
 
 static int get_tmpl_version(char * pkgName, char ** version) {
 
-    *version = version_string;
+    TMPL_VER_GET(pkgName, *version);
     return E_UA_OK;
 
 }
 
 static int set_tmpl_version(char * pkgName, char * version) {
 
-    strcpy(version_string, version);
+    TMPL_VER_SET(pkgName, version);
     return E_UA_OK;
 
 }
