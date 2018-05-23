@@ -20,7 +20,7 @@ static int set_tmpl_version(char * pkgName, char * version) {
 
 }
 
-static install_state_t do_tmpl_pre_install(char * pkgName, char * version, char * pkgFile) {
+static install_state_t do_tmpl_pre_install(char * pkgName, char * version, char * pkgFile, char ** newFile) {
 
     return INSTALL_INPROGRESS;
 

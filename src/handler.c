@@ -529,7 +529,11 @@ static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInf
     install_state_t state = INSTALL_INPROGRESS;
 
     if (uar->on_pre_install) {
-        state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file);
+    	char * newFile = 0;
+        state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
+        if(S(newFile)) {
+        	pkgFile->file = newFile;
+        }
     }
 
     send_update_status(pkgInfo, 0, state, 0);

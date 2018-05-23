@@ -42,7 +42,7 @@ typedef int (*ua_on_get_version)(char * pkgName, char ** version);
 
 typedef int (*ua_on_set_version)(char * pkgName, char * version);
 
-typedef install_state_t (*ua_on_pre_install)(char * pkgName, char * version, char * pkgFile);
+typedef install_state_t (*ua_on_pre_install)(char * pkgName, char * version, char * pkgFile, char ** newFile);
 
 typedef install_state_t (*ua_on_install)(char * pkgName, char * version, char * pkgFile);
 
