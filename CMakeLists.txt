@@ -99,6 +99,7 @@ configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
 set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
 
 include_directories(SYSTEM ${XL4BUS_DIR})
+include_directories(SYSTEM ${XL4BUS_DIR}/include)
 include_directories(SYSTEM ${XL4BUS_DIR}/../src/include)
 include_directories(SYSTEM ${JSON_C})
 include_directories(SYSTEM ${LIBZIP_INCLUDE_DIR})

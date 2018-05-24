@@ -32,7 +32,7 @@ static install_state_t do_tmpl_pre_install(char * pkgName, char * version, char 
 
 }
 
-static void do_tmpl_post_install() {
+static void do_tmpl_post_install(char * pkgName) {
 
     return;
 

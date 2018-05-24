@@ -26,7 +26,7 @@ static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
-static void post_update_action(ua_routine_t * uar);
+static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
 static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, install_state_t state, update_err_t * ue);
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static int patch_delta(char * pkgName, char * version, char * diffFile, char ** patchedFile);
@@ -76,7 +76,7 @@ int ua_register(ua_handler_t * uah, int len) {
             ri->uar = (*(uah + i)->get_routine)();
             ri->type = (uah + i)->type_handler;
             ri->run = 1;
-            BOLT_IF(!ri->uar->on_get_version || !ri->uar->on_install || !strlen(ri->type), E_UA_ARG, "registration error");
+            BOLT_IF(!ri->uar || !ri->uar->on_get_version || !ri->uar->on_install || !S(ri->type), E_UA_ARG, "registration error");
             BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
             BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
             BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
@@ -382,6 +382,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
     pkg_file_t updateFile, pkgFile = {0};
     update_err_t updateErr = {0};
     install_state_t state;
+    int bck = 0;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -397,7 +398,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             if ((!get_pkg_file_from_json(jsonObj, updateFile.version, &pkgFile.file) &&
                     !get_pkg_sha256_from_json(jsonObj, updateFile.version, &pkgFile.sha256b64) &&
                     !get_pkg_downloaded_from_json(jsonObj, updateFile.version, &pkgFile.downloaded)) ||
-                    (!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile))) {
+                    ((!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile)) && (bck = 1))) {
 
                 if (S(pkgInfo.rollback_version)) {
                     send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, state = INSTALL_ROLLBACK, 0);
@@ -426,7 +427,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                     state = update_action(uar, &pkgInfo, &updateFile);
 
-                    post_update_action(uar);
+                    post_update_action(uar, &pkgInfo);
 
                     if(state == INSTALL_COMPLETED) {
 
@@ -436,6 +437,13 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                     if (!updateFile.downloaded) remove(updateFile.file);
                     free(updateFile.file);
+                }
+
+                if (bck) {
+                    free(pkgFile.version);
+                    free(pkgFile.file);
+                    free(pkgFile.sha256b64);
+                    bck = 0;
                 }
 
             } else {
@@ -543,10 +551,10 @@ static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, p
 }
 
 
-static void post_update_action(ua_routine_t * uar) {
+static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo) {
 
     if (uar->on_post_install) {
-        (*uar->on_post_install)();
+        (*uar->on_post_install)(pkgInfo->name);
     }
 
 }

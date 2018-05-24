@@ -46,7 +46,7 @@ typedef install_state_t (*ua_on_pre_install)(char * pkgName, char * version, cha
 
 typedef install_state_t (*ua_on_install)(char * pkgName, char * version, char * pkgFile);
 
-typedef void (*ua_on_post_install)(void);
+typedef void (*ua_on_post_install)(char * pkgName);
 
 
 typedef struct ua_routine {
