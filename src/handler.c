@@ -619,7 +619,7 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);
     backupFile.file = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
     backupFile.version = pkgFile->version;
-    backupFile.downloaded = pkgFile->downloaded;
+    backupFile.downloaded = 1;
 
     if (!strcmp(pkgFile->file, backupFile.file)) {
 
