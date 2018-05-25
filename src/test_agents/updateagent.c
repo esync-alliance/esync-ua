@@ -25,6 +25,7 @@ static void _help()
             "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
             "  -d         : enable verbose\n"
             "  -D         : disable delta reconstruction\n"
+            "  -a         : delta capability\n"
             "  -h         : display this help and exit\n"
     );
     _exit(1);
@@ -46,7 +47,7 @@ int main(int argc, char ** argv) {
     cfg.cache_dir   = "/tmp/esync/";
     cfg.backup_dir  = "/data/sota/esync/";
 
-    while ((c = getopt(argc, argv, ":k:u:b:c:t:dDh")) != -1) {
+    while ((c = getopt(argc, argv, ":k:u:b:c:a:t:dDh")) != -1) {
         switch (c) {
             case 'k':
                 cfg.cert_dir = optarg;
@@ -59,6 +60,9 @@ int main(int argc, char ** argv) {
                 break;
             case 'c':
                 cfg.cache_dir = optarg;
+                break;
+            case 'a':
+                cfg.delta_config = &(delta_cfg_t){.delta_cap = optarg};
                 break;
             case 't':
                 uah[0].type_handler = optarg;

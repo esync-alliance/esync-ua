@@ -68,6 +68,22 @@ typedef struct ua_routine {
 
 } ua_routine_t;
 
+
+typedef struct delta_tool {
+
+    char *                  algo;
+    char *                  path;
+    char *                  args;
+
+} delta_tool_t;
+
+typedef struct delta_cfg {
+
+    char *                  delta_cap;
+
+} delta_cfg_t;
+
+
 typedef struct ua_cfg {
 
     // specifies the URL of the broker
@@ -85,10 +101,14 @@ typedef struct ua_cfg {
     // enables delta support
     int                     delta;
 
+    // delta configuration
+    delta_cfg_t *           delta_config;
+
     // enables debug messages
     int                     debug;
 
 } ua_cfg_t;
+
 
 typedef struct ua_handler {
 

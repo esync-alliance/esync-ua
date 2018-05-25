@@ -36,27 +36,33 @@ static int send_message(json_object * jsonObj);
 void * runner_loop(void * arg);
 
 
-ua_cfg_t ua_cfg;
+ua_cfg_t ua_cfg = {0};
+delta_stg_t delta_stg = {0};
 runner_info_t * registered_updater = 0;
 
 
-int ua_init(ua_cfg_t * in_cfg) {
+int ua_init(ua_cfg_t * ua_config) {
 
     int err = E_UA_OK;
 
     do {
 
-        BOLT_IF(!in_cfg || !in_cfg->url
+        BOLT_IF(!ua_config || !ua_config->url
 #ifdef USE_XL4BUS_TRUST
-                || !in_cfg->ua_type
+                || !ua_config->ua_type
 #else
-                || !in_cfg->cert_dir
+                || !ua_config->cert_dir
 #endif
                 , E_UA_ARG, "configuration error");
 
-        BOLT_IF(in_cfg->delta && (!S(in_cfg->cache_dir) || !S(in_cfg->backup_dir)), E_UA_ARG, "delta config error");
+        BOLT_IF(ua_config->delta && (!S(ua_config->cache_dir) || !S(ua_config->backup_dir)), E_UA_ARG, "delta config error");
 
-        memcpy(&ua_cfg, in_cfg, sizeof(ua_cfg_t));
+        memcpy(&ua_cfg, ua_config, sizeof(ua_cfg_t));
+
+        if (ua_cfg.delta) {
+            delta_stg.delta_cap = (ua_cfg.delta_config && S(ua_cfg.delta_config->delta_cap)) ?
+                    f_strdup(ua_cfg.delta_config->delta_cap) : get_delta_capability();
+        }
 
         BOLT_SUB(xl4bus_client_init(&ua_cfg));
 
@@ -73,8 +79,8 @@ int ua_register(ua_handler_t * uah, int len) {
     for (int i=0; i<len; i++) {
         do {
             ri = f_malloc(sizeof(runner_info_t));
+            ri->type = f_strdup((uah + i)->type_handler);
             ri->uar = (*(uah + i)->get_routine)();
-            ri->type = (uah + i)->type_handler;
             ri->run = 1;
             BOLT_IF(!ri->uar || !ri->uar->on_get_version || !ri->uar->on_install || !S(ri->type), E_UA_ARG, "registration error");
             BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
@@ -108,6 +114,7 @@ int ua_unregister(ua_handler_t * uah, int len) {
                 BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
                 BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
                 BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
+                free(ri->type);
                 free(ri);
                 DBG("Unregistered: %s", type);
             }
@@ -137,7 +144,7 @@ int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype) {
     do {
         BOLT_IF(!(pkgType && *pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
 
-        if (logdata->timestamp && *logdata->timestamp) {
+        if (S(logdata->timestamp)) {
             strncpy(timestamp, logdata->timestamp, sizeof(timestamp));
         } else {
             time_t t = time(NULL);
@@ -310,9 +317,8 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         if (ua_cfg.delta) {
 
             pkg_file_t *pf, *aux, *pkgFile = NULL;
-            char * cap = get_delta_capability();
 
-            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(cap));
+            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(delta_stg.delta_cap));
 
             char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
@@ -337,7 +343,6 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
                 json_object_object_add(pkgObject, "version-list", verListObject);
             }
 
-            free(cap);
             free (pkgManifest);
         }
 

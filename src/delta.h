@@ -48,6 +48,13 @@ typedef struct diff_info {
 } diff_info_t;
 
 
+typedef struct delta_stg {
+
+    char * delta_cap;
+
+} delta_stg_t;
+
+
 char * get_delta_capability();
 int is_delta_package(char *pkg);
 int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg);

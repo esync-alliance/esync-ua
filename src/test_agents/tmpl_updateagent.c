@@ -20,15 +20,15 @@ static int set_tmpl_version(char * pkgName, char * version) {
 
 }
 
-static install_state_t do_tmpl_install(char * pkgName, char * version, char * pkgFile) {
-
-    return INSTALL_COMPLETED;
-
-}
-
 static install_state_t do_tmpl_pre_install(char * pkgName, char * version, char * pkgFile) {
 
     return INSTALL_INPROGRESS;
+
+}
+
+static install_state_t do_tmpl_install(char * pkgName, char * version, char * pkgFile) {
+
+    return INSTALL_COMPLETED;
 
 }
 
