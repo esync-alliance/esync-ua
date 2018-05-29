@@ -425,15 +425,13 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                         updateFile.downloaded = 1;
                     }
 
-                    state = update_action(uar, &pkgInfo, &updateFile);
-
-                    post_update_action(uar, &pkgInfo);
-
-                    if(state == INSTALL_COMPLETED) {
+                    if((state = update_action(uar, &pkgInfo, &updateFile)) == INSTALL_COMPLETED) {
 
                         backup_package(&pkgInfo, &updateFile);
 
                     }
+
+                    post_update_action(uar, &pkgInfo);
 
                     if (!updateFile.downloaded) remove(updateFile.file);
                     free(updateFile.file);
