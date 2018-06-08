@@ -357,3 +357,9 @@ static char * simple_password (struct xl4bus_X509v3_Identity * id) {
     return id->custom;
 
 }
+
+const char * xl4bus_get_version() {
+
+    return xl4bus_version();
+
+}

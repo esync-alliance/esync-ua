@@ -136,5 +136,6 @@ XL4_PUB int ua_stop();
 
 XL4_PUB int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype);
 
+XL4_PUB const char * ua_get_xl4bus_version(void);
 
 #endif /* _XL4UA_H_ */
