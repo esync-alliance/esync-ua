@@ -682,3 +682,9 @@ static char * log_type_string(log_type_t log) {
 
     return str;
 }
+
+const char * ua_get_xl4bus_version() {
+
+    return xl4bus_get_version();
+
+}
