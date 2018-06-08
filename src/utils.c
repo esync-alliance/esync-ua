@@ -51,12 +51,6 @@ int get_pkg_file_from_json(json_object * jsonObj, char * version, char ** value)
 }
 
 
-int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char ** value) {
-
-    return json_get_property(jsonObj, json_type_string, value, "body", "package", "version-list", version, "sha-256", NULL);
-
-}
-
 int get_pkg_downloaded_from_json(json_object * jsonObj, char * version, int * value) {
 
     return json_get_property(jsonObj, json_type_boolean, value, "body", "package", "version-list", version, "downloaded", NULL);
@@ -89,6 +83,22 @@ int get_total_bytes_from_json(json_object * jsonObj, int64_t * value) {
     return json_get_property(jsonObj, json_type_int, value, "body", "total-bytes", NULL);
 
 }
+
+
+int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char value[SHA256_B64_LENGTH]) {
+
+    int err = E_UA_OK;
+    char * sha256 = 0;
+    if (!json_get_property(jsonObj, json_type_string, &sha256, "body", "package", "version-list", version, "sha-256", NULL) &&
+            (strlen(sha256) == (SHA256_B64_LENGTH - 1))) {
+        strcpy(value, sha256);
+    } else {
+        err = E_UA_ERR;
+    }
+    return err;
+
+}
+
 
 int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char ** nextVer) {
 

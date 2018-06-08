@@ -22,8 +22,6 @@ int get_pkg_status_from_json(json_object * jsonObj, char ** value);
 
 int get_pkg_file_from_json(json_object * jsonObj, char * version, char ** value);
 
-int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char ** value);
-
 int get_pkg_downloaded_from_json(json_object * jsonObj, char * version, int * value);
 
 int get_pkg_rollback_version_from_json(json_object * jsonObj, char ** value);
@@ -36,5 +34,6 @@ int get_total_bytes_from_json(json_object * jsonObj, int64_t * value);
 
 int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char ** nextVer);
 
+int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char value[SHA256_B64_LENGTH]);
 
 #endif /* _UA_UTILS_H_ */

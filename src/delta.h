@@ -6,7 +6,7 @@
 
 #include "common.h"
 
-#define SHA256_STRING_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
+
 #define MANIFEST_DIFF           "manifest_diff.xml"
 #define MANIFEST_PKG            "manifest_pkg.xml"
 #define MANIFEST                "manifest.xml"
@@ -37,8 +37,8 @@ typedef struct diff_info {
     diff_type_t type;
     char * name;
     struct {
-        unsigned char old[SHA256_STRING_LENGTH];
-        unsigned char new[SHA256_STRING_LENGTH];
+        char old[SHA256_STRING_LENGTH];
+        char new[SHA256_STRING_LENGTH];
     } sha256;
     diff_format_t format;
     diff_compression_t compression;

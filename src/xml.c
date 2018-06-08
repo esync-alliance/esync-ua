@@ -54,8 +54,8 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
             if ((p = get_xml_child(n, "old"))) {
                 if ((c = xmlNodeGetContent(p))) {
-                    if(!*diffInfo->sha256.old && (strlen((const char *)c) == (SHA256_STRING_LENGTH -1))) {
-                        strcpy((char *)diffInfo->sha256.old, (const char *)c);
+                    if(!*diffInfo->sha256.old && (strlen((const char *)c) == (SHA256_STRING_LENGTH - 1))) {
+                        strcpy(diffInfo->sha256.old, (const char *)c);
                     }
                     xmlFree(c);
                 }
@@ -63,8 +63,8 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
             if ((p = get_xml_child(n, "new"))) {
                 if ((c = xmlNodeGetContent(p))) {
-                    if(!*diffInfo->sha256.new && (strlen((const char *)c) == (SHA256_STRING_LENGTH -1))) {
-                        strcpy((char *)diffInfo->sha256.new, (const char *)c);
+                    if(!*diffInfo->sha256.new && (strlen((const char *)c) == (SHA256_STRING_LENGTH - 1))) {
+                        strcpy(diffInfo->sha256.new, (const char *)c);
                     }
                     xmlFree(c);
                 }
@@ -156,8 +156,8 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr) {
         if (xmlStrEqual(n->name, XMLT "sha256")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                if(!pkgFile->sha256b64) {
-                    pkgFile->sha256b64 = f_strdup((const char *)c);
+                if(!*pkgFile->sha256b64 && (strlen((const char *)c) == (SHA256_B64_LENGTH - 1))) {
+                    strcpy(pkgFile->sha256b64, (const char *)c);
                 }
                 xmlFree(c);
             }
@@ -194,7 +194,6 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr) {
         DBG("Incomplete pkg node");
         if (pkgFile->file) free(pkgFile->file);
         if (pkgFile->version) free(pkgFile->version);
-        if (pkgFile->sha256b64) free(pkgFile->sha256b64);
         free(pkgFile);
         pkgFile = NULL;
     }

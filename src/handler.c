@@ -7,7 +7,6 @@
 #include <xl4ua.h>
 #include <pthread.h>
 #include "utils.h"
-#include "delta.h"
 #include "xml.h"
 #include "xl4busclient.h"
 
@@ -336,7 +335,6 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
                     DL_DELETE(pkgFile, pf);
                     free(pf->version);
                     free(pf->file);
-                    free(pf->sha256b64);
                     free(pf);
                 }
 
@@ -401,7 +399,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             updateFile.version = pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
 
             if ((!get_pkg_file_from_json(jsonObj, updateFile.version, &pkgFile.file) &&
-                    !get_pkg_sha256_from_json(jsonObj, updateFile.version, &pkgFile.sha256b64) &&
+                    !get_pkg_sha256_from_json(jsonObj, updateFile.version, pkgFile.sha256b64) &&
                     !get_pkg_downloaded_from_json(jsonObj, updateFile.version, &pkgFile.downloaded)) ||
                     ((!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile)) && (bck = 1))) {
 
@@ -445,7 +443,6 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                 if (bck) {
                     free(pkgFile.version);
                     free(pkgFile.file);
-                    free(pkgFile.sha256b64);
                     bck = 0;
                 }
 
@@ -632,7 +629,7 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
         DBG("Back up already exists: %s", backupFile.file);
 
-    } else if (!calc_sha256_b64(pkgFile->file, &backupFile.sha256b64) &&
+    } else if (!calc_sha256_b64(pkgFile->file, backupFile.sha256b64) &&
             !copy_file(pkgFile->file, backupFile.file) &&
             !add_pkg_file_manifest(pkgManifest, &backupFile)) {
 
@@ -650,7 +647,6 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     free(bname);
     free(pkgManifest);
     free(backupFile.file);
-    free(backupFile.sha256b64);
 
     return err;
 }

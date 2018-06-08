@@ -75,14 +75,14 @@ int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg) {
 
             } else if (di->type == DT_UNCHANGED) {
 
-                if (verify_file(oldFile, (char*) di->sha256.old) ||
+                if (verify_file(oldFile, di->sha256.old) ||
                         copy_file(oldFile, newFile)) err = E_UA_ERR;
 
             } else if (di->type == DT_CHANGED) {
 
-                if (verify_file(oldFile, (char*) di->sha256.old) ||
+                if (verify_file(oldFile, di->sha256.old) ||
                         patch_delta(di, oldFile, diffFile, newFile) ||
-                        verify_file(newFile, (char*) di->sha256.new)) err = E_UA_ERR;
+                        verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
 
             }
 
@@ -195,16 +195,14 @@ static int uncompress(diff_compression_t cmp, const char * old, const char * new
 static int verify_file(const char * file, const char * sha256) {
 
     int err = E_UA_OK;
-    char * hash = 0;
+    char hash[SHA256_STRING_LENGTH];
 
-    if (!(err = calc_sha256_hash(file, &hash))) {
+    if (!(err = calc_sha256_hex(file, hash))) {
 
         if (strncmp(hash, sha256, SHA256_STRING_LENGTH - 1)) {
             err = E_UA_ERR;
             DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
         }
-
-        free(hash);
 
     } else {
         DBG("SHA256 Hash calculation failed : %s", file);

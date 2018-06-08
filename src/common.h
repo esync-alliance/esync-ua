@@ -40,7 +40,6 @@ char * f_strdup(const char *);
 char * f_strndup(const void *s, size_t len);
 void * f_malloc(size_t);
 void * f_realloc(void *, size_t);
-int z_strcmp(const char * s1, const char * s2);
 char * f_dirname(const char * s);
 char * f_basename(const char * s);
 

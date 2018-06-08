@@ -364,17 +364,15 @@ int copy_file(char *from, char *to) {
 }
 
 
-int calc_sha256(const char * path, char ** obuff) {
+int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
 
     int i, err = E_UA_OK;
     FILE *file;
     SHA256_CTX sha256;
     char buf[STACK_BUF_SIZE];
     size_t nread;
-    unsigned char hash[SHA256_DIGEST_LENGTH];
 
     do {
-        *obuff = 0;
 
         BOLT_SYS(!(file = fopen(path, "rb")), "opening file: %s", path);
 
@@ -384,65 +382,55 @@ int calc_sha256(const char * path, char ** obuff) {
             SHA256_Update(&sha256, buf, nread);
         }
 
-        SHA256_Final(hash, &sha256);
-
-        *obuff = f_malloc(sizeof(char) * SHA256_DIGEST_LENGTH);
-        memcpy(*obuff, hash, SHA256_DIGEST_LENGTH);
+        SHA256_Final(obuff, &sha256);
 
         BOLT_SYS(fclose(file), "closing file: %s", path);
 
     } while (0);
 
-    if (err && *obuff) { free(*obuff); }
-
     return err;
 }
 
-int calc_sha256_hash(const char * path, char ** obuff) {
+int calc_sha256_hex(const char * path, char obuff[SHA256_STRING_LENGTH]) {
 
-    int i, err;
-    char * sha256;
+    int i, err = E_UA_OK;
+    unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    if (!(err = calc_sha256(path, &sha256))) {
-
-        *obuff = f_malloc(sizeof(char) * 65);
+    if (!(err = calc_sha256(path, hash))) {
 
         for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            sprintf(*obuff + (i * 2), "%02x", (unsigned char)sha256[i]);
+            sprintf(obuff + (i * 2), "%02x", (unsigned char)hash[i]);
         }
 
-        *(*obuff + 64) = 0;
+        obuff[SHA256_STRING_LENGTH - 1] = 0;
 
-        free(sha256);
     }
 
     return err;
 }
 
 
-int calc_sha256_b64(const char * path, char ** obuff) {
+int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]) {
 
-    int err;
+    int err = E_UA_OK;
     BIO *bmem, *b64;
     BUF_MEM *bptr;
-    char * sha256;
+    unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    if (!(err = calc_sha256(path, &sha256))) {
+    if (!(err = calc_sha256(path, hash))) {
 
         b64 = BIO_new(BIO_f_base64());
         bmem = BIO_new(BIO_s_mem());
         b64 = BIO_push(b64, bmem);
 
-        BIO_write(b64, sha256, SHA256_DIGEST_LENGTH);
+        BIO_write(b64, hash, SHA256_DIGEST_LENGTH);
         BIO_flush(b64);
         BIO_get_mem_ptr(b64, &bptr);
 
-        *obuff = f_malloc(bptr->length);
-        memcpy(*obuff, bptr->data, bptr->length - 1);
-        *(*obuff + bptr->length - 1) = 0;
+        memcpy(obuff, bptr->data, SHA256_B64_LENGTH - 1);
+        obuff[SHA256_B64_LENGTH - 1] = 0;
 
         BIO_free_all(b64);
-        free(sha256);
     }
 
     return err;

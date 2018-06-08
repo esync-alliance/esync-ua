@@ -149,7 +149,7 @@ char *addr_to_string(xl4bus_address_t * addr) {
 static void on_xl4bus_message(xl4bus_client_t *client, xl4bus_message_t *msg) {
 
     if (msg && msg->data) {
-        if (!z_strcmp(msg->content_type, "application/json")) {
+        if (!strcmp(msg->content_type, "application/json")) {
             if (msg->data_len <= 0) {
                 DBG("Empty incoming message (%d)?", msg->data_len);
             } else {

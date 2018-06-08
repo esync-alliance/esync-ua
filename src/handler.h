@@ -32,7 +32,7 @@ typedef struct pkg_file {
 
     char * version;
     char * file;
-    char * sha256b64;
+    char sha256b64[SHA256_B64_LENGTH];
     int downloaded;
 
     struct pkg_file * next;

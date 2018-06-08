@@ -68,21 +68,6 @@ void * f_realloc(void * m, size_t t) {
 }
 
 
-int z_strcmp(const char * s1, const char * s2) {
-
-    if (!s1) {
-        if (!s2) { return 0; }
-        return -1;
-    }
-
-    if (!s2) {
-        return 1;
-    }
-
-    return strcmp(s1, s2);
-}
-
-
 char * f_dirname(const char * s) {
 
     if (!s) { return 0; }
