@@ -54,7 +54,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
             if ((p = get_xml_child(n, "old"))) {
                 if ((c = xmlNodeGetContent(p))) {
-                    if(!*diffInfo->sha256.old && (strlen((const char *)c) == (SHA256_STRING_LENGTH - 1))) {
+                    if(!*diffInfo->sha256.old && (strlen((const char *)c) == (SHA256_HEX_LENGTH - 1))) {
                         strcpy(diffInfo->sha256.old, (const char *)c);
                     }
                     xmlFree(c);
@@ -63,7 +63,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
             if ((p = get_xml_child(n, "new"))) {
                 if ((c = xmlNodeGetContent(p))) {
-                    if(!*diffInfo->sha256.new && (strlen((const char *)c) == (SHA256_STRING_LENGTH - 1))) {
+                    if(!*diffInfo->sha256.new && (strlen((const char *)c) == (SHA256_HEX_LENGTH - 1))) {
                         strcpy(diffInfo->sha256.new, (const char *)c);
                     }
                     xmlFree(c);
@@ -86,7 +86,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
         }
     }
 
-    if (!S(diffInfo->name) || (diffInfo->format == 0) || (diffInfo->compression == 0)) {
+    if (!S(diffInfo->name)) {
         DBG("Incomplete diff node");
         if (diffInfo->name) free(diffInfo->name);
         free(diffInfo);

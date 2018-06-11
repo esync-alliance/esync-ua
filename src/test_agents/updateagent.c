@@ -14,8 +14,7 @@ ua_handler_t uah[] = {
         {"/template", get_tmpl_routine }
 };
 
-static void _help()
-{
+static void _help() {
     printf("%s",
             "Usage: updateagent [OPTION...]\n\n"
             "Options:\n"

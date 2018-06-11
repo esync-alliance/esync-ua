@@ -37,8 +37,8 @@ typedef struct diff_info {
     diff_type_t type;
     char * name;
     struct {
-        char old[SHA256_STRING_LENGTH];
-        char new[SHA256_STRING_LENGTH];
+        char old[SHA256_HEX_LENGTH];
+        char new[SHA256_HEX_LENGTH];
     } sha256;
     diff_format_t format;
     diff_compression_t compression;

@@ -195,11 +195,11 @@ static int uncompress(diff_compression_t cmp, const char * old, const char * new
 static int verify_file(const char * file, const char * sha256) {
 
     int err = E_UA_OK;
-    char hash[SHA256_STRING_LENGTH];
+    char hash[SHA256_HEX_LENGTH];
 
     if (!(err = calc_sha256_hex(file, hash))) {
 
-        if (strncmp(hash, sha256, SHA256_STRING_LENGTH - 1)) {
+        if (strncmp(hash, sha256, SHA256_HEX_LENGTH - 1)) {
             err = E_UA_ERR;
             DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
         }

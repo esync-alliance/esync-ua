@@ -36,8 +36,8 @@ static inline char * join_path(const char * path, ... ) {
 }
 
 
-#define SHA256_STRING_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
-#define SHA256_B64_LENGTH       44 + 1
+#define SHA256_HEX_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
+#define SHA256_B64_LENGTH    44 + 1
 
 
 uint64_t currentms();
@@ -46,7 +46,7 @@ int zip(char * archive, char * path);
 int zip_find_file(char * archive, char * path);
 int copy_file(char *from, char *to);
 int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
-int calc_sha256_hex(const char * path, char obuff[SHA256_STRING_LENGTH]);
+int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char *cmd);
 int mkdirp(char* path, int umask);

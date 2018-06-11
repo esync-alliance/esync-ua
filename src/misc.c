@@ -391,7 +391,7 @@ int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
     return err;
 }
 
-int calc_sha256_hex(const char * path, char obuff[SHA256_STRING_LENGTH]) {
+int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]) {
 
     int i, err = E_UA_OK;
     unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -402,7 +402,7 @@ int calc_sha256_hex(const char * path, char obuff[SHA256_STRING_LENGTH]) {
             sprintf(obuff + (i * 2), "%02x", (unsigned char)hash[i]);
         }
 
-        obuff[SHA256_STRING_LENGTH - 1] = 0;
+        obuff[SHA256_HEX_LENGTH - 1] = 0;
 
     }
 
