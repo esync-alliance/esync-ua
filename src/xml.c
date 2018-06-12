@@ -9,19 +9,22 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr);
 static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr);
 static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char * version);
 
+#define XMLELE_ITER(p, c) \
+        for (c = xmlFirstElementChild(p); c; c = xmlNextElementSibling(c)) \
+        if (c->type != XML_ELEMENT_NODE) continue; else
+
+#define XMLELE_ITER_NAME(p, s, c) \
+        XMLELE_ITER(p, c) if (xmlStrEqual(c->name, XMLT s))
+
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar * name) {
 
-    xmlNodePtr c = NULL;
+    xmlNodePtr node = NULL;
 
     if (!parent) { return 0; }
 
-    for (c = xmlFirstElementChild(parent); c; c = xmlNextElementSibling(c)) {
-
-        if (c->type == XML_ELEMENT_NODE && xmlStrEqual(name, c->name)) {
-            return c;
-        }
-
+    XMLELE_ITER_NAME(parent, name, node) {
+        return node;
     }
 
     return 0;
@@ -37,9 +40,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
     diff_info_t * diffInfo = f_malloc(sizeof(diff_info_t));
 
-    for (n = xmlFirstElementChild(ptr); n; n = xmlNextElementSibling(n)) {
-
-        if (n->type != XML_ELEMENT_NODE) { continue; }
+    XMLELE_ITER(ptr, n) {
 
         if (xmlStrEqual(n->name, XMLT "name")) {
 
@@ -105,7 +106,7 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
     diff_type_t typ;
     diff_info_t * di;
     xmlDocPtr doc = NULL;
-    xmlNodePtr root, node = NULL;
+    xmlNodePtr root, node, fnode = NULL;
 
     DBG("parsing diff manifest: %s", xmlFile);
 
@@ -115,16 +116,16 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
         BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
         root = xmlDocGetRootElement(doc);
 
-        for (node = xmlFirstElementChild(root); node; node = xmlNextElementSibling(node)) {
-
-            if (node->type != XML_ELEMENT_NODE) { continue; }
+        XMLELE_ITER(root, node) {
 
             if (TYPEQL(node->name, "added", DT_ADDED) || TYPEQL(node->name, "removed", DT_REMOVED)
                     || TYPEQL(node->name, "unchanged", DT_UNCHANGED) || TYPEQL(node->name, "changed", DT_CHANGED)) {
 
-                if ((di = get_xml_diff_info(get_xml_child(node, "file")))) {
-                    di->type = typ;
-                    DL_APPEND(*diffInfo, di);
+                XMLELE_ITER_NAME(node, "file", fnode) {
+                    if (di = get_xml_diff_info(fnode)) {
+                        di->type = typ;
+                        DL_APPEND(*diffInfo, di);
+                    }
                 }
             }
         }
@@ -149,9 +150,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr) {
 
     pkg_file_t * pkgFile = f_malloc(sizeof(pkg_file_t));
 
-    for (n = xmlFirstElementChild(ptr); n; n = xmlNextElementSibling(n)) {
-
-        if (n->type != XML_ELEMENT_NODE) { continue; }
+    XMLELE_ITER(ptr, n) {
 
         if (xmlStrEqual(n->name, XMLT "sha256")) {
 
@@ -217,17 +216,12 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
         BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
         root = xmlDocGetRootElement(doc);
 
-        for (node = xmlFirstElementChild(root); node; node = xmlNextElementSibling(node)) {
-
-            if (node->type != XML_ELEMENT_NODE) { continue; }
-
-            if (xmlStrEqual(node->name, XMLT "package")) {
-                if ((pf = get_xml_pkg_file(node)) && (!access(pf->file, R_OK))) {
-                    DL_APPEND(*pkgFile, pf);
-                } else {
-                    free(pf);
-                    //TODO: Remove from pkg manifest
-                }
+        XMLELE_ITER_NAME(root, "package", node) {
+            if ((pf = get_xml_pkg_file(node)) && (!access(pf->file, R_OK))) {
+                DL_APPEND(*pkgFile, pf);
+            } else {
+                free(pf);
+                //TODO: Remove from pkg manifest
             }
         }
 
@@ -293,16 +287,13 @@ static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char * version) {
     xmlNodePtr node, n;
     pkg_file_t * pkgFile = NULL;
 
-    for (node = xmlFirstElementChild(root); node; node = xmlNextElementSibling(node)) {
-
-        if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, XMLT "package")) {
-            if ((n = get_xml_child(node, XMLT "version"))) {
-                if ((c = xmlNodeGetContent(n))) {
-                    if (xmlStrEqual(c, XMLT version)) {
-                        pkgFile = get_xml_pkg_file(node);
-                    }
-                    xmlFree(c);
+    XMLELE_ITER_NAME(root, "package", node) {
+        if ((n = get_xml_child(node, XMLT "version"))) {
+            if ((c = xmlNodeGetContent(n))) {
+                if (xmlStrEqual(c, XMLT version)) {
+                    pkgFile = get_xml_pkg_file(node);
                 }
+                xmlFree(c);
             }
         }
 
