@@ -15,13 +15,15 @@ extern ua_cfg_t ua_cfg;
     now[0] = 0
 #else
 #define _ltime_ \
-    char now[20]; \
+    char now[24]; \
     struct tm tmnow; \
     struct timeval tv; \
-    memset(now, 0, 20); \
+    memset(now, 0, 24); \
     gettimeofday(&tv, 0); \
+    usec_to_msec(&tv); \
     localtime_r(&tv.tv_sec, &tmnow); \
-    strftime(now, 19, "%m-%d:%H:%M:%S", &tmnow)
+    strftime(now, 20, "%m-%d:%H:%M:%S.", &tmnow); \
+    sprintf(now+15, "%03ld", tv.tv_usec)
 #endif
 
 #define DBG(a,b...) do { if (ua_cfg.debug) { \
@@ -44,6 +46,23 @@ extern ua_cfg_t ua_cfg;
         free(_str); \
     } \
 } } while(0)
+
+static inline void usec_to_msec(struct timeval * tv) {
+
+    for (int i=0; i<3; i++) {
+        int r = (int)(tv->tv_usec % 10);
+        tv->tv_usec /= 10;
+        if (r >= 5) {
+            tv->tv_usec++;
+        }
+    }
+
+    if (tv->tv_usec >= 1000) {
+        tv->tv_usec -= 1000;
+        tv->tv_sec++;
+    }
+
+}
 
 #define BOLT_MEM(a) if (!(a)) { \
     err = E_UA_MEMORY; \

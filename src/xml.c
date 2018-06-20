@@ -122,7 +122,7 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
                     || TYPEQL(node->name, "unchanged", DT_UNCHANGED) || TYPEQL(node->name, "changed", DT_CHANGED)) {
 
                 XMLELE_ITER_NAME(node, "file", fnode) {
-                    if (di = get_xml_diff_info(fnode)) {
+                    if ((di = get_xml_diff_info(fnode))) {
                         di->type = typ;
                         DL_APPEND(*diffInfo, di);
                     }
