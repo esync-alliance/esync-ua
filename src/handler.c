@@ -459,7 +459,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         if ((state == INSTALL_FAILED) && (updateErr.incremental_failed || updateErr.update_incapable ||
                 (pkgInfo.rollback_versions && (updateErr.terminal_failure = 1)))) {
-            send_update_status(&pkgInfo, 0, INSTALL_FAILED, &updateErr);
+            send_update_status(&pkgInfo, &updateFile, INSTALL_FAILED, &updateErr);
         }
 
         free(pkgManifest);
@@ -575,7 +575,7 @@ static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, insta
     json_object_object_add(pkgObject, "rollback-versions", pkgInfo->rollback_versions ? json_object_get(pkgInfo->rollback_versions) : NULL);
 
 
-    if ((state == INSTALL_FAILED) && ue) {
+    if ((state == INSTALL_FAILED) && pkgFile && ue) {
 
         if (ue->terminal_failure) {
             json_object_object_add(pkgObject, "terminal-failure", json_object_new_boolean(1));
@@ -587,7 +587,7 @@ static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, insta
             json_object * versionObject = json_object_new_object();
             json_object * verListObject = json_object_new_object();
             json_object_object_add(versionObject, "incremental-failed", json_object_new_boolean(1));
-            json_object_object_add(verListObject, pkgInfo->version, versionObject);
+            json_object_object_add(verListObject, pkgFile->version, versionObject);
             json_object_object_add(pkgObject, "version-list", verListObject);
         }
     }
