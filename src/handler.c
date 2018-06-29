@@ -23,6 +23,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj);
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
+static int prepare_package_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
@@ -407,7 +408,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, state = INSTALL_ROLLBACK, 0);
                 }
 
-                if (pre_update_action(uar, &pkgInfo, &pkgFile) == INSTALL_INPROGRESS) {
+                if (bck || !prepare_package_action(uar, &pkgInfo, &pkgFile)) {
 
                     if (ua_cfg.delta && is_delta_package(pkgFile.file)) {
 
@@ -428,13 +429,17 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                         updateFile.downloaded = 1;
                     }
 
-                    if((state = update_action(uar, &pkgInfo, &updateFile)) == INSTALL_COMPLETED) {
+                    if ((state = pre_update_action(uar, &pkgInfo, &updateFile)) == INSTALL_INPROGRESS) {
 
-                        backup_package(&pkgInfo, &updateFile);
+                        if((state = update_action(uar, &pkgInfo, &updateFile)) == INSTALL_COMPLETED) {
+
+                            backup_package(&pkgInfo, &updateFile);
+
+                        }
+
+                        post_update_action(uar, &pkgInfo);
 
                     }
-
-                    post_update_action(uar, &pkgInfo);
 
                     if (!updateFile.downloaded) remove(updateFile.file);
                     free(updateFile.file);
@@ -521,16 +526,28 @@ static void process_log_report(ua_routine_t * uar, json_object * jsonObj) {
 }
 
 
+static int prepare_package_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
+
+    int err = E_UA_OK;
+    char * newFile = 0;
+
+    if (uar->on_prepare_file) {
+        err = (*uar->on_prepare_file)(pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
+        if(!err && S(newFile)) {
+            pkgFile->file = newFile;
+        }
+    }
+
+    return err;
+}
+
+
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     install_state_t state = INSTALL_INPROGRESS;
 
     if (uar->on_pre_install) {
-    	char * newFile = 0;
-        state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
-        if(S(newFile)) {
-        	pkgFile->file = newFile;
-        }
+        state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file);
     }
 
     send_update_status(pkgInfo, 0, state, 0);
