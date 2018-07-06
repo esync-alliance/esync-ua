@@ -4,8 +4,8 @@
 
 #include "misc.h"
 
-static int zip_archive_add_file(struct zip *za, char *path, char *base);
-static int zip_archive_add_dir(struct zip *za, char *path, char *base);
+static int zip_archive_add_file(struct zip * za, const char * path, const char * base);
+static int zip_archive_add_dir(struct zip *za, const char *path, const char *base);
 static char * get_zip_error(int ze);
 
 #define STACK_BUF_SIZE               4096
@@ -23,20 +23,19 @@ uint64_t currentms() {
 }
 
 
-int mkdirp(char* path, int umask) {
+int mkdirp(const char* path, int umask) {
 
-    char * aux = path;
-    int rc;
-    struct stat statb;
-
-    if (*aux != '/') {
+    if (*path != '/') {
         errno = EINVAL;
         return 1;
     }
 
-    while (*(aux+1) == '/') { aux++; }
+    int rc = 0;
+    struct stat statb;
+    char * dpath = f_strdup(path);
+    char * aux = dpath;
 
-    if (!*(aux+1)) { return 0; }
+    while (*(aux+1) == '/') { aux++; }
 
     while (1) {
 
@@ -54,14 +53,16 @@ int mkdirp(char* path, int umask) {
 
         if (rc || !S_ISDIR(statb.st_mode)) {
             rc = mkdir(path, umask);
-            if (rc) { return rc; }
+            if (rc) { break; }
         }
 
         if (!aux) { break; }
 
     }
 
-    return 0;
+    free(dpath);
+
+    return rc;
 }
 
 
@@ -88,7 +89,7 @@ int rmdirp(const char* path) {
                     DBG_SYS("error removing file: %s", filepath);
                 }
             } else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
-                rmdirp(filepath);
+                err = rmdirp(filepath);
             }
 
             free(filepath);
@@ -110,7 +111,7 @@ int chkdirp(const char * path) {
     struct stat statb;
     char * dir = f_dirname(path);
 
-    rc = stat(path, &statb);
+    rc = stat(dir, &statb);
 
     if (rc || !S_ISDIR(statb.st_mode)) {
         rc = mkdirp(dir, 0755);
@@ -138,7 +139,7 @@ static char * get_zip_error(int ze) {
 }
 
 
-int unzip(char * archive, char * path) {
+int unzip(const char * archive, const char * path) {
 
     int i, len, fd, zerr, err = E_UA_OK;
     char buf[STACK_BUF_SIZE];
@@ -196,7 +197,7 @@ int unzip(char * archive, char * path) {
 }
 
 
-int zip(char * archive, char * path) {
+int zip(const char * archive, const char * path) {
 
     int zerr, err = E_UA_OK;
     char * aux = 0;
@@ -228,7 +229,7 @@ int zip(char * archive, char * path) {
 }
 
 
-static int zip_archive_add_file(struct zip * za, char * path, char * base) {
+static int zip_archive_add_file(struct zip * za, const char * path, const char * base) {
 
     int err = E_UA_OK;
     zip_source_t *s;
@@ -256,7 +257,7 @@ static int zip_archive_add_file(struct zip * za, char * path, char * base) {
 }
 
 
-static int zip_archive_add_dir(struct zip *za, char *path, char *base) {
+static int zip_archive_add_dir(struct zip *za, const char *path, const char *base) {
 
     int err = E_UA_OK;
     DIR *dir;
@@ -303,7 +304,7 @@ static int zip_archive_add_dir(struct zip *za, char *path, char *base) {
 }
 
 
-int zip_find_file(char * archive, char * path) {
+int zip_find_file(const char * archive, const char * path) {
 
     int zerr, err = E_UA_OK;
     char * aux = 0;
@@ -334,7 +335,7 @@ int zip_find_file(char * archive, char * path) {
 }
 
 
-int copy_file(char *from, char *to) {
+int copy_file(const char *from, const char *to) {
 
     int err = E_UA_OK;
     FILE *in, *out;
@@ -437,7 +438,7 @@ int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]) {
 }
 
 
-int is_cmd_runnable(const char *cmd) {
+int is_cmd_runnable(const char * cmd) {
 
     int err = E_UA_OK;
     char * path = 0;
@@ -451,7 +452,7 @@ int is_cmd_runnable(const char *cmd) {
 
         BOLT_IF(!(path = f_strdup(getenv("PATH"))), E_UA_ERR, "PATH env empty");
 
-        char* pch = strtok (path, ":");
+        char * pch = strtok(path, ":");
         while (pch != NULL) {
             char * p = JOIN(pch, cmd);
             if((err = access(p, X_OK)) == 0) {
@@ -459,7 +460,7 @@ int is_cmd_runnable(const char *cmd) {
                 break;
             }
             free(p);
-            pch = strtok (NULL, ":");
+            pch = strtok(NULL, ":");
        }
     } while (0);
 

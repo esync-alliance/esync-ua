@@ -10,13 +10,10 @@
 #define S(s) (s && *s)
 #define SAFE_STR(s) ((s)?(s):"")
 #define NULL_STR(s) (S(s)?(s):"null")
-#define JOIN(a,b...) (join_path(a, ##b, NULL))
+#define STRLWR(s) ({char *_p,*_r=s; for(_p=_r;*_p;++_p) *_p=tolower(*_p); _r;})
+#define SUBSTRCNT(s,c) ({const char *_p=s; int _l=strlen(c); int _r=0; while((_p=strcasestr(_p,c))){_p+=_l; _r++;} _r;})
 
-static inline const char * chop_path(const char * path) {
-    const char * aux = strrchr(path, '/');
-    if (aux) { return aux + 1; }
-    return path;
-}
+#define JOIN(a,b...) (join_path(a, ##b, NULL))
 
 static inline char * join_path(const char * path, ... ) {
     if (!path) { return 0; }
@@ -35,21 +32,27 @@ static inline char * join_path(const char * path, ... ) {
     return ret;
 }
 
+static inline const char * chop_path(const char * path) {
+    const char * aux = strrchr(path, '/');
+    if (aux) { return aux + 1; }
+    return path;
+}
+
 
 #define SHA256_HEX_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
 #define SHA256_B64_LENGTH    44 + 1
 
 
 uint64_t currentms();
-int unzip(char * archive, char * path);
-int zip(char * archive, char * path);
-int zip_find_file(char * archive, char * path);
-int copy_file(char *from, char *to);
+int unzip(const char * archive, const char * path);
+int zip(const char * archive, const char * path);
+int zip_find_file(const char * archive, const char * path);
+int copy_file(const char *from, const char *to);
 int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
 int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char *cmd);
-int mkdirp(char* path, int umask);
+int mkdirp(const char* path, int umask);
 int rmdirp(const char* path);
 int chkdirp(const char * path);
 

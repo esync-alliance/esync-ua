@@ -79,12 +79,17 @@ typedef struct delta_tool {
     char *                  algo;
     char *                  path;
     char *                  args;
+    int                     intl;
 
 } delta_tool_t;
 
 typedef struct delta_cfg {
 
     char *                  delta_cap;
+    delta_tool_t *          patch_tools;
+    int                     patch_tool_cnt;
+    delta_tool_t *          decomp_tools;
+    int                     decomp_tool_cnt;
 
 } delta_cfg_t;
 
@@ -131,7 +136,13 @@ typedef struct ua_handler {
 #define XL4_PUB __attribute__((visibility ("default")))
 #endif
 
-XL4_PUB int ua_init(ua_cfg_t * in_cfg);
+XL4_PUB
+/**
+ * Initializes updateagent.
+ * @param updatagent configuration
+ * @return ::E_UA_OK if initialization was successful, or an error code otherwise.
+ */
+int ua_init(ua_cfg_t * ua_config);
 
 XL4_PUB int ua_register(ua_handler_t * uah, int len);
 

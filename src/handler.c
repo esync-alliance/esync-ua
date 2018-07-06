@@ -7,6 +7,7 @@
 #include <xl4ua.h>
 #include <pthread.h>
 #include "utils.h"
+#include "delta.h"
 #include "xml.h"
 #include "xl4busclient.h"
 
@@ -35,36 +36,39 @@ static char * log_type_string(log_type_t log);
 static int send_message(json_object * jsonObj);
 void * runner_loop(void * arg);
 
-
-ua_cfg_t ua_cfg = {0};
-delta_stg_t delta_stg = {0};
+int ua_debug = 0;
+ua_internal_t ua_intl = {0};
 runner_info_t * registered_updater = 0;
 
 
-int ua_init(ua_cfg_t * ua_config) {
+int ua_init(ua_cfg_t * uaConfig) {
 
     int err = E_UA_OK;
 
     do {
 
-        BOLT_IF(!ua_config || !ua_config->url
+        ua_debug = uaConfig->debug;
+
+        BOLT_IF(!uaConfig || !uaConfig->url
 #ifdef USE_XL4BUS_TRUST
-                || !ua_config->ua_type
+                || !uaConfig->ua_type
 #else
-                || !ua_config->cert_dir
+                || !uaConfig->cert_dir
 #endif
                 , E_UA_ARG, "configuration error");
 
-        BOLT_IF(ua_config->delta && (!S(ua_config->cache_dir) || !S(ua_config->backup_dir)), E_UA_ARG, "delta config error");
+        BOLT_IF(uaConfig->delta && (!S(uaConfig->cache_dir) || !S(uaConfig->backup_dir)), E_UA_ARG, "cache and backup directory are must for delta");
 
-        memcpy(&ua_cfg, ua_config, sizeof(ua_cfg_t));
-
-        if (ua_cfg.delta) {
-            delta_stg.delta_cap = (ua_cfg.delta_config && S(ua_cfg.delta_config->delta_cap)) ?
-                    f_strdup(ua_cfg.delta_config->delta_cap) : get_delta_capability();
+        if (uaConfig->delta) {
+            BOLT_IF(delta_init(uaConfig->cache_dir, uaConfig->delta_config), E_UA_ARG, "delta config error");
         }
 
-        BOLT_SUB(xl4bus_client_init(&ua_cfg));
+        memset(&ua_intl, 0, sizeof(ua_internal_t));
+        ua_intl.delta = uaConfig->delta;
+        ua_intl.cache_dir = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
+        ua_intl.backup_dir = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
+
+        BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 
     } while (0);
 
@@ -76,7 +80,9 @@ int ua_register(ua_handler_t * uah, int len) {
 
     int err = E_UA_OK;
     runner_info_t * ri = 0;
+
     for (int i=0; i<len; i++) {
+
         do {
             ri = f_malloc(sizeof(runner_info_t));
             ri->type = f_strdup((uah + i)->type_handler);
@@ -92,6 +98,7 @@ int ua_register(ua_handler_t * uah, int len) {
 
         if (err) {
             free(ri);
+            ua_unregister(uah, len);
             break;
         }
     }
@@ -314,13 +321,16 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo.name));
         json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
 
-        if (ua_cfg.delta) {
+        if (ua_intl.delta) {
+
+            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(get_delta_capability()));
+
+        }
+
+        if (S(ua_intl.backup_dir)) {
 
             pkg_file_t *pf, *aux, *pkgFile = NULL;
-
-            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(delta_stg.delta_cap));
-
-            char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+            char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
             if (!parse_pkg_manifest(pkgManifest, &pkgFile)) {
 
@@ -394,7 +404,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
             !get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions)) {
 
-        char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+        char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
 
         do {
             updateFile.version = pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
@@ -410,7 +420,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                 if (bck || !prepare_package_action(uar, &pkgInfo, &pkgFile)) {
 
-                    if (ua_cfg.delta && is_delta_package(pkgFile.file)) {
+                    if (ua_intl.delta && is_delta_package(pkgFile.file)) {
 
                         (*uar->on_get_version)(pkgInfo.name, &installedVer);
 
@@ -478,8 +488,8 @@ static int patch_delta(char * pkgName, char * version, char * diffFile, char ** 
     pkg_file_t pkgFile = {0};
 
     char * bname = f_basename(diffFile);
-    char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgName, MANIFEST_PKG);
-    char * newFile = JOIN(ua_cfg.cache_dir, "delta", bname);
+    char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgName, MANIFEST_PKG);
+    char * newFile = JOIN(ua_intl.cache_dir, "delta", bname);
 
     if ((!get_pkg_file_manifest(pkgManifest, version, &pkgFile)) &&
             !delta_reconstruct(pkgFile.file, diffFile, newFile)) {
@@ -637,8 +647,8 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     pkg_file_t backupFile = {0};
 
     char * bname = f_basename(pkgFile->file);
-    char * pkgManifest = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);
-    backupFile.file = JOIN(ua_cfg.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
+    char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);
+    backupFile.file = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
     backupFile.version = pkgFile->version;
     backupFile.downloaded = 1;
 

@@ -67,6 +67,13 @@ void * f_realloc(void * m, size_t t) {
     return r;
 }
 
+void f_free(void * p) {
+
+    if (p) {
+        free(p);
+    }
+}
+
 
 char * f_dirname(const char * s) {
 

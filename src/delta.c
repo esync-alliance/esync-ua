@@ -2,31 +2,241 @@
 #include "delta.h"
 #include "xml.h"
 
-static int patch_delta(diff_info_t * diffInfo, const char * old, const char * diff, const char * new);
+static int add_delta_tool(delta_tool_hh_t ** hash, delta_tool_t * tool, int count, int isPatchTool);
+static void clear_delta_tool(delta_tool_hh_t * hash);
+static char * get_deflt_delta_cap(delta_tool_hh_t * patchTool, delta_tool_hh_t * decompTool);
+static char * expand_tool_args(const char * args, const char * old, const char * new, const char * diff);
+static int delta_patch(diff_info_t * diffInfo, const char * old, const char * new, const char * diff);
 static int verify_file(const char * file, const char * sha256);
-static int uncompress(diff_compression_t cmp, const char * old, const char * new);
-extern ua_cfg_t ua_cfg;
+delta_stg_t delta_stg = {0};
+
+delta_tool_t deflt_patch_tools[] = {
+        {"bsdiff", "bspatch", OFA" "NFA" "PFA, 1},
+        {"rfc3284", "xdelta3", "-d -s "OFA" "PFA" "NFA, 0},
+        {"esdiff", "espatch", OFA" "NFA" "PFA, 1}
+};
+
+delta_tool_t deflt_decomp_tools[] = {
+        {"gzip", "gzip", "-cd "OFA" > "NFA, 0},
+        {"bzip2", "bzip2", "-cd "OFA" > "NFA, 0},
+        {"xz", "xz", "-cd "OFA" > "NFA, 0}
+};
 
 
-char * get_delta_capability() {
+int delta_init(char * cacheDir, delta_cfg_t * deltaConfig) {
+
+    int err = E_UA_OK;
+
+    do {
+
+        memset(&delta_stg, 0, sizeof(delta_stg_t));
+
+        BOLT_IF(!S(cacheDir) || chkdirp(delta_stg.cache_dir = cacheDir), E_UA_ARG, "cache directory invalid");
+
+        BOLT_IF(add_delta_tool(&delta_stg.patch_tool, deflt_patch_tools, sizeof(deflt_patch_tools)/sizeof(delta_tool_t), 1), E_UA_ERR, "default patch tools adding failed");
+        BOLT_IF(add_delta_tool(&delta_stg.decomp_tool, deflt_decomp_tools, sizeof(deflt_decomp_tools)/sizeof(delta_tool_t), 0), E_UA_ERR, "default decompression tools adding failed");
+
+        BOLT_IF(deltaConfig && deltaConfig->patch_tools && add_delta_tool(&delta_stg.patch_tool, deltaConfig->patch_tools, deltaConfig->patch_tool_cnt, 1), E_UA_ARG, "patch tools adding failed");
+        BOLT_IF(deltaConfig && deltaConfig->decomp_tools && add_delta_tool(&delta_stg.decomp_tool, deltaConfig->decomp_tools, deltaConfig->decomp_tool_cnt, 0), E_UA_ARG, "decompression tools adding failed");
+
+        delta_stg.delta_cap = (deltaConfig && S(deltaConfig->delta_cap)) ? f_strdup(deltaConfig->delta_cap) :
+                get_deflt_delta_cap(delta_stg.patch_tool, delta_stg.decomp_tool);
+
+    } while(0);
+
+    if (err) {
+        delta_stop();
+    }
+
+    return err;
+}
+
+
+void delta_stop() {
+
+    if (delta_stg.patch_tool) {
+        clear_delta_tool(delta_stg.patch_tool);
+        delta_stg.patch_tool = NULL;
+    }
+
+    if (delta_stg.decomp_tool) {
+        clear_delta_tool(delta_stg.decomp_tool);
+        delta_stg.decomp_tool = NULL;
+    }
+
+    if(delta_stg.delta_cap) {
+        free(delta_stg.delta_cap);
+        delta_stg.delta_cap = NULL;
+    }
+
+}
+
+
+const char * get_delta_capability() {
+
+    return delta_stg.delta_cap;
+}
+
+
+int is_delta_package(const char *pkgFile) {
+
+    return !zip_find_file(pkgFile, MANIFEST_DIFF);
+}
+
+
+int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile) {
+
+    int err = E_UA_OK;
+    diff_info_t *di, *aux, *diList = 0;
+    char *oldFile, *diffFile, *newFile;
+    char *oldPath = 0, *diffPath = 0, *newPath = 0;
+    char *manifest_diff = 0, *manifest_old = 0, *manifest_new = 0;
+
+    do {
+
+        BOLT_SYS(mkdirp(oldPath = JOIN(delta_stg.cache_dir, "delta", "old"), 0755) && (errno != EEXIST), "failed to make directory %s", oldPath);
+        BOLT_SYS(mkdirp(diffPath = JOIN(delta_stg.cache_dir, "delta", "diff"), 0755) && (errno != EEXIST), "failed to make directory %s", diffPath);
+        BOLT_SYS(mkdirp(newPath = JOIN(delta_stg.cache_dir, "delta", "new"), 0755) && (errno != EEXIST), "failed to make directory %s", newPath);
+
+        manifest_diff = JOIN(diffPath, MANIFEST_DIFF);
+        manifest_old = JOIN(oldPath, MANIFEST);
+        manifest_new = JOIN(newPath, MANIFEST);
+
+        BOLT_IF(unzip(oldPkgFile, oldPath), E_UA_ERR, "unzip failed: %s", oldPkgFile);
+        BOLT_IF(unzip(diffPkgFile, diffPath), E_UA_ERR, "unzip failed: %s", diffPkgFile);
+
+        BOLT_IF(parse_diff_manifest(manifest_diff, &diList), E_UA_ERR, "failed to parse: %s", manifest_diff);
+
+        DL_FOREACH_SAFE(diList, di, aux) {
+
+            if (!err) {
+
+                oldFile = JOIN(oldPath, di->name);
+                diffFile = JOIN(diffPath, di->name);
+                newFile = JOIN(newPath, di->name);
+
+                if(di->type == DT_ADDED) {
+
+                    if (copy_file(diffFile, newFile)) err = E_UA_ERR;
+
+                } else if (di->type == DT_UNCHANGED) {
+
+                    if (verify_file(oldFile, di->sha256.old) || copy_file(oldFile, newFile)) err = E_UA_ERR;
+
+                } else if (di->type == DT_CHANGED) {
+
+                    if (verify_file(oldFile, di->sha256.old) || delta_patch(di, oldFile, diffFile, newFile) || verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
+
+                }
+
+                free(oldFile);
+                free(diffFile);
+                free(newFile);
+
+            }
+
+            DL_DELETE(diList, di);
+            free(di->name);
+            free(di->format);
+            free(di->compression);
+            free(di);
+
+        }
+
+        if (!err) {
+            BOLT_IF(copy_file(manifest_old, manifest_new), E_UA_ERR, "failed to copy manifest");
+            BOLT_IF(zip(newPkgFile, newPath), E_UA_ERR, "zip failed: %s", newPkgFile);
+        }
+
+    } while (0);
+
+    if(oldPath) { if(rmdirp(oldPath)) DBG("failed to remove directory %s", oldPath); free(oldPath); }
+    if(diffPath) { if(rmdirp(diffPath)) DBG("failed to remove directory %s", diffPath); free(diffPath); }
+    if(newPath) { if(rmdirp(newPath)) DBG("failed to remove directory %s", newPath); free(newPath); }
+
+    if (manifest_diff) free(manifest_diff);
+    if (manifest_old)  free(manifest_old);
+    if (manifest_new)  free(manifest_new);
+
+    return err;
+}
+
+
+static int add_delta_tool(delta_tool_hh_t ** hash, delta_tool_t * tool, int count, int isPatchTool) {
+
+    int i, err = E_UA_OK;
+    delta_tool_hh_t *dth, *aux;
+
+    for (i = 0; i < count; i ++) {
+        if(S((tool + i)->algo) && S((tool + i)->path) && S((tool + i)->args) &&
+                !is_cmd_runnable((tool + i)->path) &&
+                (SUBSTRCNT((tool + i)->args, OFA) == 1) && (SUBSTRCNT((tool + i)->args, NFA) == 1) && (SUBSTRCNT((tool + i)->args, PFA) == (isPatchTool ? 1 : 0))) {
+
+            dth = f_malloc(sizeof(delta_tool_hh_t));
+            dth->tool.algo = STRLWR(f_strdup((tool + i)->algo));
+            dth->tool.path = f_strdup((tool + i)->path);
+            dth->tool.args = f_strdup((tool + i)->args);
+            dth->tool.intl = (tool + i)->intl;
+
+            HASH_FIND_STR(*hash, dth->tool.algo, aux);
+            if (!aux) {
+                HASH_ADD_STR(*hash, tool.algo, dth);
+            } else {
+                HASH_REPLACE_STR(*hash, tool.algo, dth, aux);
+                free(aux->tool.algo);
+                free(aux->tool.path);
+                free(aux->tool.args);
+                free(aux);
+            }
+        } else if (tool != deflt_patch_tools && tool != deflt_decomp_tools) {
+            err = E_UA_ERR;
+            break;
+        }
+    }
+
+    return err;
+}
+
+
+static void clear_delta_tool(delta_tool_hh_t * hash) {
+
+    delta_tool_hh_t *dth, *aux;
+
+    if (!hash) { return; }
+
+    HASH_ITER(hh, hash, dth, aux) {
+
+        HASH_DEL(hash, dth);
+        free(dth->tool.algo);
+        free(dth->tool.path);
+        free(dth->tool.args);
+        free(dth);
+
+    }
+
+}
+
+
+static char * get_deflt_delta_cap(delta_tool_hh_t * patchTool, delta_tool_hh_t * decompTool) {
 
     int memory = 100;
-    char format[6] = "";
-    char compression[6] = "";
+    char format[7] = "";
+    char compression[7] = "";
+    delta_tool_hh_t * dth = 0;
 
-    if (!is_cmd_runnable("bspatch"))
-        strcat(format, "1,");
-    if (!is_cmd_runnable("xdelta3"))
-        strcat(format, "2,");
-    if (!is_cmd_runnable("espatch"))
-        strcat(format, "3,");
+    HASH_FIND_STR(patchTool, "bsdiff", dth);
+    if (dth) strcat(format, "1,");
+    HASH_FIND_STR(patchTool, "rfc3284", dth);
+    if (dth) strcat(format, "2,");
+    HASH_FIND_STR(patchTool, "esdiff", dth);
+    if (dth) strcat(format, "3,");
 
-    if (!is_cmd_runnable("gzip"))
-        strcat(compression, "1,");
-    if (!is_cmd_runnable("bzip2"))
-        strcat(compression, "2,");
-    if (!is_cmd_runnable("xz"))
-        strcat(compression, "3,");
+    HASH_FIND_STR(decompTool, "gzip", dth);
+    if (dth) strcat(compression, "1,");
+    HASH_FIND_STR(decompTool, "bzip2", dth);
+    if (dth) strcat(compression, "2,");
+    HASH_FIND_STR(decompTool, "xz", dth);
+    if (dth) strcat(compression, "3,");
 
     format[strlen(format) - 1] = 0;
     compression[strlen(compression) - 1] = 0;
@@ -35,158 +245,79 @@ char * get_delta_capability() {
 }
 
 
-int is_delta_package(char *pkg) {
+static char * expand_tool_args(const char * args, const char * old, const char * new, const char * diff) {
 
-    return !zip_find_file(pkg, MANIFEST_DIFF);
+    int i = 0;
+    const char *rp, *ex, *s = args;
+
+    char * res = f_malloc(strlen(s) + 1 +
+            ((old) ? SUBSTRCNT(s, OFA) * (strlen(old) - strlen(OFA)) : 0) +
+            ((new) ? SUBSTRCNT(s, NFA) * (strlen(new) - strlen(NFA)) : 0) +
+            ((diff) ? SUBSTRCNT(s, PFA) * (strlen(diff) - strlen(PFA)) : 0));
+
+    while (*s) {
+        if (((rp = old) && (strcasestr(s, ex = OFA) == s)) || ((rp = new) && (strcasestr(s, ex = NFA) == s)) || ((rp = diff) && (strcasestr(s, ex = PFA) == s))) {
+            strcpy(&res[i], rp);
+            i += strlen(rp);
+            s += strlen(ex);
+        } else {
+            res[i++] = *s++;
+        }
+    }
+    res[i] = 0;
+
+    return res;
 }
 
 
-int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg) {
+
+static int delta_patch(diff_info_t * diffInfo, const char * old, const char * new, const char * diff) {
 
     int err = E_UA_OK;
-    diff_info_t *di, *aux, *diList = 0;
-    char *oldPath = 0, *diffPath = 0, *newPath = 0;
-    char *manifest_diff = 0, *manifest_old = 0, *manifest_new = 0;
+    char * cmd = 0;
+    char * diffp = 0;
+    char * targs;
+    delta_tool_hh_t * decompdth, * patchdth = 0;
 
     do {
 
-        BOLT_SYS(mkdirp(oldPath = JOIN(ua_cfg.cache_dir, "delta", "old"), 0755) && (errno != EEXIST), "failed to make directory %s", oldPath);
-        BOLT_SYS(mkdirp(diffPath = JOIN(ua_cfg.cache_dir, "delta", "diff"), 0755) && (errno != EEXIST), "failed to make directory %s", diffPath);
-        BOLT_SYS(mkdirp(newPath = JOIN(ua_cfg.cache_dir, "delta", "new"), 0755) && (errno != EEXIST), "failed to make directory %s", newPath);
+#define TOOL_EXEC(_t, _o, _n, _p) \
+        { \
+            targs = expand_tool_args(_t->tool.args, _o, _n, _p); \
+            cmd = f_asprintf("%s %s", _t->tool.path, targs); \
+            DBG("Executing: %s", cmd); \
+            if (system(cmd)) err = E_UA_SYS; \
+            free(targs); \
+            free(cmd); \
+        } do{}while(0)
 
-        manifest_diff = JOIN(diffPath, MANIFEST_DIFF);
-        manifest_old = JOIN(oldPath, MANIFEST);
-        manifest_new = JOIN(newPath, MANIFEST);
-
-        BOLT_IF(unzip(oldPkg, oldPath), E_UA_ERR, "unzip failed: %s", oldPkg);
-        BOLT_IF(unzip(diffPkg, diffPath), E_UA_ERR, "unzip failed: %s", diffPkg);
-
-        BOLT_IF(parse_diff_manifest(manifest_diff, &diList), E_UA_ERR, "failed to parse: %s", manifest_diff);
-
-        DL_FOREACH_SAFE(diList, di, aux) {
-
-            char * oldFile = JOIN(oldPath, di->name);
-            char * diffFile = JOIN(diffPath, di->name);
-            char * newFile = JOIN(newPath, di->name);
-
-            if(di->type == DT_ADDED) {
-
-                if (copy_file(diffFile, newFile)) err = E_UA_ERR;
-
-            } else if (di->type == DT_UNCHANGED) {
-
-                if (verify_file(oldFile, di->sha256.old) ||
-                        copy_file(oldFile, newFile)) err = E_UA_ERR;
-
-            } else if (di->type == DT_CHANGED) {
-
-                if (verify_file(oldFile, di->sha256.old) ||
-                        patch_delta(di, oldFile, diffFile, newFile) ||
-                        verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
-
-            }
-
-            DL_DELETE(diList, di);
-            free(di->name);
-            free(di);
-            free(oldFile);
-            free(diffFile);
-            free(newFile);
-
-            if (err) break;
+        if (strcmp(diffInfo->format, "none")) {
+            HASH_FIND_STR(delta_stg.patch_tool, diffInfo->format, patchdth);
+            BOLT_IF(!patchdth, E_UA_ERR, "Diff format %s not found", diffInfo->format);
         }
 
-        if (!err) {
-            BOLT_IF(copy_file(manifest_old, manifest_new), E_UA_ERR, "failed to copy manifest");
-            BOLT_IF(zip(newPkg, newPath), E_UA_ERR, "zip failed: %s", newPkg);
+        if (strcmp(diffInfo->compression, "none") && !(patchdth && patchdth->tool.intl)) {
+            HASH_FIND_STR(delta_stg.decomp_tool, diffInfo->compression, decompdth);
+            BOLT_IF(!decompdth, E_UA_ERR, "Decompression %s not found", diffInfo->compression);
+
+            diffp = f_asprintf("%s%s", diff, ".patch");
+            TOOL_EXEC(decompdth, diff, diffp, 0);
+            if (err) { DBG_SYS("Decompression failed"); break;}
         }
+
+        if (patchdth) {
+            chkdirp(new);
+            TOOL_EXEC(patchdth, old, new, diffp ? diffp : diff);
+            if (err) { DBG_SYS("Patching failed"); break;}
+        } else {
+            BOLT_SUB(copy_file(diffp ? diffp : diff, new));
+        }
+
+#undef TOOL_EXEC
 
     } while (0);
 
-    if (manifest_diff) free(manifest_diff);
-    if (manifest_old)  free(manifest_old);
-    if (manifest_new)  free(manifest_new);
-
-#define FREEPATH(x) { if(x) { if(rmdirp(x)) DBG("failed to remove directory %s", x); free(x);}}
-
-    FREEPATH(oldPath);
-    FREEPATH(diffPath);
-    FREEPATH(newPath);
-
-#undef FREEPATH
-
-    return err;
-}
-
-
-static int patch_delta(diff_info_t * diffInfo, const char * old, const char * diff, const char * new) {
-
-    int err = E_UA_OK;
-    char * cmd = 0;
-
-    DBG("patching file old:%s diff:%s new:%s", old, diff, new);
-
-#define COMMAND(NAME, O, D, N) f_asprintf("%s %s %s %s", NAME, O, D, N)
-
-    if (diffInfo->format == DF_BSDIFF) {
-
-        cmd = COMMAND("bspatch", old, new, diff);
-
-    } else if (diffInfo->format == DF_ESDIFF) {
-
-        cmd = COMMAND("espatch", old, new, diff);
-
-    } else if (diffInfo->format == DF_RFC3284) {
-
-        char * diffp = f_asprintf("%s%s", diff, ".patch");
-         if (!(err = uncompress(diffInfo->compression, diff, diffp)))
-             cmd = COMMAND("xdelta3 -d -s", old, diffp, new);
-         free(diffp);
-
-    } else if (diffInfo->format == DF_NONE) {
-
-        err = uncompress(diffInfo->compression, diff, new);
-
-    }
-#undef COMMAND
-
-    if (cmd) {
-        chkdirp(new);
-        DBG("Executing: %s", cmd);
-        err = system(cmd);
-        free(cmd);
-    }
-
-    return err;
-}
-
-
-static int uncompress(diff_compression_t cmp, const char * old, const char * new) {
-
-    int err = E_UA_OK;
-    char * cmd = 0;
-
-    DBG("uncompressing file %s to %s", old, new);
-
-#define COMMAND(NAME, O, N) f_asprintf("%s %s > %s", NAME, O, N)
-
-    if (cmp == DC_XZ) {
-        cmd = COMMAND("xz -cd", old, new);
-    } else if (cmp == DC_BZIP2) {
-        cmd = COMMAND("bzip2 -cd", old, new);
-    } else if (cmp == DC_GZIP) {
-        cmd = COMMAND("gzip -cd", old, new);
-    } else if (cmp == DC_NONE) {
-        cmd = COMMAND("cat", old, new);
-    }
-#undef COMMAND
-
-    if (cmd) {
-        chkdirp(new);
-        DBG("Executing: %s", cmd);
-        err = system(cmd);
-        free(cmd);
-    }
+    if (diffp) free(diffp);
 
     return err;
 }
@@ -209,47 +340,5 @@ static int verify_file(const char * file, const char * sha256) {
     }
 
     return err;
-}
-
-
-diff_format_t diff_format_enum(const char * f) {
-
-    if (!f) { return 0; }
-
-    if (!strcasecmp("bsdiff", f)) {
-        return DF_BSDIFF;
-    }
-    if (!strcasecmp("esdiff", f)) {
-        return DF_ESDIFF;
-    }
-    if (!strcasecmp("rfc3284", f)) {
-        return DF_RFC3284;
-    }
-    if (!strcasecmp("none", f)) {
-        return DF_NONE;
-    }
-
-    return 0;
-}
-
-
-diff_compression_t diff_compression_enum(const char * c) {
-
-    if (!c) { return 0; }
-
-    if (!strcasecmp("xz", c)) {
-        return DC_XZ;
-    }
-    if (!strcasecmp("bzip2", c)) {
-        return DC_BZIP2;
-    }
-    if (!strcasecmp("gzip", c)) {
-        return DC_GZIP;
-    }
-    if (!strcasecmp("none", c)) {
-        return DC_NONE;
-    }
-
-    return 0;
 }
 

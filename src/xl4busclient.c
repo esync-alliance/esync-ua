@@ -21,7 +21,7 @@ static xl4bus_asn1_t * load_full(char * path);
 static char * simple_password (struct xl4bus_X509v3_Identity * id);
 
 xl4bus_client_t m_xl4bus_clt;
-char * m_xl4bus_url;
+char * m_xl4bus_url = 0;
 
 void debug_print(const char * msg) {
 
@@ -29,14 +29,14 @@ void debug_print(const char * msg) {
 
 }
 
-int xl4bus_client_init(ua_cfg_t * cfg) {
+int xl4bus_client_init(char * url, char * cert_dir) {
 
     int err = E_UA_OK;
     xl4bus_ll_cfg_t ll_cfg;
 
     do {
 
-        m_xl4bus_url = cfg->url;
+        m_xl4bus_url = f_strdup(url);
 
         memset(&ll_cfg, 0, sizeof(xl4bus_ll_cfg_t));
         ll_cfg.debug_f = debug_print;
@@ -62,14 +62,18 @@ int xl4bus_client_init(ua_cfg_t * cfg) {
         m_xl4bus_clt.identity.trust.update_agent = cfg->ua_type;
 #else
 
-        DBG("Loading x509 credentials from : %s", cfg->cert_dir);
-        BOLT_IF(load_xl4_x509_creds(&m_xl4bus_clt.identity, cfg->cert_dir), E_UA_ERR, "x509 credentials load failed!");
+        DBG("Loading x509 credentials from : %s", cert_dir);
+        BOLT_IF(load_xl4_x509_creds(&m_xl4bus_clt.identity, cert_dir), E_UA_ERR, "x509 credentials load failed!");
 
 #endif
 
         BOLT_SUB(xl4bus_init_client(&m_xl4bus_clt, m_xl4bus_url));
 
     } while (0);
+
+    if (err) {
+        free(m_xl4bus_url);
+    }
 
     return err;
 
@@ -78,6 +82,7 @@ int xl4bus_client_init(ua_cfg_t * cfg) {
 
 int xl4bus_client_stop(void) {
 
+    free(m_xl4bus_url);
     return xl4bus_stop_client(&m_xl4bus_clt);
 
 }

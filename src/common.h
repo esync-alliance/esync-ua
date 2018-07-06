@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -40,6 +41,7 @@ char * f_strdup(const char *);
 char * f_strndup(const void *s, size_t len);
 void * f_malloc(size_t);
 void * f_realloc(void *, size_t);
+void f_free(void * p);
 char * f_dirname(const char * s);
 char * f_basename(const char * s);
 

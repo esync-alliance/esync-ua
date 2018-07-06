@@ -74,22 +74,28 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
         } else if (xmlStrEqual(n->name, XMLT "format")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                diffInfo->format = diff_format_enum((const char *)c);
+                if (!diffInfo->format) {
+                    diffInfo->format = f_strdup((const char *)c);
+                }
                 xmlFree(c);
             }
 
         } else if (xmlStrEqual(n->name, XMLT "compression")) {
 
             if ((c = xmlNodeGetContent(n))) {
-                diffInfo->compression = diff_compression_enum((const char *)c);
+                if (!diffInfo->compression) {
+                    diffInfo->compression = f_strdup((const char *)c);
+                }
                 xmlFree(c);
             }
         }
     }
 
-    if (!S(diffInfo->name)) {
+    if (!S(diffInfo->name) || !S(diffInfo->format) || !S(diffInfo->compression)) {
         DBG("Incomplete diff node");
         if (diffInfo->name) free(diffInfo->name);
+        if (diffInfo->format) free(diffInfo->format);
+        if (diffInfo->compression) free(diffInfo->compression);
         free(diffInfo);
         diffInfo = NULL;
     }

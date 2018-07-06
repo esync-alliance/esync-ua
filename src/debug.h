@@ -7,7 +7,7 @@
 
 #include "common.h"
 
-extern ua_cfg_t ua_cfg;
+extern int ua_debug;
 
 #if !XL4_HAVE_GETTIMEOFDAY
 #define _ltime_ \
@@ -26,7 +26,7 @@ extern ua_cfg_t ua_cfg;
     sprintf(now+15, "%03ld", tv.tv_usec)
 #endif
 
-#define DBG(a,b...) do { if (ua_cfg.debug) { \
+#define DBG(a,b...) do { if (ua_debug) { \
     _ltime_; \
     char * _str = f_asprintf("[%s] %s:%d " a, now, chop_path(__FILE__), __LINE__, ## b); \
     if (_str) { \
@@ -36,7 +36,7 @@ extern ua_cfg_t ua_cfg;
     } \
 } } while(0)
 
-#define DBG_SYS(a,b...) do { if (ua_cfg.debug) { \
+#define DBG_SYS(a,b...) do { if (ua_debug) { \
     int _errno = errno; \
     _ltime_; \
     char * _str = f_asprintf("[%s] %s:%d error %s(%d): " a, now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \

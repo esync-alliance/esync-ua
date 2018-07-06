@@ -18,20 +18,6 @@ typedef enum diff_type {
     DT_UNCHANGED
 } diff_type_t;
 
-typedef enum diff_format {
-    DF_BSDIFF = 1,
-    DF_ESDIFF,
-    DF_RFC3284,
-    DF_NONE
-} diff_format_t;
-
-typedef enum diff_compression {
-    DC_XZ = 1,
-    DC_BZIP2,
-    DC_GZIP,
-    DC_NONE
-} diff_compression_t;
-
 typedef struct diff_info {
 
     diff_type_t type;
@@ -40,25 +26,38 @@ typedef struct diff_info {
         char old[SHA256_HEX_LENGTH];
         char new[SHA256_HEX_LENGTH];
     } sha256;
-    diff_format_t format;
-    diff_compression_t compression;
+    char * format;
+    char * compression;
 
     struct diff_info * next;
     struct diff_info * prev;
 } diff_info_t;
 
 
+typedef struct delta_tool_hh {
+    delta_tool_t tool;
+    UT_hash_handle hh;
+} delta_tool_hh_t;
+
 typedef struct delta_stg {
 
     char * delta_cap;
+    char * cache_dir;
+    delta_tool_hh_t * patch_tool;
+    delta_tool_hh_t * decomp_tool;
 
 } delta_stg_t;
 
 
-char * get_delta_capability();
-int is_delta_package(char *pkg);
-int delta_reconstruct(char * oldPkg, char * diffPkg, char * newPkg);
-diff_format_t diff_format_enum(const char * f);
-diff_compression_t diff_compression_enum(const char * c);
+#define OFA "{o}"
+#define NFA "{n}"
+#define PFA "{p}"
+
+
+int delta_init(char * cacheDir, delta_cfg_t * deltaConfig);
+void delta_stop();
+const char * get_delta_capability();
+int is_delta_package(const char *pkgFile);
+int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile);
 
 #endif /* _UA_DELTA_H_ */

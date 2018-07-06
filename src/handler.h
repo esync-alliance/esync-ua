@@ -64,6 +64,13 @@ typedef struct runner_info {
 
 } runner_info_t;
 
+typedef struct ua_internal {
+
+    int delta;
+    char * cache_dir;
+    char * backup_dir;
+
+} ua_internal_t;
 
 void handle_status(int status);
 void handle_delivered(const char * msg, int ok);
