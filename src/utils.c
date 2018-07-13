@@ -174,7 +174,7 @@ static int json_get_property(json_object * json, enum json_type typ, void * valu
 
     va_end(ap);
 
-    if (err != E_UA_OK) {
+    if (err) {
         switch (typ) {
             case json_type_object:
             case json_type_array:

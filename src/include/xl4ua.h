@@ -7,6 +7,7 @@
 
 typedef enum install_state {
     INSTALL_PENDING,
+    INSTALL_READY,
     INSTALL_INPROGRESS,
     INSTALL_COMPLETED,
     INSTALL_FAILED,

@@ -12,6 +12,8 @@
 #define QUERY_PACKAGE       "xl4.query-package"
 #define READY_DOWNLOAD      "xl4.ready-download"
 #define READY_UPDATE        "xl4.ready-update"
+#define PREPARE_UPDATE      "xl4.prepare-update"
+#define CONFIRM_UPDATE      "xl4.confirm-update"
 #define DOWNLOAD_REPORT     "xl4.download-report"
 #define SOTA_REPORT         "xl4.sota-report"
 #define LOG_REPORT          "xl4.log-report"

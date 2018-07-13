@@ -8,6 +8,8 @@ static char * get_deflt_delta_cap(delta_tool_hh_t * patchTool, delta_tool_hh_t *
 static char * expand_tool_args(const char * args, const char * old, const char * new, const char * diff);
 static int delta_patch(diff_info_t * diffInfo, const char * old, const char * new, const char * diff);
 static int verify_file(const char * file, const char * sha256);
+static void free_delta_tool_hh (delta_tool_hh_t * dth);
+static void free_diff_info(diff_info_t * di);
 delta_stg_t delta_stg = {0};
 
 delta_tool_t deflt_patch_tools[] = {
@@ -117,7 +119,7 @@ int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile) 
 
                 if(di->type == DT_ADDED) {
 
-                    if (copy_file(diffFile, newFile)) err = E_UA_ERR;
+                    if (verify_file(diffFile, di->sha256.new) || copy_file(diffFile, newFile)) err = E_UA_ERR;
 
                 } else if (di->type == DT_UNCHANGED) {
 
@@ -136,10 +138,7 @@ int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile) 
             }
 
             DL_DELETE(diList, di);
-            free(di->name);
-            free(di->format);
-            free(di->compression);
-            free(di);
+            free_diff_info(di);
 
         }
 
@@ -154,9 +153,9 @@ int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile) 
     if(diffPath) { if(rmdirp(diffPath)) DBG("failed to remove directory %s", diffPath); free(diffPath); }
     if(newPath) { if(rmdirp(newPath)) DBG("failed to remove directory %s", newPath); free(newPath); }
 
-    if (manifest_diff) free(manifest_diff);
-    if (manifest_old)  free(manifest_old);
-    if (manifest_new)  free(manifest_new);
+    f_free(manifest_diff);
+    f_free(manifest_old);
+    f_free(manifest_new);
 
     return err;
 }
@@ -183,10 +182,7 @@ static int add_delta_tool(delta_tool_hh_t ** hash, delta_tool_t * tool, int coun
                 HASH_ADD_STR(*hash, tool.algo, dth);
             } else {
                 HASH_REPLACE_STR(*hash, tool.algo, dth, aux);
-                free(aux->tool.algo);
-                free(aux->tool.path);
-                free(aux->tool.args);
-                free(aux);
+                free_delta_tool_hh(aux);
             }
         } else if (tool != deflt_patch_tools && tool != deflt_decomp_tools) {
             err = E_UA_ERR;
@@ -207,10 +203,7 @@ static void clear_delta_tool(delta_tool_hh_t * hash) {
     HASH_ITER(hh, hash, dth, aux) {
 
         HASH_DEL(hash, dth);
-        free(dth->tool.algo);
-        free(dth->tool.path);
-        free(dth->tool.args);
-        free(dth);
+        free_delta_tool_hh(dth);
 
     }
 
@@ -340,5 +333,23 @@ static int verify_file(const char * file, const char * sha256) {
     }
 
     return err;
+}
+
+static void free_delta_tool_hh(delta_tool_hh_t * dth) {
+
+    f_free(dth->tool.algo);
+    f_free(dth->tool.path);
+    f_free(dth->tool.args);
+    f_free(dth);
+
+}
+
+static void free_diff_info(diff_info_t * di) {
+
+    f_free(di->name);
+    f_free(di->format);
+    f_free(di->compression);
+    f_free(di);
+
 }
 
