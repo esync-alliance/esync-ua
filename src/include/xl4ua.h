@@ -49,7 +49,7 @@ typedef install_state_t (*ua_on_install)(char * pkgName, char * version, char * 
 
 typedef void (*ua_on_post_install)(char * pkgName);
 
-typedef int (*ua_on_prepare_file)(char * pkgName, char * version, char * pkgFile, char ** newFile);
+typedef install_state_t (*ua_on_prepare_install)(char * pkgName, char * version, char * pkgFile, char ** newFile);
 
 
 typedef struct ua_routine {
@@ -69,8 +69,8 @@ typedef struct ua_routine {
     // (optional) to perform additional actions after install
     ua_on_post_install      on_post_install;
 
-    // (optional) to prepare file by transferring to desired path
-    ua_on_prepare_file      on_prepare_file;
+    // (optional) to prepare for install
+    ua_on_prepare_install   on_prepare_install;
 
 } ua_routine_t;
 
