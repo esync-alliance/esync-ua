@@ -2,7 +2,6 @@
  * updateagent.c
  */
 
-#include "ua_version.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -33,7 +32,7 @@ static void _help() {
 
 int main(int argc, char ** argv) {
 
-    printf("updateagent %s, xl4bus %s\n", BUILD_VERSION, ua_get_xl4bus_version());
+    printf("updateagent %s, xl4bus %s\n", ua_get_updateagent_version(), ua_get_xl4bus_version());
 
     int c = 0;
     ua_cfg_t cfg;

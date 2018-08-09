@@ -91,12 +91,10 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
         }
     }
 
-    if (!S(diffInfo->name) || !S(diffInfo->format) || !S(diffInfo->compression)) {
+    if (!S(diffInfo->name) ||
+            (xmlStrEqual(ptr->parent->name, XMLT "changed") && (!S(diffInfo->format) || !S(diffInfo->compression)))) {
         DBG("Incomplete diff node");
-        if (diffInfo->name) free(diffInfo->name);
-        if (diffInfo->format) free(diffInfo->format);
-        if (diffInfo->compression) free(diffInfo->compression);
-        free(diffInfo);
+        free_diff_info(diffInfo);
         diffInfo = NULL;
     }
 
@@ -110,7 +108,7 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
 
     int err = E_UA_OK;
     diff_type_t typ;
-    diff_info_t * di;
+    diff_info_t * di, * aux, * diList = 0;
     xmlDocPtr doc = NULL;
     xmlNodePtr root, node, fnode = NULL;
 
@@ -130,10 +128,15 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
                 XMLELE_ITER_NAME(node, "file", fnode) {
                     if ((di = get_xml_diff_info(fnode))) {
                         di->type = typ;
-                        DL_APPEND(*diffInfo, di);
+                        DL_APPEND(diList, di);
+                    } else {
+                        err = E_UA_ERR;
+                        break;
                     }
                 }
             }
+
+            if (err) { break; }
         }
 
     } while (0);
@@ -141,6 +144,15 @@ int parse_diff_manifest(char * xmlFile, diff_info_t ** diffInfo) {
     if (doc) {
         xmlFreeDoc(doc);
         xmlCleanupParser();
+    }
+
+    if (!err) {
+        *diffInfo = diList;
+    } else {
+        DL_FOREACH_SAFE(diList, di, aux) {
+            DL_DELETE(diList, di);
+            free_diff_info(di);
+        }
     }
 
     return err;
@@ -210,7 +222,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr) {
 int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
 
     int err = E_UA_OK;
-    pkg_file_t * pf;
+    pkg_file_t * pf, * pfList = 0;
     xmlDocPtr doc = NULL;
     xmlNodePtr root, node = NULL;
 
@@ -223,11 +235,13 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
         root = xmlDocGetRootElement(doc);
 
         XMLELE_ITER_NAME(root, "package", node) {
-            if ((pf = get_xml_pkg_file(node)) && (!access(pf->file, R_OK))) {
-                DL_APPEND(*pkgFile, pf);
-            } else {
-                free(pf);
-                //TODO: Remove from pkg manifest
+            if ((pf = get_xml_pkg_file(node))) {
+                if (!access(pf->file, R_OK)) {
+                    DL_APPEND(pfList, pf);
+                } else {
+                    free_pkg_file(pf);
+                    //TODO: Remove from pkg manifest
+                }
             }
         }
 
@@ -236,6 +250,10 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
     if (doc) {
         xmlFreeDoc(doc);
         xmlCleanupParser();
+    }
+
+    if (!err) {
+        *pkgFile = pfList;
     }
 
     return err;

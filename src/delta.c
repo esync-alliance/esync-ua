@@ -8,8 +8,7 @@ static char * get_deflt_delta_cap(delta_tool_hh_t * patchTool, delta_tool_hh_t *
 static char * expand_tool_args(const char * args, const char * old, const char * new, const char * diff);
 static int delta_patch(diff_info_t * diffInfo, const char * old, const char * new, const char * diff);
 static int verify_file(const char * file, const char * sha256);
-static void free_delta_tool_hh (delta_tool_hh_t * dth);
-static void free_diff_info(diff_info_t * di);
+
 delta_stg_t delta_stg = {0};
 
 delta_tool_t deflt_patch_tools[] = {
@@ -127,7 +126,7 @@ int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile) 
 
                 } else if (di->type == DT_CHANGED) {
 
-                    if (verify_file(oldFile, di->sha256.old) || delta_patch(di, oldFile, diffFile, newFile) || verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
+                    if (verify_file(oldFile, di->sha256.old) || delta_patch(di, oldFile, newFile, diffFile) || verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
 
                 }
 
@@ -185,6 +184,7 @@ static int add_delta_tool(delta_tool_hh_t ** hash, delta_tool_t * tool, int coun
                 free_delta_tool_hh(aux);
             }
         } else if (tool != deflt_patch_tools && tool != deflt_decomp_tools) {
+            DBG("failed to add %s tool: %s %s", (isPatchTool ? "patch" : "diff"), SAFE_STR((tool + i)->algo), SAFE_STR((tool + i)->path));
             err = E_UA_ERR;
             break;
         }
@@ -335,7 +335,7 @@ static int verify_file(const char * file, const char * sha256) {
     return err;
 }
 
-static void free_delta_tool_hh(delta_tool_hh_t * dth) {
+void free_delta_tool_hh(delta_tool_hh_t * dth) {
 
     f_free(dth->tool.algo);
     f_free(dth->tool.path);
@@ -344,7 +344,7 @@ static void free_delta_tool_hh(delta_tool_hh_t * dth) {
 
 }
 
-static void free_diff_info(diff_info_t * di) {
+void free_diff_info(diff_info_t * di) {
 
     f_free(di->name);
     f_free(di->format);

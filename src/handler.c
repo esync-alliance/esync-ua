@@ -10,6 +10,7 @@
 #include "delta.h"
 #include "xml.h"
 #include "xl4busclient.h"
+#include "ua_version.h"
 
 typedef struct update_err {
     int incremental_failed;
@@ -35,7 +36,6 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static int patch_delta(char * pkgManifest, char * version, char * diffFile, char * newFile);
 static char * install_state_string(install_state_t state);
 static char * log_type_string(log_type_t log);
-static void free_pkg_file(pkg_file_t * pkgFile);
 static int send_message(json_object * jsonObj);
 void * runner_loop(void * arg);
 
@@ -52,11 +52,11 @@ int ua_init(ua_cfg_t * uaConfig) {
 
         ua_debug = uaConfig->debug;
 
-        BOLT_IF(!uaConfig || !uaConfig->url
+        BOLT_IF(!uaConfig || !S(uaConfig->url)
 #ifdef USE_XL4BUS_TRUST
-                || !uaConfig->ua_type
+                || !S(uaConfig->ua_type)
 #else
-                || !uaConfig->cert_dir
+                || !S(uaConfig->cert_dir)
 #endif
                 , E_UA_ARG, "configuration error");
 
@@ -561,11 +561,9 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-            !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-            !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
-            !get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions)) {
+            !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        updateFile.version = pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
+        updateFile.version = pkgFile.version = pkgInfo.version;
 
         if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
             !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
@@ -732,15 +730,14 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     char * pkgDir = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name);
     char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);
     backupFile->file = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
-    backupFile->version = pkgFile->version;
+    backupFile->version = f_strdup(pkgFile->version);
     backupFile->downloaded = 1;
 
     if (!strcmp(pkgFile->file, backupFile->file)) {
 
         DBG("Back up already exists: %s", backupFile->file);
 
-    } else if (!rmdirp(pkgDir) &&
-            !calc_sha256_b64(pkgFile->file, backupFile->sha256b64) &&
+    } else if (!calc_sha256_b64(pkgFile->file, backupFile->sha256b64) &&
             !copy_file(pkgFile->file, backupFile->file) &&
             !add_pkg_file_manifest(pkgManifest, backupFile)) {
 
@@ -796,11 +793,19 @@ static char * log_type_string(log_type_t log) {
     return str;
 }
 
-static void free_pkg_file(pkg_file_t * pkgFile) {
+
+void free_pkg_file(pkg_file_t * pkgFile) {
 
     f_free(pkgFile->version);
     f_free(pkgFile->file);
     f_free(pkgFile);
+
+}
+
+
+const char * ua_get_updateagent_version() {
+
+    return BUILD_VERSION;
 
 }
 

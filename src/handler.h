@@ -79,4 +79,6 @@ void handle_delivered(const char * msg, int ok);
 void handle_presence(int connected, int disconnected);
 void handle_message(const char * type, const char * msg, size_t len);
 
+void free_pkg_file(pkg_file_t * pkgFile);
+
 #endif /* _UA_HANDLER_H_ */

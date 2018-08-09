@@ -25,17 +25,20 @@ uint64_t currentms() {
 
 int mkdirp(const char* path, int umask) {
 
-    if (*path != '/') {
+    char * dpath = f_strdup(path);
+    char * aux = dpath;
+    int rc;
+    struct stat statb;
+
+    if (*aux != '/') {
         errno = EINVAL;
+        free(dpath);
         return 1;
     }
 
-    int rc = 0;
-    struct stat statb;
-    char * dpath = f_strdup(path);
-    char * aux = dpath;
-
     while (*(aux+1) == '/') { aux++; }
+
+    if (!*(aux+1)) { free(dpath); return 0; }
 
     while (1) {
 
@@ -49,11 +52,11 @@ int mkdirp(const char* path, int umask) {
             *aux = 0;
         }
 
-        rc = stat(path, &statb);
+        rc = stat(dpath, &statb);
 
         if (rc || !S_ISDIR(statb.st_mode)) {
-            rc = mkdir(path, umask);
-            if (rc) { break; }
+            rc = mkdir(dpath, umask);
+            if (rc) { free(dpath); return rc; }
         }
 
         if (!aux) { break; }
@@ -61,8 +64,8 @@ int mkdirp(const char* path, int umask) {
     }
 
     free(dpath);
+    return 0;
 
-    return rc;
 }
 
 
