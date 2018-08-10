@@ -329,9 +329,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
 
         if (ua_intl.delta) {
-
             json_object_object_add(pkgObject, "delta-cap", json_object_new_string(get_delta_capability()));
-
         }
 
         if (S(ua_intl.backup_dir)) {
@@ -346,8 +344,12 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
                     json_object * versionObject = json_object_new_object();
                     json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
-                    json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha256b64));
                     json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded? 1:0));
+
+                    if (ua_intl.delta) {
+                        json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha256b64));
+                    }
+
                     json_object_object_add(verListObject, pf->version, versionObject);
 
                     DL_DELETE(pkgFile, pf);
