@@ -406,8 +406,9 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-            !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-            !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version)) {
+            !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+
+        get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
 
         char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
         pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
@@ -452,9 +453,10 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-            !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-            !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
-            !get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions)) {
+            !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+
+        get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
+        get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions);
 
         char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
 
