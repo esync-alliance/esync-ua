@@ -438,7 +438,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
         }
     }
 
-    send_update_status(&pkgInfo, 0, state, &updateErr);
+    send_update_status(&pkgInfo, &pkgFile, state, &updateErr);
 }
 
 
