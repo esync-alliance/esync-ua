@@ -6,33 +6,33 @@
 
 pkg_version_t * package_version = 0;
 
-static int get_tmpl_version(char * pkgName, char ** version) {
+static int get_tmpl_version(const char * pkgName, char ** version) {
 
     TMPL_VER_GET(pkgName, *version);
     return E_UA_OK;
 
 }
 
-static int set_tmpl_version(char * pkgName, char * version) {
+static int set_tmpl_version(const char * pkgName, const char * version) {
 
     TMPL_VER_SET(pkgName, version);
     return E_UA_OK;
 
 }
 
-static install_state_t do_tmpl_pre_install(char * pkgName, char * version, char * pkgFile) {
+static install_state_t do_tmpl_pre_install(const char * pkgName, const char * version, const char * pkgFile) {
 
     return INSTALL_INPROGRESS;
 
 }
 
-static install_state_t do_tmpl_install(char * pkgName, char * version, char * pkgFile) {
+static install_state_t do_tmpl_install(const char * pkgName, const char * version, const char * pkgFile) {
 
     return INSTALL_COMPLETED;
 
 }
 
-static void do_tmpl_post_install(char * pkgName) {
+static void do_tmpl_post_install(const char * pkgName) {
 
     return;
 

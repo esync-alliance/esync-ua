@@ -39,17 +39,17 @@ typedef struct log_data {
 #define E_UA_SYS        (-4)
 
 
-typedef int (*ua_on_get_version)(char * pkgName, char ** version);
+typedef int (*ua_on_get_version)(const char * pkgName, char ** version);
 
-typedef int (*ua_on_set_version)(char * pkgName, char * version);
+typedef int (*ua_on_set_version)(const char * pkgName, const char * version);
 
-typedef install_state_t (*ua_on_pre_install)(char * pkgName, char * version, char * pkgFile);
+typedef install_state_t (*ua_on_pre_install)(const char * pkgName, const char * version, const char * pkgFile);
 
-typedef install_state_t (*ua_on_install)(char * pkgName, char * version, char * pkgFile);
+typedef install_state_t (*ua_on_install)(const char * pkgName, const char * version, const char * pkgFile);
 
-typedef void (*ua_on_post_install)(char * pkgName);
+typedef void (*ua_on_post_install)(const char * pkgName);
 
-typedef install_state_t (*ua_on_prepare_install)(char * pkgName, char * version, char * pkgFile, char ** newFile);
+typedef install_state_t (*ua_on_prepare_install)(const char * pkgName, const char * version, const char * pkgFile, char ** newFile);
 
 
 typedef struct ua_routine {
