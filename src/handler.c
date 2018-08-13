@@ -31,10 +31,12 @@ static install_state_t prepare_update_action(ua_routine_t * uar, pkg_info_t * pk
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
-static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, install_state_t state, update_err_t * ue);
+static void send_install_update_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue);
+static void send_download_update_status(pkg_info_t * pkgInfo, download_state_t state);
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static int patch_delta(char * pkgManifest, char * version, char * diffFile, char * newFile);
 static char * install_state_string(install_state_t state);
+static char * download_state_string(download_state_t state);
 static char * log_type_string(log_type_t log);
 static int send_message(json_object * jsonObj);
 void * runner_loop(void * arg);
@@ -382,18 +384,17 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
+    download_state_t state = DOWNLOAD_CONSENT;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        DBG("DMClient informs that package %s having version %s is available for download", pkgInfo.name, pkgInfo.version);
-        DBG("Instructing DMClient to download it");
-
-        install_state_t state = INSTALL_PENDING;
-        send_update_status(&pkgInfo, 0, state, 0);
+        if (uar->on_prepare_download) {
+            state = (*uar->on_prepare_download)(pkgInfo.name, pkgInfo.version);
+            send_download_update_status(&pkgInfo, state);
+        }
     }
-
 }
 
 
@@ -440,7 +441,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
         }
     }
 
-    send_update_status(&pkgInfo, &pkgFile, state, &updateErr);
+    send_install_update_status(&pkgInfo, state, &pkgFile, &updateErr);
 }
 
 
@@ -471,7 +472,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     ((!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile)) && (bck = 1))) {
 
                 if (S(pkgInfo.rollback_version)) {
-                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, state = INSTALL_ROLLBACK, 0);
+                    send_install_update_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, 0);
                 }
 
                 if (bck || (prepare_update_action(uar, &pkgInfo, &pkgFile) == INSTALL_READY)) {
@@ -502,7 +503,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                         updateFile.downloaded = 1;
                     }
 
-                    if ((state = pre_update_action(uar, &pkgInfo, &updateFile)) == INSTALL_INPROGRESS) {
+                    if ((state = pre_update_action(uar, &pkgInfo, &updateFile)) == INSTALL_IN_PROGRESS) {
 
                         state = update_action(uar, &pkgInfo, &updateFile);
 
@@ -522,7 +523,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
             } else {
                 if (S(pkgInfo.rollback_version)) {
-                    send_update_status(&pkgInfo, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, state = INSTALL_ROLLBACK, 0);
+                    send_install_update_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, 0);
                     break;
                 }
             }
@@ -533,7 +534,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         if ((state == INSTALL_FAILED) && (updateErr.incremental_failed || updateErr.update_incapable ||
                 (pkgInfo.rollback_versions && (updateErr.terminal_failure = 1)))) {
-            send_update_status(&pkgInfo, &updateFile, INSTALL_FAILED, &updateErr);
+            send_install_update_status(&pkgInfo, INSTALL_FAILED, &updateFile, &updateErr);
         }
 
         free(pkgManifest);
@@ -638,13 +639,13 @@ static install_state_t prepare_update_action(ua_routine_t * uar, pkg_info_t * pk
 
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
-    install_state_t state = INSTALL_INPROGRESS;
+    install_state_t state = INSTALL_IN_PROGRESS;
 
     if (uar->on_pre_install) {
         state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file);
     }
 
-    send_update_status(pkgInfo, 0, state, 0);
+    send_install_update_status(pkgInfo, state, 0, 0);
 
     return state;
 }
@@ -659,7 +660,7 @@ static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, p
     }
 
     if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-        send_update_status(pkgInfo, 0, state, 0);
+        send_install_update_status(pkgInfo, state, 0, 0);
     }
 
     return state;
@@ -675,7 +676,7 @@ static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo) {
 }
 
 
-static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, install_state_t state, update_err_t * ue) {
+static void send_install_update_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue) {
 
     json_object * pkgObject = json_object_new_object();
     json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
@@ -725,6 +726,27 @@ static void send_update_status(pkg_info_t * pkgInfo, pkg_file_t * pkgFile, insta
 }
 
 
+static void send_download_update_status(pkg_info_t * pkgInfo, download_state_t state) {
+
+    json_object * pkgObject = json_object_new_object();
+    json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
+    json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
+    json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
+    json_object_object_add(pkgObject, "status", json_object_new_string(download_state_string(state)));
+
+    json_object * bodyObject = json_object_new_object();
+    json_object_object_add(bodyObject, "package", pkgObject);
+
+    json_object * jObject = json_object_new_object();
+    json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+    json_object_object_add(jObject, "body", bodyObject);
+
+    send_message(jObject);
+
+    json_object_put(jObject);
+}
+
+
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
@@ -769,14 +791,25 @@ static char * install_state_string(install_state_t state) {
 
     char * str = NULL;
     switch (state) {
-        case INSTALL_PENDING    : str = "INSTALL_PENDING";     break;
-        case INSTALL_READY      : str = "INSTALL_READY";       break;
-        case INSTALL_INPROGRESS : str = "INSTALL_IN_PROGRESS"; break;
-        case INSTALL_COMPLETED  : str = "INSTALL_COMPLETED";   break;
-        case INSTALL_FAILED     : str = "INSTALL_FAILED";      break;
-        case INSTALL_POSTPONED  : str = "INSTALL_POSTPONED";   break;
-        case INSTALL_ABORTED    : str = "INSTALL_ABORTED";     break;
-        case INSTALL_ROLLBACK   : str = "INSTALL_ROLLBACK";    break;
+        case INSTALL_READY       : str = "INSTALL_READY";       break;
+        case INSTALL_IN_PROGRESS : str = "INSTALL_IN_PROGRESS"; break;
+        case INSTALL_COMPLETED   : str = "INSTALL_COMPLETED";   break;
+        case INSTALL_FAILED      : str = "INSTALL_FAILED";      break;
+        case INSTALL_ABORTED     : str = "INSTALL_ABORTED";     break;
+        case INSTALL_ROLLBACK    : str = "INSTALL_ROLLBACK";    break;
+    }
+
+    return str;
+}
+
+
+static char * download_state_string(download_state_t state) {
+
+    char * str = NULL;
+    switch (state) {
+        case DOWNLOAD_POSTPONED  : str = "DOWNLOAD_POSTPONED"; break;
+        case DOWNLOAD_CONSENT    : str = "DOWNLOAD_CONSENT";   break;
+        case DOWNLOAD_DENIED     : str = "DOWNLOAD_DENIED";    break;
     }
 
     return str;

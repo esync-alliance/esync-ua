@@ -6,15 +6,19 @@
 #define _XL4UA_H_
 
 typedef enum install_state {
-    INSTALL_PENDING,
     INSTALL_READY,
-    INSTALL_INPROGRESS,
+    INSTALL_IN_PROGRESS,
     INSTALL_COMPLETED,
     INSTALL_FAILED,
-    INSTALL_POSTPONED,
     INSTALL_ABORTED,
     INSTALL_ROLLBACK
 } install_state_t;
+
+typedef enum download_state {
+    DOWNLOAD_POSTPONED,
+    DOWNLOAD_CONSENT,
+    DOWNLOAD_DENIED
+} download_state_t;
 
 typedef enum log_type {
     LOG_EVENT,
@@ -51,6 +55,7 @@ typedef void (*ua_on_post_install)(const char * pkgName);
 
 typedef install_state_t (*ua_on_prepare_install)(const char * pkgName, const char * version, const char * pkgFile, char ** newFile);
 
+typedef download_state_t (*ua_on_prepare_download)(const char * pkgName, const char * version);
 
 typedef struct ua_routine {
 
@@ -71,6 +76,9 @@ typedef struct ua_routine {
 
     // (optional) to prepare for install
     ua_on_prepare_install   on_prepare_install;
+
+    // (optional) to prepare for download
+    ua_on_prepare_download  on_prepare_download;
 
 } ua_routine_t;
 
