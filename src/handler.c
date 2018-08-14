@@ -31,8 +31,8 @@ static install_state_t prepare_update_action(ua_routine_t * uar, pkg_info_t * pk
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
-static void send_install_update_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue);
-static void send_download_update_status(pkg_info_t * pkgInfo, download_state_t state);
+static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue);
+static void send_download_status(pkg_info_t * pkgInfo, download_state_t state);
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static int patch_delta(char * pkgManifest, char * version, char * diffFile, char * newFile);
 static char * install_state_string(install_state_t state);
@@ -392,7 +392,7 @@ static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 
         if (uar->on_prepare_download) {
             state = (*uar->on_prepare_download)(pkgInfo.name, pkgInfo.version);
-            send_download_update_status(&pkgInfo, state);
+            send_download_status(&pkgInfo, state);
         }
     }
 }
@@ -441,7 +441,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
         }
     }
 
-    send_install_update_status(&pkgInfo, state, &pkgFile, &updateErr);
+    send_install_status(&pkgInfo, state, &pkgFile, &updateErr);
 }
 
 
@@ -472,7 +472,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     ((!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile)) && (bck = 1))) {
 
                 if (S(pkgInfo.rollback_version)) {
-                    send_install_update_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, 0);
+                    send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, 0);
                 }
 
                 if (bck || (prepare_update_action(uar, &pkgInfo, &pkgFile) == INSTALL_READY)) {
@@ -523,7 +523,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
             } else {
                 if (S(pkgInfo.rollback_version)) {
-                    send_install_update_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, 0);
+                    send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, 0);
                     break;
                 }
             }
@@ -534,7 +534,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         if ((state == INSTALL_FAILED) && (updateErr.incremental_failed || updateErr.update_incapable ||
                 (pkgInfo.rollback_versions && (updateErr.terminal_failure = 1)))) {
-            send_install_update_status(&pkgInfo, INSTALL_FAILED, &updateFile, &updateErr);
+            send_install_status(&pkgInfo, INSTALL_FAILED, &updateFile, &updateErr);
         }
 
         free(pkgManifest);
@@ -645,7 +645,7 @@ static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInf
         state = (*uar->on_pre_install)(pkgInfo->name, pkgFile->version, pkgFile->file);
     }
 
-    send_install_update_status(pkgInfo, state, 0, 0);
+    send_install_status(pkgInfo, state, 0, 0);
 
     return state;
 }
@@ -660,7 +660,7 @@ static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, p
     }
 
     if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-        send_install_update_status(pkgInfo, state, 0, 0);
+        send_install_status(pkgInfo, state, 0, 0);
     }
 
     return state;
@@ -676,7 +676,7 @@ static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo) {
 }
 
 
-static void send_install_update_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue) {
+static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue) {
 
     json_object * pkgObject = json_object_new_object();
     json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
@@ -726,7 +726,7 @@ static void send_install_update_status(pkg_info_t * pkgInfo, install_state_t sta
 }
 
 
-static void send_download_update_status(pkg_info_t * pkgInfo, download_state_t state) {
+static void send_download_status(pkg_info_t * pkgInfo, download_state_t state) {
 
     json_object * pkgObject = json_object_new_object();
     json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
