@@ -342,6 +342,8 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
             if (!parse_pkg_manifest(pkgManifest, &pkgFile)) {
 
                 json_object * verListObject = json_object_new_object();
+                json_object * rbVersArray = json_object_new_array();
+
                 DL_FOREACH_SAFE(pkgFile, pf, aux) {
 
                     json_object * versionObject = json_object_new_object();
@@ -353,6 +355,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
                     }
 
                     json_object_object_add(verListObject, pf->version, versionObject);
+                    json_object_array_add(rbVersArray, json_object_new_string(pf->version));
 
                     DL_DELETE(pkgFile, pf);
                     free_pkg_file(pf);
@@ -360,6 +363,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
                 }
 
                 json_object_object_add(pkgObject, "version-list", verListObject);
+                json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
             }
 
             free (pkgManifest);
