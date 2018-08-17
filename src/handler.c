@@ -27,7 +27,8 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj);
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
-static install_state_t prepare_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
+static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
+static download_state_t prepare_download_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
@@ -388,16 +389,13 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
-    download_state_t state = DOWNLOAD_CONSENT;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        if (uar->on_prepare_download) {
-            state = (*uar->on_prepare_download)(pkgInfo.name, pkgInfo.version);
-            send_download_status(&pkgInfo, state);
-        }
+        prepare_download_action(uar, &pkgInfo);
+
     }
 }
 
@@ -425,7 +423,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
                 ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
-            if ((state = prepare_update_action(uar, &pkgInfo, &pkgFile))) {
+            if ((state = prepare_install_action(uar, &pkgInfo, &pkgFile))) {
 
                 if (ua_intl.delta && is_delta_package(pkgFile.file)) {
 
@@ -479,7 +477,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, 0);
                 }
 
-                if (bck || (prepare_update_action(uar, &pkgInfo, &pkgFile) == INSTALL_READY)) {
+                if (bck || (prepare_install_action(uar, &pkgInfo, &pkgFile) == INSTALL_READY)) {
 
                     if (ua_intl.delta && is_delta_package(pkgFile.file)) {
 
@@ -624,7 +622,7 @@ static void process_log_report(ua_routine_t * uar, json_object * jsonObj) {
 }
 
 
-static install_state_t prepare_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
+static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     install_state_t state = INSTALL_READY;
     char * newFile = 0;
@@ -632,9 +630,22 @@ static install_state_t prepare_update_action(ua_routine_t * uar, pkg_info_t * pk
     if (uar->on_prepare_install) {
         state = (*uar->on_prepare_install)(pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
 
-        if((state == INSTALL_READY) && S(newFile)) {
+        if(S(newFile)) {
             pkgFile->file = newFile;
         }
+    }
+
+    return state;
+}
+
+
+static download_state_t prepare_download_action(ua_routine_t * uar, pkg_info_t * pkgInfo) {
+
+    download_state_t state = DOWNLOAD_CONSENT;
+
+    if (uar->on_prepare_download) {
+        state = (*uar->on_prepare_download)(pkgInfo->name, pkgInfo->version);
+        send_download_status(pkgInfo, state);
     }
 
     return state;
