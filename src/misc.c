@@ -170,6 +170,7 @@ int unzip(const char * archive, const char * path) {
                 BOLT_SYS(mkdirp(fpath, 0755) && (errno != EEXIST), "failed to make directory %s", fpath);
             } else {
                 BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
+                BOLT_SYS(chkdirp(fpath), "failed to prepare directory for %s", fpath);
                 BOLT_SYS((fd = open(fpath, O_RDWR | O_TRUNC | O_CREAT, 0644)) < 0, "failed to open/create %s", fpath);
 
                 sum = 0;
