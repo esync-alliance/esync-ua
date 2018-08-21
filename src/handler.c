@@ -495,6 +495,8 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                                 state = INSTALL_FAILED;
                                 break;
                             }
+                        } else {
+                            DBG("delta reconstructed file already available: %s", updateFile.file);
                         }
 
                         updateFile.downloaded = 0;
@@ -553,6 +555,7 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
             delta_reconstruct(pkgFile->file, diffFile, newFile)) {
 
         err = E_UA_ERR;
+
     }
 
     free_pkg_file(pkgFile);
