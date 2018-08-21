@@ -6,7 +6,7 @@ int ua_debug;
 static void _help(const char * app) {
     printf("Usage: %s [OPTION...] oldfile newfile difffile \n\n%s", app,
             "Options:\n"
-            "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
+            "  -c <path>  : path to cache directory (default: \"/tmp/deltapatcher/\")\n"
             "  -a <cap>   : delta capability\n"
             "  -d         : enable verbose\n"
             "  -h         : display this help and exit\n"
@@ -54,21 +54,21 @@ int main(int argc, char ** argv) {
     do {
 
         if ((err = delta_init(cache_dir, &cfg))) {
-            printf("Initialization failed!");
+            printf("Initialization failed!\n");
             break;
         }
 
-        printf("Delta capability : %s", get_delta_capability());
+        printf("Delta capability supported : %s\n", get_delta_capability());
 
         if (!is_delta_package(difffile)) {
-            printf("%s is not a delta file", difffile);
+            printf("%s is not a delta file\n", difffile);
             err = E_UA_ARG; break;
         }
 
         if ((err = delta_reconstruct(oldfile, difffile, newfile))) {
-            printf("delta reconstruction failed!");
+            printf("Delta reconstruction failed!\n");
         } else {
-            printf("delta reconstruction success!");
+            printf("Delta reconstruction success!\n");
         }
 
     } while (0);
