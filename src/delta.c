@@ -85,7 +85,7 @@ int is_delta_package(const char *pkgFile) {
 }
 
 
-int delta_reconstruct(char * oldPkgFile, char * diffPkgFile, char * newPkgFile) {
+int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const char * newPkgFile) {
 
     int err = E_UA_OK;
     diff_info_t *di, *aux, *diList = 0;
@@ -293,7 +293,7 @@ static int delta_patch(diff_info_t * diffInfo, const char * old, const char * ne
             HASH_FIND_STR(delta_stg.decomp_tool, diffInfo->compression, decompdth);
             BOLT_IF(!decompdth, E_UA_ERR, "Decompression %s not found", diffInfo->compression);
 
-            diffp = f_asprintf("%s%s", diff, ".patch");
+            diffp = f_asprintf("%s%s", diff, ".z");
             TOOL_EXEC(decompdth, diff, diffp, 0);
             if (err) { DBG_SYS("Decompression failed"); break;}
         }

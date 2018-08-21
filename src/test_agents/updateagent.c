@@ -13,9 +13,8 @@ ua_handler_t uah[] = {
         {"/template", get_tmpl_routine }
 };
 
-static void _help() {
-    printf("%s",
-            "Usage: updateagent [OPTION...]\n\n"
+static void _help(const char * app) {
+    printf("Usage: %s [OPTION...]\n\n%s", app,
             "Options:\n"
             "  -u <url>   : url of xl4bus broker (default: \"tcp://localhost:9133\")\n"
             "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
@@ -23,7 +22,7 @@ static void _help() {
             "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
             "  -d         : enable verbose\n"
             "  -D         : disable delta reconstruction\n"
-            "  -a         : delta capability\n"
+            "  -a <cap>   : delta capability\n"
             "  -h         : display this help and exit\n"
     );
     _exit(1);
@@ -73,7 +72,7 @@ int main(int argc, char ** argv) {
                 break;
             case 'h':
             default:
-                _help();
+                _help(argv[0]);
                 break;
         }
     }

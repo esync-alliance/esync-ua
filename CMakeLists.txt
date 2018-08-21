@@ -185,16 +185,18 @@ if (BUILD_STATIC)
 endif()
 
 if (BUILD_BINS)
+    add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
+
     add_executable(tmpl-updateagent
             src/test_agents/updateagent.c
             src/test_agents/tmpl_updateagent.c
             src/test_agents/tmpl_updateagent.h
     )
 
-    target_link_libraries(tmpl-updateagent ${USE_LIB} -lxl4bus -lm ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
+    targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} -lxl4bus -lm ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
 
     if (XL4_PROVIDE_THREADS)
-        target_link_libraries(tmpl-updateagent Threads::Threads)
+        targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES Threads::Threads)
     else()
         message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
     endif()
