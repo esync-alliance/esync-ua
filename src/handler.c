@@ -423,7 +423,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
                 ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
-            if ((state = prepare_install_action(uar, &pkgInfo, &pkgFile))) {
+            if ((state = prepare_install_action(uar, &pkgInfo, &pkgFile)) == INSTALL_READY) {
 
                 if (ua_intl.delta && is_delta_package(pkgFile.file)) {
 
