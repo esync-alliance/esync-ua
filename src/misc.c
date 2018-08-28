@@ -348,6 +348,7 @@ int copy_file(const char *from, const char *to) {
 
     DBG("copying file from %s to %s", from, to);
 
+/**** ESYNC-2789 - todo: make copy faster ****
     do {
 
         BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
@@ -364,6 +365,16 @@ int copy_file(const char *from, const char *to) {
 
     if (in && fclose(in)) DBG_SYS("closing file: %s", from);
     if (out && fclose(out)) DBG_SYS("closing file: %s", to);
+*/
+
+    char * cmd = 0;
+    do {
+        BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
+        cmd = f_asprintf("cp %s %s", from, to);
+        DBG("Executing: %s", cmd);
+        BOLT_SYS(system(cmd), "failed to copy file");
+    } while (0);
+    if (cmd) free(cmd);
 
     return err;
 }
