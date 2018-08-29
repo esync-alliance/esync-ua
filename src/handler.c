@@ -149,6 +149,35 @@ int ua_stop() {
 }
 
 
+int ua_install_progress(const char * pkgName, const char * version, int indeterminate, int percent) {
+
+    int err = E_UA_OK;
+
+    do {
+        BOLT_IF(!S(pkgName) || !S(version) || (percent < 0) || (percent > 100), E_UA_ARG, "install progress invalid");
+        json_object * pkgObject = json_object_new_object();
+        json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
+        json_object_object_add(pkgObject, "version", json_object_new_string(version));
+
+        json_object * bodyObject = json_object_new_object();
+        json_object_object_add(bodyObject, "package", pkgObject);
+        json_object_object_add(bodyObject, "progress", json_object_new_int(percent));
+        json_object_object_add(bodyObject, "indeterminate", json_object_new_boolean(indeterminate ? 1:0));
+
+        json_object * jObject = json_object_new_object();
+        json_object_object_add(jObject, "type", json_object_new_string(UPDATE_REPORT));
+        json_object_object_add(jObject, "body", bodyObject);
+
+        err = ua_send_message(jObject);
+
+        json_object_put(jObject);
+
+    } while (0);
+
+    return err;
+}
+
+
 int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype) {
 
     int err = E_UA_OK;

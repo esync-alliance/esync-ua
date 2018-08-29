@@ -18,6 +18,7 @@
 #define SOTA_REPORT         "xl4.sota-report"
 #define LOG_REPORT          "xl4.log-report"
 #define UPDATE_STATUS       "xl4.update-status"
+#define UPDATE_REPORT       "xl4.update-report"
 
 
 typedef struct pkg_info {

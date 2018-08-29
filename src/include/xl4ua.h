@@ -165,4 +165,6 @@ XL4_PUB const char * ua_get_updateagent_version(void);
 
 XL4_PUB const char * ua_get_xl4bus_version(void);
 
+XL4_PUB int ua_install_progress(const char * pkgName, const char * version, int indeterminate, int percent);
+
 #endif /* _XL4UA_H_ */
