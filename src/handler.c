@@ -168,7 +168,7 @@ int ua_install_progress(const char * pkgName, const char * version, int indeterm
         json_object_object_add(jObject, "type", json_object_new_string(UPDATE_REPORT));
         json_object_object_add(jObject, "body", bodyObject);
 
-        err = ua_send_message(jObject);
+        err = send_message(jObject);
 
         json_object_put(jObject);
 
