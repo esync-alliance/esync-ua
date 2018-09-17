@@ -39,7 +39,6 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
 static char * install_state_string(install_state_t state);
 static char * download_state_string(download_state_t state);
 static char * log_type_string(log_type_t log);
-static int send_message(json_object * jsonObj);
 void * runner_loop(void * arg);
 
 int ua_debug = 0;
@@ -149,6 +148,14 @@ int ua_stop() {
 }
 
 
+int ua_send_message(json_object * jsonObj) {
+
+    DBG("Sending : %s", json_object_to_json_string(jsonObj));
+    return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
+
+}
+
+
 int ua_install_progress(const char * pkgName, const char * version, int indeterminate, int percent) {
 
     int err = E_UA_OK;
@@ -168,7 +175,7 @@ int ua_install_progress(const char * pkgName, const char * version, int indeterm
         json_object_object_add(jObject, "type", json_object_new_string(UPDATE_REPORT));
         json_object_object_add(jObject, "body", bodyObject);
 
-        err = send_message(jObject);
+        err = ua_send_message(jObject);
 
         json_object_put(jObject);
 
@@ -209,7 +216,7 @@ int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype) {
         json_object_object_add(jObject, "type", json_object_new_string(LOG_REPORT));
         json_object_object_add(jObject, "body", bodyObject);
 
-        err = send_message(jObject);
+        err = ua_send_message(jObject);
 
         json_object_put(jObject);
 
@@ -260,14 +267,6 @@ void handle_message(const char * type, const char * msg, size_t len) {
             DBG("Incoming message on non-registered %s : %s", type, msg);
         }
     } while (0);
-
-}
-
-
-int send_message(json_object * jsonObj) {
-
-    DBG("Sending : %s", json_object_to_json_string(jsonObj));
-    return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
 
 }
 
@@ -407,7 +406,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
         json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
         json_object_object_add(jObject, "body", bodyObject);
 
-        send_message(jObject);
+        ua_send_message(jObject);
 
         json_object_put(jObject);
     }
@@ -766,7 +765,7 @@ static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg
     json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
     json_object_object_add(jObject, "body", bodyObject);
 
-    send_message(jObject);
+    ua_send_message(jObject);
 
     json_object_put(jObject);
 
@@ -788,7 +787,7 @@ static void send_download_status(pkg_info_t * pkgInfo, download_state_t state) {
     json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
     json_object_object_add(jObject, "body", bodyObject);
 
-    send_message(jObject);
+    ua_send_message(jObject);
 
     json_object_put(jObject);
 }
