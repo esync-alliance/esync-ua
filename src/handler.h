@@ -75,6 +75,13 @@ typedef struct ua_internal {
 
 } ua_internal_t;
 
+typedef enum update_err {
+    UE_NONE,
+    UE_INCREMENTAL_FAILED,
+    UE_UPDATE_INCAPABLE,
+    UE_TERMINAL_FAILURE
+} update_err_t;
+
 typedef enum update_stage {
     US_TRANSFER,
     US_INSTALL

@@ -13,6 +13,10 @@ static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char * version);
         for (c = xmlFirstElementChild(p); c; c = xmlNextElementSibling(c)) \
         if (c->type != XML_ELEMENT_NODE) continue; else
 
+#define XMLELE_ITER_SAFE(p, c, tmp) \
+        for (c = xmlFirstElementChild(p); c && (tmp = xmlNextElementSibling(c), 1); c = tmp) \
+        if (c->type != XML_ELEMENT_NODE) continue; else
+
 #define XMLELE_ITER_NAME(p, s, c) \
         XMLELE_ITER(p, c) if (xmlStrEqual(c->name, XMLT s))
 
@@ -224,7 +228,7 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
     int err = E_UA_OK;
     pkg_file_t * pf, * pfList = 0;
     xmlDocPtr doc = NULL;
-    xmlNodePtr root, node = NULL;
+    xmlNodePtr root, aux, node = NULL;
 
     DBG("parsing pkg manifest: %s", xmlFile);
 
@@ -234,13 +238,13 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
         BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
         root = xmlDocGetRootElement(doc);
 
-        XMLELE_ITER_NAME(root, "package", node) {
+        XMLELE_ITER_SAFE(root, node, aux)
+        if (xmlStrEqual(node->name, XMLT "package")) {
             if ((pf = get_xml_pkg_file(node))) {
                 if (!access(pf->file, R_OK)) {
                     DL_APPEND(pfList, pf);
                 } else {
                     free_pkg_file(pf);
-                    //TODO: Remove from pkg manifest
                 }
             }
         }
@@ -264,8 +268,8 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
     xmlDocPtr doc = NULL;
-    xmlNodePtr root = NULL, node = NULL;
-    pkg_file_t * aux;
+    xmlNodePtr root = NULL, node = NULL, n = NULL, aux = NULL;
+    xmlChar * c;
 
     do {
 
@@ -278,9 +282,17 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
             xmlDocSetRootElement(doc, root);
         }
 
-        if ((aux = get_xml_version_pkg_file(root, pkgFile->version))) {
-            free(aux); break;
-            //TODO: replace the entry
+        XMLELE_ITER_SAFE(root, node, aux)
+        if (xmlStrEqual(node->name, XMLT "package")) {
+            if ((n = get_xml_child(node, XMLT "version"))) {
+                if ((c = xmlNodeGetContent(n))) {
+                    if (xmlStrEqual(c, XMLT pkgFile->version)) {
+                        xmlUnlinkNode(node);
+                        xmlFreeNode(node);
+                    }
+                    xmlFree(c);
+                }
+            }
         }
 
         DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
@@ -345,7 +357,7 @@ int get_pkg_file_manifest(char * xmlFile, char * version, pkg_file_t * pkgFile) 
         BOLT_IF(!(pf = get_xml_version_pkg_file(root, version)), E_UA_ERR, "version %s not found in pkg_manifest %s", version, xmlFile);
 
         memcpy(pkgFile, pf, sizeof(pkg_file_t));
-        free(pf);
+        free_pkg_file(pf);
 
     } while (0);
 

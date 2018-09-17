@@ -12,12 +12,6 @@
 #include "xl4busclient.h"
 #include "ua_version.h"
 
-typedef struct update_err {
-    int incremental_failed;
-    int update_incapable;
-    int terminal_failure;
-} update_err_t;
-
 static void process_message(ua_routine_t * uar, const char * msg, size_t len);
 static void process_query_package(ua_routine_t * uar, json_object * jsonObj);
 static void process_ready_download(ua_routine_t * uar, json_object * jsonObj);
@@ -27,12 +21,12 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj);
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
-static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
+static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile, pkg_file_t * updateFile, update_err_t * ue);
 static download_state_t prepare_download_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
-static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue);
+static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t ue);
 static void send_download_status(pkg_info_t * pkgInfo, download_state_t state);
 static int send_update_report(const char * pkgName, const char * version, int indeterminate, int percent, update_stage_t us);
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
@@ -178,7 +172,7 @@ int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype) {
     char timestamp[30];
 
     do {
-        BOLT_IF(!(pkgType && *pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
+        BOLT_IF(!S(pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
 
         if (S(logdata->timestamp)) {
             strncpy(timestamp, logdata->timestamp, sizeof(timestamp));
@@ -195,7 +189,7 @@ int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype) {
         if (logdata->message) {
             json_object_object_add(bodyObject, "message", json_object_get((json_object *)logdata->message));
             json_object_object_add(bodyObject, "compound", json_object_new_boolean(logdata->compound? 1 : 0));
-        } else if (logdata->binary){
+        } else if (logdata->binary) {
             json_object_object_add(bodyObject, "binary", json_object_new_string(logdata->binary));
         }
 
@@ -418,10 +412,9 @@ static void process_ready_download(ua_routine_t * uar, json_object * jsonObj) {
 static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
 
     int bck = 0;
-    char *updateFile, *installedVer;
     pkg_info_t pkgInfo = {0};
-    pkg_file_t pkgFile = {0};
-    update_err_t updateErr = {0};
+    pkg_file_t updateFile, pkgFile = {0};
+    update_err_t updateErr = UE_NONE;
     install_state_t state = INSTALL_READY;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
@@ -438,27 +431,19 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
                 ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
-            if ((state = prepare_install_action(uar, &pkgInfo, &pkgFile)) == INSTALL_READY) {
+            state = prepare_install_action(uar, &pkgInfo, &pkgFile, &updateFile, &updateErr);
+            send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
-                if (ua_intl.delta && is_delta_package(pkgFile.file)) {
+            free(updateFile.version);
+            free(updateFile.file);
+        }
 
-                    char * bname = f_basename(pkgFile.file);
-                    updateFile = JOIN(ua_intl.cache_dir, "delta", bname);
-                    free(bname);
-
-                    (*uar->on_get_version)(pkgInfo.name, &installedVer);
-
-                    if (patch_delta(pkgManifest, installedVer, pkgFile.file, updateFile)) {
-
-                        updateErr.incremental_failed = 1;
-                        state = INSTALL_FAILED;
-                    }
-                }
-            }
+        if (pkgManifest) free(pkgManifest);
+        if (bck) {
+            free(pkgFile.version);
+            free(pkgFile.file);
         }
     }
-
-    send_install_status(&pkgInfo, state, &pkgFile, &updateErr);
 }
 
 
@@ -467,7 +452,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
     char *installedVer;
     pkg_info_t pkgInfo = {0};
     pkg_file_t updateFile, pkgFile = {0};
-    update_err_t updateErr = {0};
+    update_err_t updateErr = UE_NONE;
     install_state_t state;
     int bck = 0;
 
@@ -479,48 +464,22 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
         get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions);
 
         char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
+        char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
         do {
-            updateFile.version = pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
+            pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
 
-            if ((!get_pkg_file_from_json(jsonObj, updateFile.version, &pkgFile.file) &&
-                    !get_pkg_sha256_from_json(jsonObj, updateFile.version, pkgFile.sha256b64) &&
-                    !get_pkg_downloaded_from_json(jsonObj, updateFile.version, &pkgFile.downloaded)) ||
-                    ((!get_pkg_file_manifest(pkgManifest, updateFile.version, &pkgFile)) && (bck = 1))) {
+            if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
+                    !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
+                    !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
+                    ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
                 if (S(pkgInfo.rollback_version)) {
                     send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, 0);
                 }
 
-                if (bck || (prepare_install_action(uar, &pkgInfo, &pkgFile) == INSTALL_READY)) {
-
-                    if (ua_intl.delta && is_delta_package(pkgFile.file)) {
-
-                        char * bname = f_basename(pkgFile.file);
-                        updateFile.file = JOIN(ua_intl.cache_dir, "delta", bname);
-                        free(bname);
-
-                        if (access(updateFile.file, R_OK)) {
-
-                            (*uar->on_get_version)(pkgInfo.name, &installedVer);
-
-                            if (patch_delta(pkgManifest, installedVer, pkgFile.file, updateFile.file)) {
-
-                                updateErr.incremental_failed = 1;
-                                state = INSTALL_FAILED;
-                                break;
-                            }
-                        } else {
-                            DBG("delta reconstructed file already available: %s", updateFile.file);
-                        }
-
-                        updateFile.downloaded = 0;
-
-                    } else {
-
-                        updateFile.file = f_strdup(pkgFile.file);
-                        updateFile.downloaded = 1;
-                    }
+                if (!get_pkg_file_manifest(prePkgManifest, pkgFile.version, &updateFile) ||
+                        (state = prepare_install_action(uar, &pkgInfo, &pkgFile, &updateFile, &updateErr)) == INSTALL_READY) {
 
                     if ((state = pre_update_action(uar, &pkgInfo, &updateFile)) == INSTALL_IN_PROGRESS) {
 
@@ -530,9 +489,10 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                     }
 
-
                     free(updateFile.file);
-                }
+                    free(updateFile.version);
+
+                } else if ((state == INSTALL_FAILED) && (updateErr != UE_NONE)) break;
 
                 if (bck) {
                     free(pkgFile.version);
@@ -551,12 +511,13 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_next_rollback_version(pkgInfo.rollback_versions, updateFile.version, &pkgInfo.rollback_version) &&
                 S(pkgInfo.rollback_version));
 
-        if ((state == INSTALL_FAILED) && (updateErr.incremental_failed || updateErr.update_incapable ||
-                (pkgInfo.rollback_versions && (updateErr.terminal_failure = 1)))) {
-            send_install_status(&pkgInfo, INSTALL_FAILED, &updateFile, &updateErr);
+        if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
+                (pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
+            send_install_status(&pkgInfo, INSTALL_FAILED, &updateFile, updateErr);
         }
 
         free(pkgManifest);
+        free(prePkgManifest);
     }
 }
 
@@ -582,34 +543,23 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
 static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
-    pkg_file_t updateFile, pkgFile = {0};
+    pkg_file_t updateFile = {0};
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        updateFile.version = pkgFile.version = pkgInfo.version;
+        char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
-        if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
-            !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
-            !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded))) {
-
-            if (ua_intl.delta && is_delta_package(pkgFile.file)) {
-
-                char * bname = f_basename(pkgFile.file);
-                updateFile.file = JOIN(ua_intl.cache_dir, "delta", bname);
-                free(bname);
-
-            } else {
-
-                updateFile.file = f_strdup(pkgFile.file);
-
-            }
+        if (!get_pkg_file_manifest(prePkgManifest, pkgInfo.version, &updateFile)) {
 
             backup_package(&pkgInfo, &updateFile);
 
             free(updateFile.file);
+            free(updateFile.version);
         }
+
+        free(prePkgManifest);
     }
 }
 
@@ -640,17 +590,50 @@ static void process_log_report(ua_routine_t * uar, json_object * jsonObj) {
 }
 
 
-static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
+static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile, pkg_file_t * updateFile, update_err_t * ue) {
 
     install_state_t state = INSTALL_READY;
-    char * newFile = 0;
+    char *File, *newFile = 0;
+    char *installedVer;
 
     if (uar->on_prepare_install) {
         state = (*uar->on_prepare_install)(pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
+    }
 
-        if(S(newFile)) {
-            pkgFile->file = newFile;
+    File = S(newFile) ? newFile : pkgFile->file;
+
+    updateFile->version = f_strdup(pkgFile->version);
+
+    if (state == INSTALL_READY) {
+
+        if (ua_intl.delta && is_delta_package(File)) {
+
+            char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG) : NULL;
+
+            char * bname = f_basename(pkgFile->file);
+            updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
+            free(bname);
+
+            (*uar->on_get_version)(pkgInfo->name, &installedVer);
+
+            if (patch_delta(pkgManifest, installedVer, File, updateFile->file)) {
+
+                *ue = UE_INCREMENTAL_FAILED;
+                state = INSTALL_FAILED;
+            }
+
+            if (pkgManifest) free(pkgManifest);
+            updateFile->downloaded = 0;
+
+        } else {
+
+            updateFile->file = f_strdup(File);
+            updateFile->downloaded = 1;
         }
+
+        char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo->name, MANIFEST_PKG);
+        add_pkg_file_manifest(prePkgManifest, updateFile);
+        free(prePkgManifest);
     }
 
     return state;
@@ -709,7 +692,7 @@ static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo) {
 }
 
 
-static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue) {
+static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t ue) {
 
     json_object * pkgObject = json_object_new_object();
     json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
@@ -720,15 +703,15 @@ static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg
     json_object_object_add(pkgObject, "rollback-versions", pkgInfo->rollback_versions ? json_object_get(pkgInfo->rollback_versions) : NULL);
 
 
-    if ((state == INSTALL_FAILED) && pkgFile && ue) {
+    if ((state == INSTALL_FAILED) && (ue != UE_NONE) && pkgFile) {
 
-        if (ue->terminal_failure) {
+        if (ue == UE_TERMINAL_FAILURE) {
             json_object_object_add(pkgObject, "terminal-failure", json_object_new_boolean(1));
         }
-        if (ue->update_incapable) {
+        if (ue == UE_UPDATE_INCAPABLE) {
             json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
         }
-        if (ue->incremental_failed) {
+        if (ue == UE_INCREMENTAL_FAILED) {
             json_object * versionObject = json_object_new_object();
             json_object * verListObject = json_object_new_object();
             json_object_object_add(versionObject, "incremental-failed", json_object_new_boolean(1));
