@@ -150,6 +150,8 @@ XL4_PUB const char * ua_get_xl4bus_version(void);
 
 XL4_PUB int ua_install_progress(const char * pkgName, const char * version, int indeterminate, int percent);
 
+XL4_PUB int ua_transfer_progress(const char * pkgName, const char * version, int indeterminate, int percent);
+
 
 #ifdef _json_h_
 

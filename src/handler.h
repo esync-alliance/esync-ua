@@ -75,6 +75,12 @@ typedef struct ua_internal {
 
 } ua_internal_t;
 
+typedef enum update_stage {
+    US_TRANSFER,
+    US_INSTALL
+} update_stage_t;
+
+
 void handle_status(int status);
 void handle_delivered(const char * msg, int ok);
 void handle_presence(int connected, int disconnected);

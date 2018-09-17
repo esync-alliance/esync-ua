@@ -34,10 +34,12 @@ static install_state_t update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, p
 static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
 static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t * ue);
 static void send_download_status(pkg_info_t * pkgInfo, download_state_t state);
+static int send_update_report(const char * pkgName, const char * version, int indeterminate, int percent, update_stage_t us);
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static int patch_delta(char * pkgManifest, char * version, char * diffFile, char * newFile);
 static char * install_state_string(install_state_t state);
 static char * download_state_string(download_state_t state);
+static char * update_stage_string(update_stage_t stage);
 static char * log_type_string(log_type_t log);
 void * runner_loop(void * arg);
 
@@ -158,30 +160,15 @@ int ua_send_message(json_object * jsonObj) {
 
 int ua_install_progress(const char * pkgName, const char * version, int indeterminate, int percent) {
 
-    int err = E_UA_OK;
+    return send_update_report(pkgName, version, indeterminate, percent, US_INSTALL);
 
-    do {
-        BOLT_IF(!S(pkgName) || !S(version) || (percent < 0) || (percent > 100), E_UA_ARG, "install progress invalid");
-        json_object * pkgObject = json_object_new_object();
-        json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
-        json_object_object_add(pkgObject, "version", json_object_new_string(version));
+}
 
-        json_object * bodyObject = json_object_new_object();
-        json_object_object_add(bodyObject, "package", pkgObject);
-        json_object_object_add(bodyObject, "progress", json_object_new_int(percent));
-        json_object_object_add(bodyObject, "indeterminate", json_object_new_boolean(indeterminate ? 1:0));
 
-        json_object * jObject = json_object_new_object();
-        json_object_object_add(jObject, "type", json_object_new_string(UPDATE_REPORT));
-        json_object_object_add(jObject, "body", bodyObject);
+int ua_transfer_progress(const char * pkgName, const char * version, int indeterminate, int percent) {
 
-        err = ua_send_message(jObject);
+    return send_update_report(pkgName, version, indeterminate, percent, US_TRANSFER);
 
-        json_object_put(jObject);
-
-    } while (0);
-
-    return err;
 }
 
 
@@ -793,6 +780,36 @@ static void send_download_status(pkg_info_t * pkgInfo, download_state_t state) {
 }
 
 
+static int send_update_report(const char * pkgName, const char * version, int indeterminate, int percent, update_stage_t us) {
+
+    int err = E_UA_OK;
+
+    do {
+        BOLT_IF(!S(pkgName) || !S(version) || (percent < 0) || (percent > 100), E_UA_ARG, "install progress invalid");
+        json_object * pkgObject = json_object_new_object();
+        json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
+        json_object_object_add(pkgObject, "version", json_object_new_string(version));
+
+        json_object * bodyObject = json_object_new_object();
+        json_object_object_add(bodyObject, "package", pkgObject);
+        json_object_object_add(bodyObject, "progress", json_object_new_int(percent));
+        json_object_object_add(bodyObject, "indeterminate", json_object_new_boolean(indeterminate ? 1:0));
+        json_object_object_add(bodyObject, "stage", json_object_new_string(update_stage_string(us)));
+
+        json_object * jObject = json_object_new_object();
+        json_object_object_add(jObject, "type", json_object_new_string(UPDATE_REPORT));
+        json_object_object_add(jObject, "body", bodyObject);
+
+        err = ua_send_message(jObject);
+
+        json_object_put(jObject);
+
+    } while (0);
+
+    return err;
+}
+
+
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
@@ -856,6 +873,17 @@ static char * download_state_string(download_state_t state) {
         case DOWNLOAD_POSTPONED  : str = "DOWNLOAD_POSTPONED"; break;
         case DOWNLOAD_CONSENT    : str = "DOWNLOAD_CONSENT";   break;
         case DOWNLOAD_DENIED     : str = "DOWNLOAD_DENIED";    break;
+    }
+
+    return str;
+}
+
+static char * update_stage_string(update_stage_t stage) {
+
+    char * str = NULL;
+    switch (stage) {
+        case US_TRANSFER   : str = "US_TRANSFER"; break;
+        case US_INSTALL    : str = "US_INSTALL";   break;
     }
 
     return str;
