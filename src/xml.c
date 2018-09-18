@@ -357,7 +357,7 @@ int get_pkg_file_manifest(char * xmlFile, char * version, pkg_file_t * pkgFile) 
         BOLT_IF(!(pf = get_xml_version_pkg_file(root, version)), E_UA_ERR, "version %s not found in pkg_manifest %s", version, xmlFile);
 
         memcpy(pkgFile, pf, sizeof(pkg_file_t));
-        free_pkg_file(pf);
+        free(pf);
 
     } while (0);
 
