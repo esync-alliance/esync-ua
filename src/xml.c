@@ -303,7 +303,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
         xmlNewChild(node, NULL, XMLT "file", XMLT pkgFile->file);
         xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pkgFile->downloaded? "1":"0"));
 
-
+        BOLT_SYS(chkdirp(xmlFile), "failed to prepare directory for %s", xmlFile);
         BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
 
     } while (0);
