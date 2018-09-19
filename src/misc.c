@@ -3,6 +3,13 @@
  */
 
 #include "misc.h"
+#include "delta.h"
+#include "handler.h"
+
+extern ua_internal_t ua_intl;
+
+static sha_le_t *sl_head = NULL;
+static int temp_dirname_len = 0;
 
 static int zip_archive_add_file(struct zip * za, const char * path, const char * base);
 static int zip_archive_add_dir(struct zip *za, const char *path, const char *base);
@@ -408,7 +415,7 @@ int copy_file(const char * from, const char * to) {
 }
 
 
-int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
+int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH], bool fIncludeFilename) {
 
     int i, err = E_UA_OK;
     FILE *file;
@@ -421,6 +428,11 @@ int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
         BOLT_SYS(!(file = fopen(path, "rb")), "opening file: %s", path);
 
         SHA256_Init(&sha256);
+
+        if(fIncludeFilename){
+            char * tmp_path = path + temp_dirname_len + 1;
+            SHA256_Update(&sha256, tmp_path, strlen(tmp_path));
+        }
 
         while ((nread = fread(buf, sizeof(char), sizeof(buf), file))) {
             SHA256_Update(&sha256, buf, nread);
@@ -435,12 +447,12 @@ int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
     return err;
 }
 
-int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]) {
+int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH], bool fIncludeFilename) {
 
     int i, err = E_UA_OK;
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    if (!(err = calc_sha256(path, hash))) {
+    if (!(err = calc_sha256(path, hash, fIncludeFilename))) {
 
         for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
             sprintf(obuff + (i * 2), "%02x", (unsigned char)hash[i]);
@@ -453,16 +465,19 @@ int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]) {
     return err;
 }
 
-
-int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]) {
+int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH], bool sha_of_sha) {
 
     int err = E_UA_OK;
     BIO *bmem, *b64;
     BUF_MEM *bptr;
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    if (!(err = calc_sha256(path, hash))) {
-
+    if(sha_of_sha)
+        err = calc_sha256_sh256(path, hash); 
+    else    
+        err = calc_sha256(path, hash, false);
+ 
+    if(!err){
         b64 = BIO_new(BIO_f_base64());
         bmem = BIO_new(BIO_s_mem());
         b64 = BIO_push(b64, bmem);
@@ -480,6 +495,93 @@ int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]) {
     return err;
 }
 
+static int sha256cmp(sha_le_t *a, sha_le_t *b) {
+
+    return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH);
+
+}
+
+static bool is_file_for_sha(char * path){
+
+    if(path){
+        return (strcmp(path, MANIFEST_DIFF) &&  
+                strcmp(path, MANIFEST) && 
+                strncmp(path, XL4_X_PREFIX, strlen(XL4_X_PREFIX)) &&
+                strncmp(path, XL4_SIGNATURE_PREFIX, strlen(XL4_SIGNATURE_PREFIX)));
+    }else
+        return false;
+}
+
+static int process_dir_entry (const char *fpath, const struct stat *sb,
+                        int typeflag, struct FTW *ftwbuf)
+{
+    int err = E_UA_OK;
+
+    if(fpath && typeflag == FTW_F && is_file_for_sha(fpath+temp_dirname_len+1)){
+
+        sha_le_t *tmp = (sha_le_t *)malloc(sizeof(sha_le_t));
+        if((err = calc_sha256(fpath, tmp->sha256, true)) == E_UA_OK){
+            DL_APPEND(sl_head, tmp);           
+        }else{
+            DBG("calc_sha256_hex failed err is %d", err);
+            free(tmp);
+        }
+    }
+
+    return err;
+}
+
+int calc_sha256_sh256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
+
+    int err = E_UA_OK;
+    sha_le_t *elt, *tmp;
+    SHA256_CTX sha256;
+    char buf[STACK_BUF_SIZE];
+    int i = 0;
+    char *temp_dir = 0;
+    char *template = JOIN(ua_intl.cache_dir, "sha.XXXXXX");
+
+    do{
+
+        BOLT_SYS(!(temp_dir = mkdtemp(template)), "mkdtemp failed");
+        temp_dirname_len = strlen(temp_dir);
+
+        BOLT_SUB(unzip(path, temp_dir));
+
+        BOLT_SYS(!SHA256_Init(&sha256), "SHA256_Init");
+    
+        BOLT_SYS(nftw(temp_dir, process_dir_entry, 20, 0), "nftw failed");
+
+        DL_SORT(sl_head, sha256cmp);
+
+        DL_FOREACH(sl_head,elt) {
+            SHA256_Update(&sha256, elt->sha256, SHA256_DIGEST_LENGTH);
+        }
+
+        BOLT_SYS(!SHA256_Final(obuff, &sha256), "SHA256_Final");
+
+        rmdirp(temp_dir);
+
+        if(ua_debug){
+            printf("*************************   sha of sha  ************************\n");
+            for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) 
+            {
+                printf("%02x", obuff[i]);
+            }
+            printf("\n****************************************************************\n");        
+        }    
+
+    }while(0);
+
+    DL_FOREACH_SAFE(sl_head,elt,tmp) {
+        DL_DELETE(sl_head,elt);
+        free(elt);
+    }
+
+    f_free(template);
+    
+    return err;
+}
 
 int is_cmd_runnable(const char * cmd) {
 
