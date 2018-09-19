@@ -807,6 +807,7 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     backupFile->file = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
     backupFile->version = f_strdup(pkgFile->version);
     backupFile->downloaded = 1;
+    strcpy(backupFile->sha256b64, pkgFile->sha256b64);
 
     if (!strcmp(pkgFile->file, backupFile->file)) {
 
