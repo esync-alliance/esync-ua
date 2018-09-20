@@ -91,22 +91,25 @@ int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const c
     diff_info_t *di, *aux, *diList = 0;
     char *oldFile, *diffFile, *newFile;
     char *oldPath = 0, *diffPath = 0, *newPath = 0;
-    char *manifest_diff = 0, *manifest_old = 0, *manifest_new = 0;
+    char *manifest_diff_xml = 0, *manifest_old = 0, *manifest_new = 0, *manifest_diff = 0;
 
     do {
+#define DTR_MK(type) \
+        BOLT_SYS(mkdirp(type##Path = JOIN(delta_stg.cache_dir, "delta", #type), 0755) && (errno != EEXIST), "failed to make directory %s", type##Path); \
+        manifest_##type = JOIN(type##Path, MANIFEST);
 
-        BOLT_SYS(mkdirp(oldPath = JOIN(delta_stg.cache_dir, "delta", "old"), 0755) && (errno != EEXIST), "failed to make directory %s", oldPath);
-        BOLT_SYS(mkdirp(diffPath = JOIN(delta_stg.cache_dir, "delta", "diff"), 0755) && (errno != EEXIST), "failed to make directory %s", diffPath);
-        BOLT_SYS(mkdirp(newPath = JOIN(delta_stg.cache_dir, "delta", "new"), 0755) && (errno != EEXIST), "failed to make directory %s", newPath);
+        DTR_MK(diff);
+        DTR_MK(old);
+        DTR_MK(new);
 
-        manifest_diff = JOIN(diffPath, MANIFEST_DIFF);
-        manifest_old = JOIN(oldPath, MANIFEST);
-        manifest_new = JOIN(newPath, MANIFEST);
+#undef DTR_MK
+
+        manifest_diff_xml = JOIN(diffPath, MANIFEST_DIFF);
 
         BOLT_IF(unzip(oldPkgFile, oldPath), E_UA_ERR, "unzip failed: %s", oldPkgFile);
         BOLT_IF(unzip(diffPkgFile, diffPath), E_UA_ERR, "unzip failed: %s", diffPkgFile);
 
-        BOLT_IF(parse_diff_manifest(manifest_diff, &diList), E_UA_ERR, "failed to parse: %s", manifest_diff);
+        BOLT_IF(parse_diff_manifest(manifest_diff_xml, &diList), E_UA_ERR, "failed to parse: %s", manifest_diff_xml);
 
         DL_FOREACH_SAFE(diList, di, aux) {
 
@@ -142,19 +145,23 @@ int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const c
         }
 
         if (!err) {
-            BOLT_IF(copy_file(manifest_old, manifest_new), E_UA_ERR, "failed to copy manifest");
+            BOLT_IF(copy_file(manifest_diff, manifest_new), E_UA_ERR, "failed to copy manifest");
             BOLT_IF(zip(newPkgFile, newPath), E_UA_ERR, "zip failed: %s", newPkgFile);
         }
 
     } while (0);
 
-    if(oldPath) { if(rmdirp(oldPath)) DBG("failed to remove directory %s", oldPath); free(oldPath); }
-    if(diffPath) { if(rmdirp(diffPath)) DBG("failed to remove directory %s", diffPath); free(diffPath); }
-    if(newPath) { if(rmdirp(newPath)) DBG("failed to remove directory %s", newPath); free(newPath); }
+#define DTR_RM(type) \
+        if(type##Path) { if(rmdirp(type##Path)) DBG("failed to remove directory %s", type##Path); free(type##Path); } \
+        f_free(manifest_##type);
 
-    f_free(manifest_diff);
-    f_free(manifest_old);
-    f_free(manifest_new);
+    DTR_RM(diff);
+    DTR_RM(old);
+    DTR_RM(new);
+
+#undef DTR_RM
+
+    f_free(manifest_diff_xml);
 
     return err;
 }
