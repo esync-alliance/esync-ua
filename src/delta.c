@@ -91,25 +91,25 @@ int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const c
     diff_info_t *di, *aux, *diList = 0;
     char *oldFile, *diffFile, *newFile;
     char *oldPath = 0, *diffPath = 0, *newPath = 0;
-    char *manifest_diff_xml = 0, *manifest_old = 0, *manifest_new = 0, *manifest_diff = 0;
+    char *diff_manifest = 0, *manifest_old = 0, *manifest_diff = 0, *manifest_new = 0;
 
     do {
 #define DTR_MK(type) \
         BOLT_SYS(mkdirp(type##Path = JOIN(delta_stg.cache_dir, "delta", #type), 0755) && (errno != EEXIST), "failed to make directory %s", type##Path); \
         manifest_##type = JOIN(type##Path, MANIFEST);
 
-        DTR_MK(diff);
         DTR_MK(old);
+        DTR_MK(diff);
         DTR_MK(new);
 
 #undef DTR_MK
 
-        manifest_diff_xml = JOIN(diffPath, MANIFEST_DIFF);
+        diff_manifest = JOIN(diffPath, MANIFEST_DIFF);
 
         BOLT_IF(unzip(oldPkgFile, oldPath), E_UA_ERR, "unzip failed: %s", oldPkgFile);
         BOLT_IF(unzip(diffPkgFile, diffPath), E_UA_ERR, "unzip failed: %s", diffPkgFile);
 
-        BOLT_IF(parse_diff_manifest(manifest_diff_xml, &diList), E_UA_ERR, "failed to parse: %s", manifest_diff_xml);
+        BOLT_IF(parse_diff_manifest(diff_manifest, &diList), E_UA_ERR, "failed to parse: %s", diff_manifest);
 
         DL_FOREACH_SAFE(diList, di, aux) {
 
@@ -155,13 +155,13 @@ int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const c
         if(type##Path) { if(rmdirp(type##Path)) DBG("failed to remove directory %s", type##Path); free(type##Path); } \
         f_free(manifest_##type);
 
-    DTR_RM(diff);
     DTR_RM(old);
+    DTR_RM(diff);
     DTR_RM(new);
 
 #undef DTR_RM
 
-    f_free(manifest_diff_xml);
+    f_free(diff_manifest);
 
     return err;
 }
@@ -281,8 +281,7 @@ static int delta_patch(diff_info_t * diffInfo, const char * old, const char * ne
 
     do {
 
-#define TOOL_EXEC(_t, _o, _n, _p) \
-        { \
+#define TOOL_EXEC(_t, _o, _n, _p) { \
             targs = expand_tool_args(_t->tool.args, _o, _n, _p); \
             cmd = f_asprintf("%s %s", _t->tool.path, targs); \
             DBG("Executing: %s", cmd); \
