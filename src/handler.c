@@ -606,7 +606,7 @@ static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * p
         state = (*uar->on_prepare_install)(pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
     }
 
-    File = S(newFile) ? newFile : pkgFile->file;
+    File = (S(newFile) && !access(newFile, R_OK)) ? newFile : pkgFile->file;
 
     updateFile->version = f_strdup(pkgFile->version);
 
@@ -616,9 +616,13 @@ static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * p
 
             char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG) : NULL;
 
-            char * bname = f_basename(pkgFile->file);
-            updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
-            free(bname);
+            if (S(newFile)) {
+                updateFile->file = f_strdup(newFile);
+            } else {
+                char * bname = f_basename(pkgFile->file);
+                updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
+                free(bname);
+            }
 
             (*uar->on_get_version)(pkgInfo->name, &installedVer);
 
@@ -632,6 +636,10 @@ static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * p
             updateFile->downloaded = 0;
 
         } else {
+
+            if (S(newFile) && File != newFile) {
+                if (!copy_file(File, newFile)) File = newFile;
+            }
 
             updateFile->file = f_strdup(File);
             updateFile->downloaded = 1;

@@ -317,7 +317,7 @@ int zip_find_file(const char * archive, const char * path) {
     do {
 
         BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-                        "failed to open file as ZIP %s : %s", archive, aux = get_zip_error(zerr));
+                        "failed to open file as zip %s : %s", archive, aux = get_zip_error(zerr));
         if (zip_name_locate(za, path, 0) < 0) {
             DBG("file: %s not found in zip: %s", path, archive);
             err = E_UA_ERR;
