@@ -15,20 +15,19 @@ extern int ua_debug;
     now[0] = 0
 #else
 #define _ltime_ \
-    char now[24]; \
-    struct tm tmnow; \
-    struct timeval tv; \
-    memset(now, 0, 24); \
-    gettimeofday(&tv, 0); \
-    usec_to_msec(&tv); \
-    localtime_r(&tv.tv_sec, &tmnow); \
-    strftime(now, 20, "%m-%d:%H:%M:%S.", &tmnow); \
-    sprintf(now+15, "%03ld", tv.tv_usec)
+    char __now[24]; \
+    struct tm __tmnow; \
+    struct timeval __tv; \
+    memset(__now, 0, 24); \
+    gettimeofday(&__tv, 0); \
+    localtime_r(&__tv.tv_sec, &__tmnow); \
+    strftime(__now, 20, "%m-%d:%H:%M:%S.", &__tmnow); \
+    sprintf(__now+15, "%03d", (int)(__tv.tv_usec/1000))
 #endif
 
 #define DBG(a,b...) do { if (ua_debug) { \
     _ltime_; \
-    char * _str = f_asprintf("[%s] %s:%d " a, now, chop_path(__FILE__), __LINE__, ## b); \
+    char * _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
     if (_str) { \
         printf("%s\n", _str); \
         fflush(stdout); \
@@ -39,30 +38,13 @@ extern int ua_debug;
 #define DBG_SYS(a,b...) do { if (ua_debug) { \
     int _errno = errno; \
     _ltime_; \
-    char * _str = f_asprintf("[%s] %s:%d error %s(%d): " a, now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
+    char * _str = f_asprintf("[%s] %s:%d error %s(%d): " a, __now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
     if (_str) { \
         printf("%s\n", _str); \
         fflush(stdout); \
         free(_str); \
     } \
 } } while(0)
-
-static inline void usec_to_msec(struct timeval * tv) {
-
-    for (int i=0; i<3; i++) {
-        int r = (int)(tv->tv_usec % 10);
-        tv->tv_usec /= 10;
-        if (r >= 5) {
-            tv->tv_usec++;
-        }
-    }
-
-    if (tv->tv_usec >= 1000) {
-        tv->tv_usec -= 1000;
-        tv->tv_sec++;
-    }
-
-}
 
 #define BOLT_MEM(a) if (!(a)) { \
     err = E_UA_MEMORY; \
