@@ -413,7 +413,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
 
     int bck = 0;
     pkg_info_t pkgInfo = {0};
-    pkg_file_t updateFile, pkgFile = {0};
+    pkg_file_t pkgFile, updateFile = {0};
     update_err_t updateErr = UE_NONE;
     install_state_t state = INSTALL_READY;
 
@@ -451,7 +451,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
     char *installedVer;
     pkg_info_t pkgInfo = {0};
-    pkg_file_t updateFile, pkgFile = {0};
+    pkg_file_t pkgFile, updateFile = {0};
     update_err_t updateErr = UE_NONE;
     install_state_t state;
     int bck = 0;
@@ -631,9 +631,12 @@ static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * p
             updateFile->downloaded = 1;
         }
 
-        char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo->name, MANIFEST_PKG);
-        add_pkg_file_manifest(prePkgManifest, updateFile);
-        free(prePkgManifest);
+        if (state != INSTALL_FAILED) {
+            char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo->name, MANIFEST_PKG);
+            calc_sha256_b64(updateFile->file, updateFile->sha256b64);
+            add_pkg_file_manifest(prePkgManifest, updateFile);
+            free(prePkgManifest);
+        }
     }
 
     return state;
@@ -804,13 +807,13 @@ static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
     backupFile->file = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
     backupFile->version = f_strdup(pkgFile->version);
     backupFile->downloaded = 1;
+    strcpy(backupFile->sha256b64, pkgFile->sha256b64);
 
     if (!strcmp(pkgFile->file, backupFile->file)) {
 
         DBG("Back up already exists: %s", backupFile->file);
 
-    } else if (!calc_sha256_b64(pkgFile->file, backupFile->sha256b64) &&
-            !copy_file(pkgFile->file, backupFile->file) &&
+    } else if (!copy_file(pkgFile->file, backupFile->file) &&
             !add_pkg_file_manifest(pkgManifest, backupFile)) {
 
         DBG("Backed up package: %s", backupFile->file);
