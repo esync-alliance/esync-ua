@@ -543,23 +543,29 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
 static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
-    pkg_file_t updateFile = {0};
+    pkg_file_t pkgFile, updateFile = {0};
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
+        if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
+                !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
+                !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded))) {
+            //err! backing up only when file property exists due to unnecessary confirm update from dmclient
 
-        if (!get_pkg_file_manifest(prePkgManifest, pkgInfo.version, &updateFile)) {
+            char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
-            backup_package(&pkgInfo, &updateFile);
+            if (!get_pkg_file_manifest(prePkgManifest, pkgInfo.version, &updateFile)) {
 
-            free(updateFile.file);
-            free(updateFile.version);
+                backup_package(&pkgInfo, &updateFile);
+
+                free(updateFile.file);
+                free(updateFile.version);
+            }
+
+            free(prePkgManifest);
         }
-
-        free(prePkgManifest);
     }
 }
 
