@@ -549,9 +549,9 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
-                !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
-                !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded))) {
+        if ((!get_pkg_file_from_json(jsonObj, pkgInfo.version, &pkgFile.file) &&
+                !get_pkg_sha256_from_json(jsonObj, pkgInfo.version, pkgFile.sha256b64) &&
+                !get_pkg_downloaded_from_json(jsonObj, pkgInfo.version, &pkgFile.downloaded))) {
             //err! backing up only when file property exists due to unnecessary confirm update from dmclient
 
             char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
