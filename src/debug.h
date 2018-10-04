@@ -11,8 +11,8 @@ extern int ua_debug;
 
 #if !XL4_HAVE_GETTIMEOFDAY
 #define _ltime_ \
-    char now[1]; \
-    now[0] = 0
+    char __now[1]; \
+    __now[0] = 0
 #else
 #define _ltime_ \
     char __now[24]; \

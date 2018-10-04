@@ -28,19 +28,21 @@ typedef enum download_state {
 #define E_UA_SYS        (-4)
 
 
-typedef int (*ua_on_get_version)(const char * pkgName, char ** version);
+typedef int (*ua_on_get_version)(const char * type, const char * pkgName, char ** version);
 
-typedef int (*ua_on_set_version)(const char * pkgName, const char * version);
+typedef int (*ua_on_set_version)(const char * type, const char * pkgName, const char * version);
 
-typedef install_state_t (*ua_on_pre_install)(const char * pkgName, const char * version, const char * pkgFile);
+typedef install_state_t (*ua_on_pre_install)(const char * type, const char * pkgName, const char * version, const char * pkgFile);
 
-typedef install_state_t (*ua_on_install)(const char * pkgName, const char * version, const char * pkgFile);
+typedef install_state_t (*ua_on_install)(const char * type, const char * pkgName, const char * version, const char * pkgFile);
 
-typedef void (*ua_on_post_install)(const char * pkgName);
+typedef void (*ua_on_post_install)(const char * type, const char * pkgName);
 
-typedef install_state_t (*ua_on_prepare_install)(const char * pkgName, const char * version, const char * pkgFile, char ** newFile);
+typedef int (*ua_on_transfer_file)(const char * type, const char * pkgName, const char * version, const char * pkgFile, char ** newFile);
 
-typedef download_state_t (*ua_on_prepare_download)(const char * pkgName, const char * version);
+typedef install_state_t (*ua_on_prepare_install)(const char * type, const char * pkgName, const char * version, const char * pkgFile, char ** newFile);
+
+typedef download_state_t (*ua_on_prepare_download)(const char * type, const char * pkgName, const char * version);
 
 #ifdef _json_h_
 
@@ -64,6 +66,9 @@ typedef struct ua_routine {
 
     // (optional) to perform additional actions after install
     ua_on_post_install      on_post_install;
+
+    // (optional) to transfer file from another location
+    ua_on_transfer_file     on_transfer_file;
 
     // (optional) to prepare for install
     ua_on_prepare_install   on_prepare_install;
@@ -161,22 +166,15 @@ XL4_PUB const char * ua_get_updateagent_version(void);
 
 XL4_PUB const char * ua_get_xl4bus_version(void);
 
-XL4_PUB int ua_install_progress(const char * pkgName, const char * version, int indeterminate, int percent);
+XL4_PUB int ua_send_install_progress(const char * pkgName, const char * version, int indeterminate, int percent);
 
-XL4_PUB int ua_transfer_progress(const char * pkgName, const char * version, int indeterminate, int percent);
+XL4_PUB int ua_send_transfer_progress(const char * pkgName, const char * version, int indeterminate, int percent);
 
 
 #ifdef _json_h_
 
 XL4_PUB int ua_send_message(json_object * message);
 
-
-typedef struct log_data {
-    json_object * message;
-    int    compound;
-    char * binary;
-    char * timestamp;
-} log_data_t;
 
 typedef enum log_type {
     LOG_EVENT,
@@ -186,7 +184,14 @@ typedef enum log_type {
     LOG_SEVERE
 } log_type_t;
 
-XL4_PUB int ua_report_log(char * pkgType, log_data_t * logdata, log_type_t logtype);
+typedef struct log_data {
+    json_object * message;
+    int    compound;
+    char * binary;
+    char * timestamp;
+} log_data_t;
+
+XL4_PUB int ua_send_log_report(char * pkgType, log_type_t logtype, log_data_t * logdata);
 
 
 #endif

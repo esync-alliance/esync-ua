@@ -6,45 +6,45 @@
 
 pkg_version_t * package_version = 0;
 
-static int get_tmpl_version(const char * pkgName, char ** version) {
+static int get_tmpl_version(const char * type, const char * pkgName, char ** version) {
 
     TMPL_VER_GET(pkgName, *version);
     return E_UA_OK;
 
 }
 
-static int set_tmpl_version(const char * pkgName, const char * version) {
+static int set_tmpl_version(const char * type, const char * pkgName, const char * version) {
 
     TMPL_VER_SET(pkgName, version);
     return E_UA_OK;
 
 }
 
-static install_state_t do_tmpl_pre_install(const char * pkgName, const char * version, const char * pkgFile) {
+static install_state_t do_tmpl_pre_install(const char * type, const char * pkgName, const char * version, const char * pkgFile) {
 
     return INSTALL_IN_PROGRESS;
 
 }
 
-static install_state_t do_tmpl_install(const char * pkgName, const char * version, const char * pkgFile) {
+static install_state_t do_tmpl_install(const char * type, const char * pkgName, const char * version, const char * pkgFile) {
 
     return INSTALL_COMPLETED;
 
 }
 
-static void do_tmpl_post_install(const char * pkgName) {
+static void do_tmpl_post_install(const char * type, const char * pkgName) {
 
     return;
 
 }
 
-static install_state_t do_prepare_install(const char * pkgName, const char * version, const char * pkgFile, char ** newFile) {
+static install_state_t do_prepare_install(const char * type, const char * pkgName, const char * version, const char * pkgFile, char ** newFile) {
 
     return INSTALL_READY;
 
 }
 
-static download_state_t do_prepare_download(const char * pkgName, const char * version) {
+static download_state_t do_prepare_download(const char * type, const char * pkgName, const char * version) {
 
     return DOWNLOAD_CONSENT;
 
