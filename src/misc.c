@@ -210,6 +210,7 @@ int zip(const char * archive, const char * path) {
 
     DBG("ziping %s to %s", path, archive);
 
+/**** ESYNC-3166 - todo: make zip as fast as zip tool****
     do {
 
         BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
@@ -228,6 +229,16 @@ int zip(const char * archive, const char * path) {
         if (aux) free(aux);
         if (za) zip_discard(za);
     }
+*/
+
+    char * cmd = 0;
+    do {
+        BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
+        cmd = f_asprintf("cd %s; zip -r %s *", path, archive);
+        DBG("Executing: %s", cmd);
+        BOLT_SYS(system(cmd), "failed to zip files");
+    } while (0);
+    if (cmd) free(cmd);
 
     return err;
 }
@@ -348,7 +359,7 @@ int copy_file(const char *from, const char *to) {
 
     DBG("copying file from %s to %s", from, to);
 
-/**** ESYNC-2789 - todo: make copy faster ****
+/**** ESYNC-2789 - todo: make copy as fast as cp tool****
     do {
 
         BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
