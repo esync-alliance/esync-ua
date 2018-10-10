@@ -293,24 +293,28 @@ static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
     json_object * jObj = json_tokener_parse_verbose(msg, &jErr);
     if(jErr == json_tokener_success) {
         if (get_type_from_json(jObj, &type) == E_UA_OK) {
-            if (!strcmp(type, QUERY_PACKAGE)) {
-                process_query_package(uar, jObj);
-            } else if (!strcmp(type, READY_DOWNLOAD)) {
-                process_ready_download(uar, jObj);
-            } else if (!strcmp(type, READY_UPDATE)) {
-                process_ready_update(uar, jObj);
-            } else if (!strcmp(type, PREPARE_UPDATE)) {
-                process_prepare_update(uar, jObj);
-            } else if (!strcmp(type, CONFIRM_UPDATE)) {
-                process_confirm_update(uar, jObj);
-            } else if (!strcmp(type, DOWNLOAD_REPORT)) {
-                process_download_report(uar, jObj);
-            } else if (!strcmp(type, SOTA_REPORT)) {
-                process_sota_report(uar, jObj);
-            } else if (!strcmp(type, LOG_REPORT)) {
-                process_log_report(uar, jObj);
+            if (!uar->on_message || !(*uar->on_message)(type, jObj)) {
+                if (!strcmp(type, QUERY_PACKAGE)) {
+                    process_query_package(uar, jObj);
+                } else if (!strcmp(type, READY_DOWNLOAD)) {
+                    process_ready_download(uar, jObj);
+                } else if (!strcmp(type, READY_UPDATE)) {
+                    process_ready_update(uar, jObj);
+                } else if (!strcmp(type, PREPARE_UPDATE)) {
+                    process_prepare_update(uar, jObj);
+                } else if (!strcmp(type, CONFIRM_UPDATE)) {
+                    process_confirm_update(uar, jObj);
+                } else if (!strcmp(type, DOWNLOAD_REPORT)) {
+                    process_download_report(uar, jObj);
+                } else if (!strcmp(type, SOTA_REPORT)) {
+                    process_sota_report(uar, jObj);
+                } else if (!strcmp(type, LOG_REPORT)) {
+                    process_log_report(uar, jObj);
+                } else {
+                    DBG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
+                }
             } else {
-                DBG("Unknown type %s received in %s", type, json_object_to_json_string(jObj));
+                DBG("Not processing message for type %s : %s", type, json_object_to_json_string(jObj));
             }
         }
     } else {

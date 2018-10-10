@@ -42,6 +42,12 @@ typedef install_state_t (*ua_on_prepare_install)(const char * pkgName, const cha
 
 typedef download_state_t (*ua_on_prepare_download)(const char * pkgName, const char * version);
 
+#ifdef _json_h_
+
+typedef int (*ua_on_message)(const char * msgType, json_object * message);
+
+#endif
+
 typedef struct ua_routine {
 
     // gets the version of package installed
@@ -64,6 +70,13 @@ typedef struct ua_routine {
 
     // (optional) to prepare for download
     ua_on_prepare_download  on_prepare_download;
+
+#ifdef _json_h_
+
+    // (optional) called on xl4bus messages
+    ua_on_message           on_message;
+
+#endif
 
 } ua_routine_t;
 
