@@ -52,8 +52,9 @@ int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
 int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char *cmd);
-int mkdirp(const char* path, int umask);
-int rmdirp(const char* path);
+int mkdirp(const char * path, int umask);
+int newdirp(const char * path, int umask);
+int rmdirp(const char * path);
 int chkdirp(const char * path);
 
 #endif /* _UA_MISC_H_ */

@@ -4,7 +4,7 @@
 int ua_debug;
 
 static void _help(const char * app) {
-    printf("Usage: %s [OPTION...] oldfile newfile difffile \n\n%s", app,
+    printf("Usage: %s [OPTION...] oldfile difffile newfile \n\n%s", app,
             "Options:\n"
             "  -c <path>  : path to cache directory (default: \"/tmp/deltapatcher/\")\n"
             "  -a <cap>   : delta capability\n"
@@ -48,8 +48,8 @@ int main(int argc, char ** argv) {
     }
 
     const char * oldfile  = argv[optind];
-    const char * newfile  = argv[optind+1];
-    const char * difffile = argv[optind+2];
+    const char * difffile = argv[optind+1];
+    const char * newfile  = argv[optind+2];
 
     do {
 

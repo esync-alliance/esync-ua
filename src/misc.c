@@ -23,7 +23,7 @@ uint64_t currentms() {
 }
 
 
-int mkdirp(const char* path, int umask) {
+int mkdirp(const char * path, int umask) {
 
     char * dpath = f_strdup(path);
     char * aux = dpath;
@@ -69,7 +69,7 @@ int mkdirp(const char* path, int umask) {
 }
 
 
-int rmdirp(const char* path) {
+int rmdirp(const char * path) {
 
     int err = E_UA_OK;
     DIR *dir;
@@ -121,6 +121,23 @@ int chkdirp(const char * path) {
     }
 
     free(dir);
+    return rc;
+}
+
+
+int newdirp(const char * path, int umask) {
+
+    int rc;
+    struct stat statb;
+
+    rc = stat(path, &statb);
+
+    if (!rc) {
+        rmdirp(path);
+    }
+
+    rc = mkdirp(path, umask);
+
     return rc;
 }
 
@@ -272,7 +289,7 @@ static int zip_archive_add_file(struct zip * za, const char * path, const char *
 }
 
 
-static int zip_archive_add_dir(struct zip *za, const char *path, const char *base) {
+static int zip_archive_add_dir(struct zip * za, const char * path, const char * base) {
 
     int err = E_UA_OK;
     DIR *dir;
@@ -350,7 +367,7 @@ int zip_find_file(const char * archive, const char * path) {
 }
 
 
-int copy_file(const char *from, const char *to) {
+int copy_file(const char * from, const char * to) {
 
     int err = E_UA_OK;
     FILE *in, *out;

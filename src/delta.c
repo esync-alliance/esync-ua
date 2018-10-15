@@ -95,7 +95,7 @@ int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const c
 
     do {
 #define DTR_MK(type) \
-        BOLT_SYS(mkdirp(type##Path = JOIN(delta_stg.cache_dir, "delta", #type), 0755) && (errno != EEXIST), "failed to make directory %s", type##Path); \
+        BOLT_SYS(newdirp(type##Path = JOIN(delta_stg.cache_dir, "delta", #type), 0755) && (errno != EEXIST), "failed to make directory %s", type##Path); \
         manifest_##type = JOIN(type##Path, MANIFEST);
 
         DTR_MK(old);
