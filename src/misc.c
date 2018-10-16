@@ -251,7 +251,7 @@ int zip(const char * archive, const char * path) {
     char * cmd = 0;
     do {
         BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
-        cmd = f_asprintf("cd %s; zip -r %s *", path, archive);
+        cmd = f_asprintf("cd %s; rm -f %s; zip -r %s *", path, archive, archive);
         DBG("Executing: %s", cmd);
         BOLT_SYS(system(cmd), "failed to zip files");
     } while (0);
