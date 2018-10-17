@@ -54,6 +54,24 @@ typedef struct incoming_msg {
 
 } incoming_msg_t;
 
+typedef void (*process_f)(ua_routine_t *, json_object *);
+
+typedef struct worker_info {
+
+    pthread_t worker_thread;
+    int worker_running;
+    process_f worker_func;
+    json_object * worker_jobj;
+
+} worker_info_t;
+
+typedef struct ua_unit {
+
+    ua_routine_t * uar;
+    worker_info_t worker;
+
+} ua_unit_t;
+
 typedef struct runner_info {
 
     pthread_t thread;
@@ -62,8 +80,8 @@ typedef struct runner_info {
     int run;
     incoming_msg_t * queue;
     char * type;
-    ua_routine_t * uar;
     UT_hash_handle hh;
+    ua_unit_t unit;
 
 } runner_info_t;
 

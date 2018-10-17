@@ -12,7 +12,8 @@
 #include "xl4busclient.h"
 #include "ua_version.h"
 
-static void process_message(ua_routine_t * uar, const char * msg, size_t len);
+static void process_message(ua_unit_t * ui, const char * msg, size_t len);
+static void process_run(ua_unit_t * ui, process_f func, json_object * jObj, int turnover);
 static void process_query_package(ua_routine_t * uar, json_object * jsonObj);
 static void process_ready_download(ua_routine_t * uar, json_object * jsonObj);
 static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj);
@@ -87,9 +88,9 @@ int ua_register(ua_handler_t * uah, int len) {
         do {
             ri = f_malloc(sizeof(runner_info_t));
             ri->type = f_strdup((uah + i)->type_handler);
-            ri->uar = (*(uah + i)->get_routine)();
+            ri->unit.uar = (*(uah + i)->get_routine)();
             ri->run = 1;
-            BOLT_IF(!ri->uar || !ri->uar->on_get_version || !ri->uar->on_install || !S(ri->type), E_UA_ARG, "registration error");
+            BOLT_IF(!ri->unit.uar || !ri->unit.uar->on_get_version || !ri->unit.uar->on_install || !S(ri->type), E_UA_ARG, "registration error");
             BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
             BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
             BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
@@ -273,7 +274,7 @@ void * runner_loop(void * arg) {
             uint64_t tout = im->msg_ts + MSG_TIMEOUT * 1000;
 
             if (tnow < tout)
-                process_message(info->uar, im->msg, im->msg_len);
+                process_message(&info->unit, im->msg, im->msg_len);
             else
                 DBG("message timed out: %s", im->msg);
 
@@ -285,7 +286,7 @@ void * runner_loop(void * arg) {
 }
 
 
-static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
+static void process_message(ua_unit_t * ui, const char * msg, size_t len) {
 
     char * type;
     enum json_tokener_error jErr;
@@ -293,23 +294,23 @@ static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
     json_object * jObj = json_tokener_parse_verbose(msg, &jErr);
     if(jErr == json_tokener_success) {
         if (get_type_from_json(jObj, &type) == E_UA_OK) {
-            if (!uar->on_message || !(*uar->on_message)(type, jObj)) {
+            if (!ui->uar->on_message || !(*ui->uar->on_message)(type, jObj)) {
                 if (!strcmp(type, QUERY_PACKAGE)) {
-                    process_query_package(uar, jObj);
+                    process_run(ui, process_query_package, jObj, 0);
                 } else if (!strcmp(type, READY_DOWNLOAD)) {
-                    process_ready_download(uar, jObj);
+                    process_run(ui, process_ready_download, jObj, 0);
                 } else if (!strcmp(type, READY_UPDATE)) {
-                    process_ready_update(uar, jObj);
+                    process_run(ui, process_ready_update, jObj, 1);
                 } else if (!strcmp(type, PREPARE_UPDATE)) {
-                    process_prepare_update(uar, jObj);
+                    process_run(ui, process_prepare_update, jObj, 1);
                 } else if (!strcmp(type, CONFIRM_UPDATE)) {
-                    process_confirm_update(uar, jObj);
+                    process_run(ui, process_confirm_update, jObj, 0);
                 } else if (!strcmp(type, DOWNLOAD_REPORT)) {
-                    process_download_report(uar, jObj);
+                    process_run(ui, process_download_report, jObj, 0);
                 } else if (!strcmp(type, SOTA_REPORT)) {
-                    process_sota_report(uar, jObj);
+                    process_run(ui, process_sota_report, jObj, 0);
                 } else if (!strcmp(type, LOG_REPORT)) {
-                    process_log_report(uar, jObj);
+                    process_run(ui, process_log_report, jObj, 0);
                 } else {
                     DBG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
                 }
@@ -321,7 +322,47 @@ static void process_message(ua_routine_t * uar, const char * msg, size_t len) {
         DBG("Failed to parse json (%s): %s", json_tokener_error_desc(jErr), msg);
     }
 
-    json_object_put(jObj);
+    if (!jErr) json_object_put(jObj);
+}
+
+
+static void * worker_action(void * arg) {
+
+    ua_unit_t * ui = arg;
+
+    ui->worker.worker_func(ui->uar, ui->worker.worker_jobj);
+
+    json_object_put(ui->worker.worker_jobj);
+
+    ui->worker.worker_running = 0;
+
+}
+
+
+static void process_run(ua_unit_t * ui, process_f func, json_object * jObj, int turnover) {
+
+    if (!turnover) {
+
+        func(ui->uar, jObj);
+
+    } else {
+
+        if (!ui->worker.worker_running) {
+            ui->worker.worker_running = 1;
+            ui->worker.worker_func = func;
+            ui->worker.worker_jobj = json_object_get(jObj);
+
+            if (pthread_create(&ui->worker.worker_thread, 0, worker_action, ui)) {
+
+                DBG_SYS("pthread create");
+                json_object_put(ui->worker.worker_jobj);
+                ui->worker.worker_running = 0;
+            }
+
+        } else {
+            DBG("error! Worker busy");
+        }
+    }
 }
 
 
