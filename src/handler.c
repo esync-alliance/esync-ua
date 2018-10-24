@@ -38,10 +38,11 @@ static char * download_state_string(download_state_t state);
 static char * update_stage_string(update_stage_t stage);
 static char * log_type_string(log_type_t log);
 void * runner_loop(void * arg);
+static void query_hash_tree(runner_info_hash_tree_t * current, runner_info_t * ri, const char * ua_type, int is_delete, UT_array * gather, int tip);
 
 int ua_debug = 0;
 ua_internal_t ua_intl = {0};
-runner_info_t * registered_updater = 0;
+runner_info_hash_tree_t * ri_tree = 0;
 
 
 int ua_init(ua_cfg_t * uaConfig) {
@@ -81,19 +82,24 @@ int ua_register(ua_handler_t * uah, int len) {
     int err = E_UA_OK;
     runner_info_t * ri = 0;
 
+    if (!ri_tree) {
+        ri_tree = f_malloc(sizeof(runner_info_hash_tree_t));
+        utarray_init(&ri_tree->items, &ut_ptr_icd);
+    }
+
     for (int i = 0; i < len; i++) {
 
         do {
             ri = f_malloc(sizeof(runner_info_t));
-            ri->type = f_strdup((uah + i)->type_handler);
+            ri->unit.type = f_strdup((uah + i)->type_handler);
             ri->unit.uar = (*(uah + i)->get_routine)();
             ri->run = 1;
-            BOLT_IF(!ri->unit.uar || !ri->unit.uar->on_get_version || !ri->unit.uar->on_install || !S(ri->type), E_UA_ARG, "registration error");
+            BOLT_IF(!ri->unit.uar || !ri->unit.uar->on_get_version || !ri->unit.uar->on_install || !S(ri->unit.type), E_UA_ARG, "registration error");
             BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
             BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
             BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
-            HASH_ADD_STR(registered_updater, type, ri);
-            DBG("Registered: %s", ri->type);
+            query_hash_tree(ri_tree, ri, ri->unit.type, 0, 0, 0);
+            DBG("Registered: %s", ri->unit.type);
         } while (0);
 
         if (err) {
@@ -110,31 +116,46 @@ int ua_register(ua_handler_t * uah, int len) {
 
 int ua_unregister(ua_handler_t * uah, int len) {
 
-    int err = E_UA_OK;
-    runner_info_t * ri = 0;
+    int ret = E_UA_OK;
+    UT_array ri_list;
 
     for (int i = 0; i < len; i++) {
-        do {
-            const char * type = (uah + i)->type_handler;
-            HASH_FIND_STR(registered_updater, type, ri);
-            if (ri) {
-                ri->run = 0;
-                BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
-                BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
-                BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
-                BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
-                free(ri->type);
-                free(ri);
-                DBG("Unregistered: %s", type);
-            }
-        } while (0);
 
-        if (err) {
-            DBG("Failed to unregister: %s", (uah + i)->type_handler);
+        const char * type = (uah + i)->type_handler;
+        ua_routine_t * uar = (*(uah + i)->get_routine)();
+
+        utarray_init(&ri_list, &ut_ptr_icd);
+        query_hash_tree(ri_tree, 0, type, 0, &ri_list, 1);
+
+        int l = utarray_len(&ri_list);
+        for (int j = 0; j < l; j++) {
+
+            int err = E_UA_OK;
+            do {
+                runner_info_t * ri = *(runner_info_t **) utarray_eltptr(&ri_list, j);
+                if (ri->unit.uar == uar) {
+                    query_hash_tree(ri_tree, ri, type, 1, 0, 0);
+                    ri->run = 0;
+                    BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
+                    BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
+                    BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
+                    BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
+                    free(ri->unit.type);
+                    free(ri);
+                    DBG("Unregistered: %s", type);
+                }
+            } while (0);
+
+            if (err) {
+                DBG("Failed to unregister: %s", type);
+                ret = err;
+            }
         }
+
+        utarray_done(&ri_list);
     }
 
-    return err;
+    return ret;
 }
 
 
@@ -231,25 +252,114 @@ void handle_presence(int connected, int disconnected) {
 
 void handle_message(const char * type, const char * msg, size_t len) {
 
-    int err;
-    runner_info_t * info = 0;
-    do {
-        DBG("Incoming message : %s", msg);
-        HASH_FIND_STR(registered_updater, type, info);
-        if (info) {
-            BOLT_SYS(pthread_mutex_lock(&info->lock), "lock failed");
+    int err = E_UA_OK;
+    UT_array ri_list;
+
+    DBG("Incoming message : %s", msg);
+
+    utarray_init(&ri_list, &ut_ptr_icd);
+    query_hash_tree(ri_tree, 0, type, 0, &ri_list, 0);
+
+    int l = utarray_len(&ri_list);
+
+    DBG("found registered handlers: %d", l);
+
+    for (int j = 0; j < l; j++) {
+
+        do {
+            runner_info_t * ri = *(runner_info_t **) utarray_eltptr(&ri_list, j);
+            BOLT_SYS(pthread_mutex_lock(&ri->lock), "lock failed");
             incoming_msg_t * im = f_malloc(sizeof(incoming_msg_t));
             im->msg = f_strdup(msg);
             im->msg_len = len;
             im->msg_ts = currentms();
-            DL_APPEND(info->queue, im);
-            BOLT_SYS(pthread_cond_signal(&info->cond), "cond signal");
-            BOLT_SYS(pthread_mutex_unlock(&info->lock), "unlock failed");
-        } else {
-            DBG("Incoming message on non-registered %s : %s", type, msg);
-        }
-    } while (0);
+            DL_APPEND(ri->queue, im);
+            BOLT_SYS(pthread_cond_signal(&ri->cond), "cond signal");
+            BOLT_SYS(pthread_mutex_unlock(&ri->lock), "unlock failed");
+        } while (0);
 
+    }
+
+    utarray_done(&ri_list);
+
+    if (!l) DBG("Incoming message on non-registered %s : %s", type, msg);
+
+}
+
+
+static int void_cmp(void const * a, void const * b) {
+
+    void * const * ls = a;
+    void * const * rs = b;
+
+    return (*ls == *rs) ? 0 : ((uintptr_t)*ls > (uintptr_t)*rs) ? 1 : -1;
+}
+
+
+static void query_hash_tree(runner_info_hash_tree_t * current, runner_info_t * ri, const char * ua_type, int is_delete, UT_array * gather, int tip) {
+
+    if (!current || (!ri && !gather)) { return; }
+
+    while (*ua_type && (*ua_type == '/')) { ua_type++; }
+
+    if (gather && utarray_len(&current->items) && (!tip || !*ua_type)) {
+        utarray_concat(gather, &current->items);
+    }
+
+    if (!*ua_type) {
+
+        if (is_delete) {
+            //remove from array
+            void * addr = utarray_find(&current->items, &ri, void_cmp);
+            if (addr) {
+                long idx = (long)utarray_eltidx(&current->items, addr);
+                if (idx >= 0) {
+                    utarray_erase(&current->items, idx, 1);
+                }
+            }
+
+        } else if (!gather) {
+            //add to array once
+            if (!utarray_find(&current->items, &ri, void_cmp)) {
+                utarray_push_back(&current->items, &ri);
+                utarray_sort(&current->items, void_cmp);
+            }
+        }
+
+        return;
+    }
+
+    char * ua_type_sep = strchr(ua_type, '/');
+    size_t key_len = ua_type_sep ? (size_t)(ua_type_sep - ua_type) : strlen(ua_type);
+
+    runner_info_hash_tree_t * child;
+    HASH_FIND(hh, current->nodes, ua_type, key_len, child);
+    if (!child) {
+        if (is_delete) {
+            DBG("sub-node not found to delete sub-tree %s", ua_type);
+        } else if (!gather) {
+            child = f_malloc(sizeof(runner_info_hash_tree_t));
+            child->key = f_strndup(ua_type, key_len);
+            child->parent = current;
+            HASH_ADD_KEYPTR(hh, current->nodes, child->key, key_len, child);
+            utarray_init(&child->items, &ut_ptr_icd);
+        }
+    }
+
+    ua_type += key_len;
+
+    if (child) {
+        query_hash_tree(child, ri, ua_type, is_delete, gather, tip);
+    }
+
+    if (is_delete && !utarray_len(&child->items) && !HASH_COUNT(child->nodes)) {
+        if (child->parent) {
+            HASH_DEL(child->parent->nodes, child);
+            free(child->key);
+        }
+        utarray_done(&child->items);
+        free(child);
+    }
 }
 
 

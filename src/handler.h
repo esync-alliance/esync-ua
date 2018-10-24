@@ -67,6 +67,7 @@ typedef struct worker_info {
 
 typedef struct ua_unit {
 
+    char * type;
     ua_routine_t * uar;
     worker_info_t worker;
 
@@ -79,11 +80,19 @@ typedef struct runner_info {
     pthread_cond_t cond;
     int run;
     incoming_msg_t * queue;
-    char * type;
-    UT_hash_handle hh;
     ua_unit_t unit;
 
 } runner_info_t;
+
+typedef struct runner_info_hash_tree {
+
+    char * key;
+    UT_hash_handle hh;
+    UT_array items;
+    struct runner_info_hash_tree * nodes;
+    struct runner_info_hash_tree * parent;
+
+} runner_info_hash_tree_t;
 
 typedef struct ua_internal {
 

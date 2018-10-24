@@ -31,6 +31,7 @@
 #include <zip.h>
 #include "build_config.h"
 #include <xl4ua.h>
+#include "utarray.h"
 #include "uthash.h"
 #include "utlist.h"
 #include "debug.h"
