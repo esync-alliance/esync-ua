@@ -4,12 +4,6 @@
 
 #include "misc.h"
 #include "delta.h"
-#include "handler.h"
-
-extern ua_internal_t ua_intl;
-
-static sha_le_t *sl_head = NULL;
-static int temp_dirname_len = 0;
 
 static int zip_archive_add_file(struct zip * za, const char * path, const char * base);
 static int zip_archive_add_dir(struct zip *za, const char *path, const char *base);
@@ -415,44 +409,39 @@ int copy_file(const char * from, const char * to) {
 }
 
 
-int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH], bool fIncludeFilename) {
+int calc_sha256(const char * fpath, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
 
     int i, err = E_UA_OK;
     FILE *file;
-    SHA256_CTX sha256;
+    SHA256_CTX ctx;
     char buf[STACK_BUF_SIZE];
     size_t nread;
 
     do {
 
-        BOLT_SYS(!(file = fopen(path, "rb")), "opening file: %s", path);
+        BOLT_SYS(!(file = fopen(fpath, "rb")), "opening file: %s", fpath);
 
-        SHA256_Init(&sha256);
-
-        if(fIncludeFilename){
-            char * tmp_path = path + temp_dirname_len + 1;
-            SHA256_Update(&sha256, tmp_path, strlen(tmp_path));
-        }
+        SHA256_Init(&ctx);
 
         while ((nread = fread(buf, sizeof(char), sizeof(buf), file))) {
-            SHA256_Update(&sha256, buf, nread);
+            SHA256_Update(&ctx, buf, nread);
         }
 
-        SHA256_Final(obuff, &sha256);
+        SHA256_Final(obuff, &ctx);
 
-        BOLT_SYS(fclose(file), "closing file: %s", path);
+        BOLT_SYS(fclose(file), "closing file: %s", fpath);
 
     } while (0);
 
     return err;
 }
 
-int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH], bool fIncludeFilename) {
+int calc_sha256_hex(const char * fpath, char obuff[SHA256_HEX_LENGTH]) {
 
     int i, err = E_UA_OK;
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    if (!(err = calc_sha256(path, hash, fIncludeFilename))) {
+    if (!(err = calc_sha256(fpath, hash))) {
 
         for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
             sprintf(obuff + (i * 2), "%02x", (unsigned char)hash[i]);
@@ -465,123 +454,99 @@ int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH], bool fIncl
     return err;
 }
 
-int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH], bool sha_of_sha) {
 
-    int err = E_UA_OK;
-    BIO *bmem, *b64;
-    BUF_MEM *bptr;
-    unsigned char hash[SHA256_DIGEST_LENGTH];
+int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
 
-    if(sha_of_sha)
-        err = calc_sha256_sh256(path, hash); 
-    else    
-        err = calc_sha256(path, hash, false);
- 
-    if(!err){
-        b64 = BIO_new(BIO_f_base64());
-        bmem = BIO_new(BIO_s_mem());
-        b64 = BIO_push(b64, bmem);
-
-        BIO_write(b64, hash, SHA256_DIGEST_LENGTH);
-        BIO_flush(b64);
-        BIO_get_mem_ptr(b64, &bptr);
-
-        memcpy(obuff, bptr->data, SHA256_B64_LENGTH - 1);
-        obuff[SHA256_B64_LENGTH - 1] = 0;
-
-        BIO_free_all(b64);
-    }
-
-    return err;
-}
-
-static int sha256cmp(sha_le_t *a, sha_le_t *b) {
-
-    return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH);
-
-}
-
-static bool is_file_for_sha(char * path){
-
-    if(path){
-        return (strcmp(path, MANIFEST_DIFF) &&  
-                strcmp(path, MANIFEST) && 
-                strncmp(path, XL4_X_PREFIX, strlen(XL4_X_PREFIX)) &&
-                strncmp(path, XL4_SIGNATURE_PREFIX, strlen(XL4_SIGNATURE_PREFIX)));
-    }else
-        return false;
-}
-
-static int process_dir_entry (const char *fpath, const struct stat *sb,
-                        int typeflag, struct FTW *ftwbuf)
-{
-    int err = E_UA_OK;
-
-    if(fpath && typeflag == FTW_F && is_file_for_sha(fpath+temp_dirname_len+1)){
-
-        sha_le_t *tmp = (sha_le_t *)malloc(sizeof(sha_le_t));
-        if((err = calc_sha256(fpath, tmp->sha256, true)) == E_UA_OK){
-            DL_APPEND(sl_head, tmp);           
-        }else{
-            DBG("calc_sha256_hex failed err is %d", err);
-            free(tmp);
-        }
-    }
-
-    return err;
-}
-
-int calc_sha256_sh256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
-
-    int err = E_UA_OK;
-    sha_le_t *elt, *tmp;
-    SHA256_CTX sha256;
+    int i, len, zerr, err = E_UA_OK;
     char buf[STACK_BUF_SIZE];
-    int i = 0;
-    char *temp_dir = 0;
-    char *template = JOIN(ua_intl.cache_dir, "sha.XXXXXX");
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    long sum;
+    char * zstr = 0;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    BIO *b64;
+    BUF_MEM *bptr;
+    SHA256_CTX ctx;
+    struct sha256_list {
+        unsigned char sha256[SHA256_DIGEST_LENGTH];
+        struct sha256_list * next;
+    } *sl, *aux, *sha256List = NULL;
 
-    do{
+    do {
 
-        BOLT_SYS(!(temp_dir = mkdtemp(template)), "mkdtemp failed");
-        temp_dirname_len = strlen(temp_dir);
+        BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
+                "failed to open file as ZIP %s : %s", archive, zstr = get_zip_error(zerr));
 
-        BOLT_SUB(unzip(path, temp_dir));
+        for (i = 0; i < zip_get_num_entries(za, 0); i++) {
 
-        BOLT_SYS(!SHA256_Init(&sha256), "SHA256_Init");
-    
-        BOLT_SYS(nftw(temp_dir, process_dir_entry, 20, 0), "nftw failed");
+            BOLT_IF(zip_stat_index(za, i, 0, &sb), E_UA_ERR, "failed reading stat at index %d: %s", i, zip_strerror(za));
 
-        DL_SORT(sl_head, sha256cmp);
+            if (sb.name[strlen(sb.name) - 1] != '/') {
 
-        DL_FOREACH(sl_head,elt) {
-            SHA256_Update(&sha256, elt->sha256, SHA256_DIGEST_LENGTH);
+                if (!strcmp(sb.name, MANIFEST) ||
+                        !strcmp(sb.name, MANIFEST_DIFF) ||
+                        !strncmp(sb.name, XL4_X_PREFIX, strlen(XL4_X_PREFIX)) ||
+                        !strncmp(sb.name, XL4_SIGNATURE_PREFIX, strlen(XL4_SIGNATURE_PREFIX)))
+                    continue;
+
+                BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
+
+                SHA256_Init(&ctx);
+                SHA256_Update(&ctx, sb.name, strlen(sb.name));
+
+                sum = 0;
+                while (sum != sb.size) {
+                    BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
+                    SHA256_Update(&ctx, buf, len);
+                    sum += len;
+                }
+
+                sl = f_malloc(sizeof(struct sha256_list));
+                SHA256_Final(sl->sha256, &ctx);
+                LL_APPEND(sha256List, sl);
+
+                zip_fclose(zf);
+            }
         }
 
-        BOLT_SYS(!SHA256_Final(obuff, &sha256), "SHA256_Final");
-
-        rmdirp(temp_dir);
-
-        if(ua_debug){
-            printf("*************************   sha of sha  ************************\n");
-            for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) 
-            {
-                printf("%02x", obuff[i]);
+        if (!err) {
+            SHA256_Init(&ctx);
+            int sha256cmp(struct sha256_list * a, struct sha256_list * b) { return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH); }
+            LL_SORT(sha256List, sha256cmp);
+            LL_FOREACH(sha256List, sl) {
+                SHA256_Update(&ctx, sl->sha256, SHA256_DIGEST_LENGTH);
             }
-            printf("\n****************************************************************\n");        
-        }    
+            SHA256_Final(hash, &ctx);
 
-    }while(0);
+            b64 = BIO_push(BIO_new(BIO_f_base64()), BIO_new(BIO_s_mem()));
 
-    DL_FOREACH_SAFE(sl_head,elt,tmp) {
-        DL_DELETE(sl_head,elt);
-        free(elt);
+            BIO_write(b64, hash, SHA256_DIGEST_LENGTH);
+            BIO_flush(b64);
+            BIO_get_mem_ptr(b64, &bptr);
+
+            memcpy(obuff, bptr->data, SHA256_B64_LENGTH - 1);
+            obuff[SHA256_B64_LENGTH - 1] = 0;
+
+            BIO_free_all(b64);
+        }
+
+    } while (0);
+
+    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
+
+    LL_FOREACH_SAFE(sha256List, sl, aux) {
+        LL_DELETE(sha256List, sl);
+        free(sl);
     }
 
-    f_free(template);
-    
+    if (err) {
+        if(zstr) free(zstr);
+    }
+
     return err;
 }
+
 
 int is_cmd_runnable(const char * cmd) {
 

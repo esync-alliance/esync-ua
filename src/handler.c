@@ -596,7 +596,7 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
             if (state == INSTALL_READY) {
                 char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
-                if (!calc_sha256_b64(updateFile.file, updateFile.sha256b64, true)) {
+                if (!calc_sha256_x(updateFile.file, updateFile.sha256b64)) {
                     add_pkg_file_manifest(prePkgManifest, &updateFile);
                 }
 

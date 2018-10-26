@@ -327,7 +327,7 @@ static int verify_file(const char * file, const char * sha256) {
     int err = E_UA_OK;
     char hash[SHA256_HEX_LENGTH];
 
-    if (!(err = calc_sha256_hex(file, hash, false))) {
+    if (!(err = calc_sha256_hex(file, hash))) {
 
         if (strncmp(hash, sha256, SHA256_HEX_LENGTH - 1)) {
             err = E_UA_ERR;

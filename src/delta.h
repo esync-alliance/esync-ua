@@ -13,6 +13,7 @@
 #define XL4_X_PREFIX            "xl4-x-"
 #define XL4_SIGNATURE_PREFIX    "xl4-signature"
 
+
 typedef enum diff_type {
     DT_ADDED = 1,
     DT_REMOVED,

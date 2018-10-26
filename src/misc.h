@@ -6,8 +6,6 @@
 #define _UA_MISC_H_
 
 #include "common.h"
-#include <stdbool.h>
-#include <ftw.h>
 
 #define S(s) (s && *s)
 #define SAFE_STR(s) ((s)?(s):"")
@@ -44,20 +42,15 @@ static inline const char * chop_path(const char * path) {
 #define SHA256_HEX_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
 #define SHA256_B64_LENGTH    44 + 1
 
-typedef struct sha_le {
-    unsigned char sha256[SHA256_DIGEST_LENGTH];
-    struct sha_le *next, *prev;
-} sha_le_t;
 
 uint64_t currentms();
 int unzip(const char * archive, const char * path);
 int zip(const char * archive, const char * path);
 int zip_find_file(const char * archive, const char * path);
 int copy_file(const char *from, const char *to);
-int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH], bool fIncludeFilename);
-int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH], bool fIncludeFilename);
-int calc_sha256_b64(const char * path, char obuff[SHA256_B64_LENGTH], bool sha_of_sha);
-int calc_sha256_sh256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
+int calc_sha256(const char * path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
+int calc_sha256_hex(const char * path, char obuff[SHA256_HEX_LENGTH]);
+int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char *cmd);
 int mkdirp(const char * path, int umask);
 int newdirp(const char * path, int umask);
