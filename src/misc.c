@@ -5,8 +5,10 @@
 #include "misc.h"
 #include "delta.h"
 
+#if 0
 static int zip_archive_add_file(struct zip * za, const char * path, const char * base);
 static int zip_archive_add_dir(struct zip *za, const char *path, const char *base);
+#endif
 static char * get_zip_error(int ze);
 
 #define STACK_BUF_SIZE               4096
@@ -221,14 +223,15 @@ int unzip(const char * archive, const char * path) {
 
 int zip(const char * archive, const char * path) {
 
+    DBG("ziping %s to %s", path, archive);
+
+#if 0 //ESYNC-3166 - todo: make zip as fast as zip tool
+
     int zerr, err = E_UA_OK;
     char * aux = 0;
     struct stat path_stat;
     struct zip * za = 0;
 
-    DBG("ziping %s to %s", path, archive);
-
-/**** ESYNC-3166 - todo: make zip as fast as zip tool****
     do {
 
         BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
@@ -247,8 +250,9 @@ int zip(const char * archive, const char * path) {
         if (aux) free(aux);
         if (za) zip_discard(za);
     }
-*/
+#endif
 
+    int err = E_UA_OK;
     char * cmd = 0;
     do {
         BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
@@ -261,7 +265,7 @@ int zip(const char * archive, const char * path) {
     return err;
 }
 
-
+#if 0
 static int zip_archive_add_file(struct zip * za, const char * path, const char * base) {
 
     int err = E_UA_OK;
@@ -335,7 +339,7 @@ static int zip_archive_add_dir(struct zip * za, const char * path, const char * 
 
     return err;
 }
-
+#endif
 
 int zip_find_file(const char * archive, const char * path) {
 
@@ -370,14 +374,14 @@ int zip_find_file(const char * archive, const char * path) {
 
 int copy_file(const char * from, const char * to) {
 
+    DBG("copying file from %s to %s", from, to);
+
+#if 0 //ESYNC-2789 - todo: make copy as fast as cp tool****
     int err = E_UA_OK;
     FILE *in, *out;
     char buf[STACK_BUF_SIZE];
     size_t nread;
 
-    DBG("copying file from %s to %s", from, to);
-
-/**** ESYNC-2789 - todo: make copy as fast as cp tool****
     do {
 
         BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
@@ -394,8 +398,9 @@ int copy_file(const char * from, const char * to) {
 
     if (in && fclose(in)) DBG_SYS("closing file: %s", from);
     if (out && fclose(out)) DBG_SYS("closing file: %s", to);
-*/
+#endif
 
+    int err = E_UA_OK;
     char * cmd = 0;
     do {
         BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
@@ -411,7 +416,7 @@ int copy_file(const char * from, const char * to) {
 
 int calc_sha256(const char * fpath, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
 
-    int i, err = E_UA_OK;
+    int err = E_UA_OK;
     FILE *file;
     SHA256_CTX ctx;
     char buf[STACK_BUF_SIZE];

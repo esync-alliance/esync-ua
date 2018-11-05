@@ -57,7 +57,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
 
         } else if (xmlStrEqual(n->name, XMLT "sha256")) {
 
-            if ((p = get_xml_child(n, "old"))) {
+            if ((p = get_xml_child(n, XMLT "old"))) {
                 if ((c = xmlNodeGetContent(p))) {
                     if(!*diffInfo->sha256.old && (strlen((const char *)c) == (SHA256_HEX_LENGTH - 1))) {
                         strcpy(diffInfo->sha256.old, (const char *)c);
@@ -66,7 +66,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr) {
                 }
             }
 
-            if ((p = get_xml_child(n, "new"))) {
+            if ((p = get_xml_child(n, XMLT "new"))) {
                 if ((c = xmlNodeGetContent(p))) {
                     if(!*diffInfo->sha256.new && (strlen((const char *)c) == (SHA256_HEX_LENGTH - 1))) {
                         strcpy(diffInfo->sha256.new, (const char *)c);
@@ -268,7 +268,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
 
     int err = E_UA_OK;
     xmlDocPtr doc = NULL;
-    xmlNodePtr root = NULL, node = NULL, n = NULL, aux = NULL;
+    xmlNodePtr root, node, n, aux;
     xmlChar * c;
 
     do {
@@ -277,7 +277,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
             BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
             root = xmlDocGetRootElement(doc);
         } else {
-            doc = xmlNewDoc("1.0");
+            doc = xmlNewDoc(XMLT "1.0");
             root = xmlNewNode(NULL, XMLT "manifest_pkg");
             xmlDocSetRootElement(doc, root);
         }
@@ -287,6 +287,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
             if ((n = get_xml_child(node, XMLT "version"))) {
                 if ((c = xmlNodeGetContent(n))) {
                     if (xmlStrEqual(c, XMLT pkgFile->version)) {
+                        DBG("Removing pkg entry for version: %s in %s", pkgFile->version, xmlFile);
                         xmlUnlinkNode(node);
                         xmlFreeNode(node);
                     }

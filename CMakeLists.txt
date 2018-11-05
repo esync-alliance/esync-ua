@@ -159,6 +159,14 @@ if (XL4_PROVIDE_THREADS)
     find_package(Threads MODULE REQUIRED)
 endif()
 
+if (DEBUG)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
+
 if (BUILD_SHARED)
     add_library(ua-shared SHARED ${LIB_SOURCE})
     set_target_properties(ua-shared PROPERTIES OUTPUT_NAME ua CLEAN_DIRECT_OUTPUT 1)

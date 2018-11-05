@@ -262,27 +262,28 @@ void handle_message(const char * type, const char * msg, size_t len) {
 
     int l = utarray_len(&ri_list);
 
-    DBG("found registered handlers: %d", l);
+    if (l)
+        DBG("Registered handlers found for %s : %d", type, l);
+    else
+        DBG("Incoming message for non-registered handler %s : %s", type, msg);
 
     for (int j = 0; j < l; j++) {
 
-        do {
-            runner_info_t * ri = *(runner_info_t **) utarray_eltptr(&ri_list, j);
-            BOLT_SYS(pthread_mutex_lock(&ri->lock), "lock failed");
-            incoming_msg_t * im = f_malloc(sizeof(incoming_msg_t));
-            im->msg = f_strdup(msg);
-            im->msg_len = len;
-            im->msg_ts = currentms();
-            DL_APPEND(ri->queue, im);
-            BOLT_SYS(pthread_cond_signal(&ri->cond), "cond signal");
-            BOLT_SYS(pthread_mutex_unlock(&ri->lock), "unlock failed");
-        } while (0);
+        runner_info_t * ri = *(runner_info_t **) utarray_eltptr(&ri_list, j);
+        BOLT_SYS(pthread_mutex_lock(&ri->lock), "lock failed");
+        incoming_msg_t * im = f_malloc(sizeof(incoming_msg_t));
+        im->msg = f_strdup(msg);
+        im->msg_len = len;
+        im->msg_ts = currentms();
+        DL_APPEND(ri->queue, im);
+        BOLT_SYS(pthread_cond_signal(&ri->cond), "cond signal");
+        BOLT_SYS(pthread_mutex_unlock(&ri->lock), "unlock failed");
 
     }
 
     utarray_done(&ri_list);
 
-    if (!l) DBG("Incoming message on non-registered %s : %s", type, msg);
+    if (err) DBG("Error while appending message to queue for %s : %s", type, msg);
 
 }
 
@@ -393,6 +394,7 @@ void * runner_loop(void * arg) {
         }
     }
 
+    return NULL;
 }
 
 
@@ -446,6 +448,7 @@ static void * worker_action(void * arg) {
 
     ui->worker.worker_running = 0;
 
+    return NULL;
 }
 
 
@@ -618,7 +621,6 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
 
 static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
-    char *installedVer;
     pkg_info_t pkgInfo = {0};
     pkg_file_t pkgFile, updateFile = {0};
     update_err_t updateErr = UE_NONE;
@@ -898,8 +900,8 @@ static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg
     json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
     json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
     json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
-    json_object_object_add(pkgObject, "rollback-version", pkgInfo->rollback_version ? json_object_new_string(pkgInfo->rollback_version) : NULL);
-    json_object_object_add(pkgObject, "rollback-versions", pkgInfo->rollback_versions ? json_object_get(pkgInfo->rollback_versions) : NULL);
+    if (pkgInfo->rollback_version)  json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
+    if (pkgInfo->rollback_versions) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
 
 
     if ((state == INSTALL_FAILED) && (ue != UE_NONE) && pkgFile) {
