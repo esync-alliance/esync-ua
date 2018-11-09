@@ -517,6 +517,7 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
                         json_object * versionObject = json_object_new_object();
                         json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
                         json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded? 1:0));
+                        json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
                         if (ua_intl.delta) {
                             json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha256b64));
@@ -716,7 +717,8 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
     pkg_info_t pkgInfo = {0};
     pkg_file_t pkgFile, updateFile = {0};
 
-    if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
+    if (get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
+        !get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 

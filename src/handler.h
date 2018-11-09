@@ -37,6 +37,7 @@ typedef struct pkg_file {
     char * file;
     char sha256b64[SHA256_B64_LENGTH];
     int downloaded;
+    int rollback_order;
 
     struct pkg_file * next;
     struct pkg_file * prev;

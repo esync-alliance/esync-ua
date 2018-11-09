@@ -106,23 +106,25 @@ int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char
     char * ver = 0;
     *nextVer = 0;
     idx = 0;
-
+    
     if (json_object_is_type(jsonArr, json_type_array) && ((len = json_object_array_length(jsonArr)) > 0)) {
+ 
+        idx = len - 1;
 
-        for (i = 0; i < len; i++) {
+        for (i = len-1; i >= 0; i--) {
             ver = (char*) json_object_get_string(json_object_array_get_idx(jsonArr, i));
             if (!strcmp(currentVer, ver)) {
-                idx = i + 1;
+                idx = i - 1;
                 break;
             }
         }
 
-        if (idx != len) {
+        if (idx >= 0) {
             *nextVer = (char*) json_object_get_string(json_object_array_get_idx(jsonArr, idx));
         } else {
             err = E_UA_ERR;
         }
-
+        
     } else {
         err = E_UA_ERR;
     }
