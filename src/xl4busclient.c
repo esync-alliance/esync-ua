@@ -20,7 +20,7 @@ static void release_identity(xl4bus_identity_t * identity);
 static xl4bus_asn1_t * load_full(char * path);
 static char * simple_password (struct xl4bus_X509v3_Identity * id);
 
-xl4bus_client_t m_xl4bus_clt;
+xl4bus_client_t m_xl4bus_clt = {0};
 char * m_xl4bus_url = 0;
 
 void debug_print(const char * msg) {

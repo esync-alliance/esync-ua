@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include "utils.h"
 #include "delta.h"
+#include "misc.h"
 #include "xml.h"
 #include "xl4busclient.h"
 #include "ua_version.h"
@@ -71,9 +72,25 @@ int ua_init(ua_cfg_t * uaConfig) {
 
         BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 
+        if (uaConfig->rw_buffer_size) ua_rw_buff_size = uaConfig->rw_buffer_size * 1024;
+
     } while (0);
 
+    if (err) {
+        ua_stop();
+    }
+
     return err;
+}
+
+
+int ua_stop() {
+
+    if (ua_intl.cache_dir) { free(ua_intl.cache_dir); ua_intl.cache_dir = NULL; }
+    if (ua_intl.backup_dir) { free(ua_intl.backup_dir); ua_intl.backup_dir = NULL; }
+    delta_stop();
+    return xl4bus_client_stop();
+
 }
 
 
@@ -156,13 +173,6 @@ int ua_unregister(ua_handler_t * uah, int len) {
     }
 
     return ret;
-}
-
-
-int ua_stop() {
-
-    return xl4bus_client_stop();
-
 }
 
 

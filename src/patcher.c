@@ -9,6 +9,7 @@ static void _help(const char * app) {
             "  -c <path>  : path to cache directory (default: \"/tmp/deltapatcher/\")\n"
             "  -a <cap>   : delta capability\n"
             "  -d         : enable verbose\n"
+            "  -m <size>  : read/write buffer size, in kilobytes\n"
             "  -h         : display this help and exit\n"
     );
     _exit(1);
@@ -25,7 +26,7 @@ int main(int argc, char ** argv) {
 
     char * cache_dir   = "/tmp/deltapatcher/";
 
-    while ((c = getopt(argc, argv, ":c:a:dh")) != -1) {
+    while ((c = getopt(argc, argv, ":c:a:m:dh")) != -1) {
         switch (c) {
             case 'c':
                 cache_dir = optarg;
@@ -35,6 +36,9 @@ int main(int argc, char ** argv) {
                 break;
             case 'd':
                 ua_debug = 1;
+                break;
+            case 'm':
+                if ((ua_rw_buff_size = atoi(optarg) * 1024) > 0)
                 break;
             case 'h':
             default:

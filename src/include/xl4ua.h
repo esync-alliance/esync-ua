@@ -129,6 +129,9 @@ typedef struct ua_cfg {
     // enables debug messages
     int                     debug;
 
+    // specifies the buffer size for read/write, in kilobytes
+    long                    rw_buffer_size;
+
 } ua_cfg_t;
 
 

@@ -42,6 +42,7 @@ static inline const char * chop_path(const char * path) {
 #define SHA256_HEX_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
 #define SHA256_B64_LENGTH    44 + 1
 
+extern size_t ua_rw_buff_size;
 
 uint64_t currentms();
 int unzip(const char * archive, const char * path);

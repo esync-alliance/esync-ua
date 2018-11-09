@@ -11,8 +11,7 @@ static int zip_archive_add_dir(struct zip *za, const char *path, const char *bas
 #endif
 static char * get_zip_error(int ze);
 
-#define STACK_BUF_SIZE               4096
-
+size_t ua_rw_buff_size = 16 * 1024;
 
 uint64_t currentms() {
 
@@ -165,7 +164,7 @@ static char * get_zip_error(int ze) {
 int unzip(const char * archive, const char * path) {
 
     int i, len, fd, zerr, err = E_UA_OK;
-    char buf[STACK_BUF_SIZE];
+    char * buf = 0;
     long sum;
     char * aux = 0;
     char * fpath = 0;
@@ -179,6 +178,8 @@ int unzip(const char * archive, const char * path) {
 
         BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
                 "failed to open file as ZIP %s : %s", archive, aux = get_zip_error(zerr));
+
+        BOLT_MALLOC(buf, ua_rw_buff_size);
 
         for (i = 0; i < zip_get_num_entries(za, 0); i++) {
 
@@ -210,6 +211,7 @@ int unzip(const char * archive, const char * path) {
 
     } while (0);
 
+    if (buf) free(buf);
     if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
     if (err) {
@@ -231,6 +233,8 @@ int zip(const char * archive, const char * path) {
     char * aux = 0;
     struct stat path_stat;
     struct zip * za = 0;
+
+    DBG("ziping %s to %s", path, archive);
 
     do {
 
@@ -282,7 +286,7 @@ static int zip_archive_add_file(struct zip * za, const char * path, const char *
 
         BOLT_IF(!(s = zip_source_file(za, path, 0, 0)), E_UA_ERR, "failed to source file %s : %s", path, zip_strerror(za));
 
-        if (zip_file_add(za, file, s, ZIP_FL_ENC_UTF_8) < 0) {
+        if (zip_file_add(za, file, s, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8) < 0) {
             zip_source_free(s);
             BOLT_SAY(E_UA_ERR, "error adding file: %s", zip_strerror(za));
         }
@@ -374,13 +378,12 @@ int zip_find_file(const char * archive, const char * path) {
 
 int copy_file(const char * from, const char * to) {
 
-    DBG("copying file from %s to %s", from, to);
-
-#if 0 //ESYNC-2789 - todo: make copy as fast as cp tool****
     int err = E_UA_OK;
     FILE *in, *out;
-    char buf[STACK_BUF_SIZE];
+    char * buf = 0;
     size_t nread;
+
+    DBG("copying file from %s to %s", from, to);
 
     do {
 
@@ -389,6 +392,8 @@ int copy_file(const char * from, const char * to) {
         BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
         BOLT_SYS(!(out = fopen(to, "w")), "creating file: %s", to);
 
+        BOLT_MALLOC(buf, ua_rw_buff_size);
+
         do {
             BOLT_SYS(((nread = fread(buf, sizeof(char), sizeof(buf), in)) == 0) && ferror(in), "reading from file: %s", from);
             BOLT_SYS(nread && (fwrite(buf, sizeof(char), nread, out) != nread), "writing to file: %s", to);
@@ -396,19 +401,9 @@ int copy_file(const char * from, const char * to) {
 
     } while (0);
 
+    if (buf) free(buf);
     if (in && fclose(in)) DBG_SYS("closing file: %s", from);
     if (out && fclose(out)) DBG_SYS("closing file: %s", to);
-#endif
-
-    int err = E_UA_OK;
-    char * cmd = 0;
-    do {
-        BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
-        cmd = f_asprintf("cp %s %s", from, to);
-        DBG("Executing: %s", cmd);
-        BOLT_SYS(system(cmd), "failed to copy file");
-    } while (0);
-    if (cmd) free(cmd);
 
     return err;
 }
@@ -419,12 +414,14 @@ int calc_sha256(const char * fpath, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
     int err = E_UA_OK;
     FILE *file;
     SHA256_CTX ctx;
-    char buf[STACK_BUF_SIZE];
+    char * buf = 0;
     size_t nread;
 
     do {
 
         BOLT_SYS(!(file = fopen(fpath, "rb")), "opening file: %s", fpath);
+
+        BOLT_MALLOC(buf, ua_rw_buff_size);
 
         SHA256_Init(&ctx);
 
@@ -437,6 +434,8 @@ int calc_sha256(const char * fpath, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
         BOLT_SYS(fclose(file), "closing file: %s", fpath);
 
     } while (0);
+
+    if (buf) free(buf);
 
     return err;
 }
@@ -463,7 +462,7 @@ int calc_sha256_hex(const char * fpath, char obuff[SHA256_HEX_LENGTH]) {
 int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
 
     int i, len, zerr, err = E_UA_OK;
-    char buf[STACK_BUF_SIZE];
+    char * buf = 0;
     unsigned char hash[SHA256_DIGEST_LENGTH];
     long sum;
     char * zstr = 0;
@@ -482,6 +481,8 @@ int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
 
         BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
                 "failed to open file as ZIP %s : %s", archive, zstr = get_zip_error(zerr));
+
+        BOLT_MALLOC(buf, ua_rw_buff_size);
 
         for (i = 0; i < zip_get_num_entries(za, 0); i++) {
 
@@ -538,6 +539,7 @@ int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
 
     } while (0);
 
+    if (buf) free(buf);
     if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
     LL_FOREACH_SAFE(sha256List, sl, aux) {

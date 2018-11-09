@@ -23,6 +23,7 @@ static void _help(const char * app) {
             "  -d         : enable verbose\n"
             "  -D         : disable delta reconstruction\n"
             "  -a <cap>   : delta capability\n"
+            "  -m <size>  : read/write buffer size, in kilobytes\n"
             "  -h         : display this help and exit\n"
     );
     _exit(1);
@@ -44,7 +45,7 @@ int main(int argc, char ** argv) {
     cfg.cache_dir   = "/tmp/esync/";
     cfg.backup_dir  = "/data/sota/esync/";
 
-    while ((c = getopt(argc, argv, ":k:u:b:c:a:t:dDh")) != -1) {
+    while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:dDh")) != -1) {
         switch (c) {
             case 'k':
                 cfg.cert_dir = optarg;
@@ -70,8 +71,11 @@ int main(int argc, char ** argv) {
             case 'D':
                 cfg.delta = 0;
                 break;
+            case 'm':
+                if ((cfg.rw_buffer_size = atoi(optarg)) > 0)
+                break;
             case 'h':
-            default:
+            default :
                 _help(argv[0]);
                 break;
         }
