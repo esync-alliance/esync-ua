@@ -208,6 +208,13 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr) {
                 xmlFree(c);
             }
 
+        }else if (xmlStrEqual(n->name, XMLT "rollback-order")) {
+
+            if ((c = xmlNodeGetContent(n))) {
+                pkgFile->rollback_order = atoi((const char *)c);
+                xmlFree(c);
+            }
+
         }
     }
 
@@ -270,7 +277,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
     xmlDocPtr doc = NULL;
     xmlNodePtr root, node, n, aux;
     xmlChar * c;
-
+    char rb_order[8];
     do {
 
         if (!access(xmlFile, W_OK)) {
@@ -294,6 +301,14 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
                     xmlFree(c);
                 }
             }
+            if ((n = get_xml_child(node, XMLT "rollback-order"))){
+                //Increment rollback-order for each version.
+                 if ((c = xmlNodeGetContent(n))) {
+                    snprintf(rb_order, 8, "%d", atoi((const char *)c)+1);
+                    xmlNodeSetContent(n, XMLT rb_order);
+                }
+                xmlFree(c);
+            }
         }
 
         DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
@@ -303,6 +318,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
         xmlNewChild(node, NULL, XMLT "sha256", XMLT pkgFile->sha256b64);
         xmlNewChild(node, NULL, XMLT "file", XMLT pkgFile->file);
         xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pkgFile->downloaded? "1":"0"));
+        xmlNewChild(node, NULL, XMLT "rollback-order", XMLT "0");
 
         BOLT_SYS(chkdirp(xmlFile), "failed to prepare directory for %s", xmlFile);
         BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
