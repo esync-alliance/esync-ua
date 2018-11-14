@@ -48,7 +48,11 @@ typedef download_state_t (*ua_on_prepare_download)(const char * type, const char
 
 typedef int (*ua_on_message)(const char * msgType, json_object * message);
 
-#endif
+#else 
+
+typedef int (*ua_on_message)(const char * msgType, void * message);
+
+#endif /* _json_h_ */
 
 typedef struct ua_routine {
 
@@ -76,13 +80,9 @@ typedef struct ua_routine {
     // (optional) to prepare for download
     ua_on_prepare_download  on_prepare_download;
 
-#ifdef _json_h_
-
     // (optional) called on xl4bus messages
     ua_on_message           on_message;
-
-#endif
-
+ 
 } ua_routine_t;
 
 
@@ -197,6 +197,6 @@ typedef struct log_data {
 XL4_PUB int ua_send_log_report(char * pkgType, log_type_t logtype, log_data_t * logdata);
 
 
-#endif
+#endif /* _json_h_ */
 
 #endif /* _XL4UA_H_ */
