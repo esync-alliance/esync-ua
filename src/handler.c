@@ -494,75 +494,78 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
     pkg_info_t pkgInfo = {0};
     char * installedVer = 0;
     char * replyId;
+    int uae = E_UA_OK;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_replyid_from_json(jsonObj, &replyId)) {
 
-        if (!(*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer)) {
-
+        uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
+        if(uae == E_UA_OK)
             DBG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
+        else
+            DBG("get version for %s failed! err=%d", pkgInfo.name, uae);
 
-            json_object * pkgObject = json_object_new_object();
-            json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo.type));
-            json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo.name));
-            json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
+        json_object * pkgObject = json_object_new_object();
+        json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo.type));
+        json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo.name));
+        json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
 
-            if (ua_intl.delta) {
-                json_object_object_add(pkgObject, "delta-cap", json_object_new_string(get_delta_capability()));
-            }
+        if (ua_intl.delta) {
+            json_object_object_add(pkgObject, "delta-cap", json_object_new_string(get_delta_capability()));
+        }
 
-            if (S(ua_intl.backup_dir)) {
+        if(uae != E_UA_OK) {
+            json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
+        }
 
-                pkg_file_t *pf, *aux, *pkgFile = NULL;
-                char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+        if (S(ua_intl.backup_dir)) {
 
-                if (!parse_pkg_manifest(pkgManifest, &pkgFile)) {
+            pkg_file_t *pf, *aux, *pkgFile = NULL;
+            char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
-                    json_object * verListObject = json_object_new_object();
-                    json_object * rbVersArray = json_object_new_array();
+            if (!parse_pkg_manifest(pkgManifest, &pkgFile)) {
 
-                    DL_FOREACH_SAFE(pkgFile, pf, aux) {
+                json_object * verListObject = json_object_new_object();
+                json_object * rbVersArray = json_object_new_array();
 
-                        json_object * versionObject = json_object_new_object();
-                        json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
-                        json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded? 1:0));
-                        json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
+                DL_FOREACH_SAFE(pkgFile, pf, aux) {
 
-                        if (ua_intl.delta) {
-                            json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha256b64));
-                        }
+                    json_object * versionObject = json_object_new_object();
+                    json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
+                    json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded? 1:0));
+                    json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
-                        json_object_object_add(verListObject, pf->version, versionObject);
-                        json_object_array_add(rbVersArray, json_object_new_string(pf->version));
-
-                        DL_DELETE(pkgFile, pf);
-                        free_pkg_file(pf);
-
+                    if (ua_intl.delta) {
+                        json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha256b64));
                     }
 
-                    json_object_object_add(pkgObject, "version-list", verListObject);
-                    json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+                    json_object_object_add(verListObject, pf->version, versionObject);
+                    json_object_array_add(rbVersArray, json_object_new_string(pf->version));
+
+                    DL_DELETE(pkgFile, pf);
+                    free_pkg_file(pf);
+
                 }
 
-                free (pkgManifest);
+                json_object_object_add(pkgObject, "version-list", verListObject);
+                json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
             }
 
-            json_object * bodyObject = json_object_new_object();
-            json_object_object_add(bodyObject, "package", pkgObject);
-
-            json_object * jObject = json_object_new_object();
-            json_object_object_add(jObject, "type", json_object_new_string(QUERY_PACKAGE));
-            json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
-            json_object_object_add(jObject, "body", bodyObject);
-
-            ua_send_message(jObject);
-
-            json_object_put(jObject);
-
-        } else {
-            DBG("get version for %s failed!", pkgInfo.name);
+            free (pkgManifest);
         }
+
+        json_object * bodyObject = json_object_new_object();
+        json_object_object_add(bodyObject, "package", pkgObject);
+
+        json_object * jObject = json_object_new_object();
+        json_object_object_add(jObject, "type", json_object_new_string(QUERY_PACKAGE));
+        json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
+        json_object_object_add(jObject, "body", bodyObject);
+
+        ua_send_message(jObject);
+
+        json_object_put(jObject);
 
     }
 }
