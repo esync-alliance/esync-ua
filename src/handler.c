@@ -753,6 +753,10 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
             free(prePkgManifest);
         }
     }
+
+    char *prePkgManifestDir = JOIN(ua_intl.cache_dir, pkgInfo.name);
+    rmdirp(prePkgManifestDir);
+    free(prePkgManifestDir);
 }
 
 
