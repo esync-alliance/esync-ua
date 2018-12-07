@@ -675,7 +675,8 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     }
 
                     free(updateFile.file);
-                    free(updateFile.version);
+                    if(state != INSTALL_COMPLETED)
+                        free(updateFile.version);
 
                 } else if ((state == INSTALL_FAILED) && (updateErr != UE_NONE)) break;
 
@@ -699,7 +700,12 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
         if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
                 (pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
             send_install_status(&pkgInfo, INSTALL_FAILED, &updateFile, updateErr);
-        }
+        }               
+
+        if(state == INSTALL_COMPLETED) {
+            ua_backup_package(pkgInfo.name, updateFile.version);
+            free(updateFile.version);
+        }   
 
         free(pkgManifest);
         free(prePkgManifest);
@@ -728,7 +734,7 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
 static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
-    pkg_file_t pkgFile, updateFile = {0};
+    pkg_file_t pkgFile = {0};
 
     if (get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
         !get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
@@ -740,23 +746,11 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgInfo.version, &pkgFile.downloaded))) {
             //err! backing up only when file property exists due to unnecessary confirm update from dmclient
 
-            char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-
-            if (!get_pkg_file_manifest(prePkgManifest, pkgInfo.version, &updateFile)) {
-
-                backup_package(&pkgInfo, &updateFile);
-
-                free(updateFile.file);
-                free(updateFile.version);
-            }
-
-            free(prePkgManifest);
+            ua_backup_package(pkgInfo.name, pkgInfo.version);
+         
         }
     }
 
-    char *prePkgManifestDir = JOIN(ua_intl.cache_dir, pkgInfo.name);
-    rmdirp(prePkgManifestDir);
-    free(prePkgManifestDir);
 }
 
 
@@ -1126,5 +1120,32 @@ const char * ua_get_updateagent_version() {
 const char * ua_get_xl4bus_version() {
 
     return xl4bus_get_version();
+
+}
+
+int ua_backup_package(char * pkgName, char * version) {
+
+    int ret = E_UA_OK;
+    pkg_info_t pkgInfo = {0};
+    pkg_file_t updateFile = {0};
+
+    pkgInfo.name = pkgName;
+    pkgInfo.version = version;
+
+    char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
+
+    if (!get_pkg_file_manifest(prePkgManifest,  pkgInfo.version, &updateFile)){
+
+            backup_package(&pkgInfo, &updateFile);
+
+            free(updateFile.file);
+            free(updateFile.version);
+    }
+
+    remove(prePkgManifest);
+
+    free(prePkgManifest);
+
+    return ret;
 
 }
