@@ -270,6 +270,62 @@ int parse_pkg_manifest(char * xmlFile, pkg_file_t ** pkgFile) {
     return err;
 }
 
+int remove_old_backup(char * xmlFile, char * version) {
+
+    int err = E_UA_OK;
+    xmlDocPtr doc = NULL;
+    xmlNodePtr root, node, n, aux;
+    xmlChar * c, *backpath;
+
+    do {
+
+        if (!access(xmlFile, W_OK)) {
+            BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
+            root = xmlDocGetRootElement(doc);
+        } else {
+            doc = xmlNewDoc(XMLT "1.0");
+            root = xmlNewNode(NULL, XMLT "manifest_pkg");
+            xmlDocSetRootElement(doc, root);
+        }
+
+        XMLELE_ITER_SAFE(root, node, aux)
+        if (xmlStrEqual(node->name, XMLT "package")) {
+            if ((n = get_xml_child(node, XMLT "version"))) {
+                if ((c = xmlNodeGetContent(n))) {
+                    if (!xmlStrEqual(c, XMLT version)) {
+                        DBG("Removing pkg entry for version: %s in %s", version, xmlFile);
+                        if((n = get_xml_child(node, XMLT "file"))) {
+                        
+                            if((backpath = xmlNodeGetContent(n))) {
+                            
+                                printf("Removing version(%s) = %s \n", c, f_dirname((const char *)backpath));                                
+                                rmdirp(f_dirname((const char *)backpath));
+                                xmlUnlinkNode(node);
+                                xmlFreeNode(node);
+
+                                BOLT_SYS(chkdirp(xmlFile), "failed to prepare directory for %s", xmlFile);
+                                BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
+                            }
+
+                            xmlFree(backpath);
+                        }
+
+                        //xmlFree(n);
+                    }
+                    xmlFree(c);
+                }
+            }
+        }
+
+    } while (0);
+
+    if (doc) {
+        xmlFreeDoc(doc);
+        xmlCleanupParser();
+    }
+
+    return err;
+}
 
 int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
 
