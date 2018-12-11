@@ -746,7 +746,11 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgInfo.version, &pkgFile.downloaded))) {
             //err! backing up only when file property exists due to unnecessary confirm update from dmclient
 
-            ua_backup_package(pkgInfo.name, pkgInfo.version);
+            char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+
+            remove_old_backup(pkgManifest, pkgInfo.version);
+
+            free(pkgManifest);
          
         }
     }
