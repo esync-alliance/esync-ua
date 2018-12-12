@@ -650,9 +650,12 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
         char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
+        char * curUpdateVer = 0;
 
         do {
             pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
+
+            if(curUpdateVer) free(curUpdateVer);
 
             if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
                     !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
@@ -674,6 +677,8 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                     }
 
+                    curUpdateVer = f_strdup(updateFile.version);
+                    
                     free(updateFile.file);
                     if(state != INSTALL_COMPLETED)
                         free(updateFile.version);
@@ -694,7 +699,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             }
 
         } while ((state == INSTALL_FAILED) &&
-                !get_pkg_next_rollback_version(pkgInfo.rollback_versions, updateFile.version, &pkgInfo.rollback_version) &&
+                !get_pkg_next_rollback_version(pkgInfo.rollback_versions, curUpdateVer, &pkgInfo.rollback_version) &&
                 S(pkgInfo.rollback_version));
 
         if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
@@ -707,6 +712,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             free(updateFile.version);
         }   
 
+        if(curUpdateVer) free(curUpdateVer);
         free(pkgManifest);
         free(prePkgManifest);
     }

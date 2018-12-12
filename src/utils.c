@@ -107,7 +107,7 @@ int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char
     *nextVer = 0;
     idx = 0;
     
-    if (json_object_is_type(jsonArr, json_type_array) && ((len = json_object_array_length(jsonArr)) > 0)) {
+    if (currentVer && json_object_is_type(jsonArr, json_type_array) && ((len = json_object_array_length(jsonArr)) > 0)) {
  
         idx = len - 1;
 
