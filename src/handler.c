@@ -639,7 +639,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
     pkg_file_t pkgFile, updateFile = {0};
     update_err_t updateErr = UE_NONE;
     install_state_t state;
-    int bck = 0;
+    int bck = 0, uae = 0;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -650,7 +650,16 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         char * pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
         char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-        char * curUpdateVer = 0;
+        char * curUpdateVer = 0, * installedVer = 0;
+
+        uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
+
+        if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.version, installedVer)) {
+            send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
+            free(pkgManifest);
+            free(prePkgManifest);
+            return ;
+        }
 
         do {
             pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
