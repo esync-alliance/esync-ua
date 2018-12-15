@@ -250,7 +250,13 @@ void handle_status(int status) {
 
 void handle_delivered(const char * msg, int ok) {
 
-    DBG("Message delivered %s : %s", ok ? "OK" : "NOT OK", msg);
+    char * msg_type = 0, * pkg_type = 0;
+    enum json_tokener_error jErr;
+
+    json_object * jObj = json_tokener_parse_verbose(msg, &jErr);
+    get_pkg_type_from_json(jObj, &pkg_type);
+    get_type_from_json(jObj, &msg_type);
+    DBG("Message delivered %s : %s for %s", ok ? "OK" : "NOT OK", NULL_STR(msg_type), NULL_STR(pkg_type));
 
 }
 
@@ -679,6 +685,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
 
+        /* FAP-514: Don't handle ready-update if the taget version is same as installed version */
         if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.version, installedVer)) {
             send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
             free(pkgManifest);
@@ -788,6 +795,8 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
             char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
             remove_old_backup(pkgManifest, pkgInfo.version);
+
+            ua_intl.state = UA_STATE_IDLE_INIT;
 
             free(pkgManifest);         
     }
