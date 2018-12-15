@@ -112,6 +112,7 @@ typedef struct ua_internal {
     int delta;
     char * cache_dir;
     char * backup_dir;
+    char * prepare_version;
 
 } ua_internal_t;
 
