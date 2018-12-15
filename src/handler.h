@@ -95,8 +95,20 @@ typedef struct runner_info_hash_tree {
 
 } runner_info_hash_tree_t;
 
+typedef enum ua_state {
+
+    UA_STATE_UNKNOWN,
+    UA_STATE_IDLE_INIT, 
+    UA_STATE_DOWNLOADING_UPDATE,
+    UA_STATE_PREPARING_UPDATE,
+    UA_STATE_UPDATE_STARTED,
+    UA_STATE_UPDATE_DONE,
+
+}ua_state_t;
+
 typedef struct ua_internal {
 
+    ua_state_t state;
     int delta;
     char * cache_dir;
     char * backup_dir;
