@@ -607,7 +607,17 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
                 ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
-            state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
+            if(!ua_intl.prepare_version) {
+
+                ua_intl.prepare_version = f_strdup(pkgInfo.version);
+                state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
+
+            }else if(strcmp(ua_intl.prepare_version, pkgInfo.version)){
+
+                state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
+
+            }
+            
             send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
             if (state == INSTALL_READY) {
@@ -644,6 +654,11 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+
+        if(ua_intl.prepare_version && !strcmp(ua_intl.prepare_version, pkgInfo.version)) {
+                    free(ua_intl.prepare_version);
+                    ua_intl.prepare_version = 0;
+        }
 
         get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
         get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions);
@@ -749,27 +764,18 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
 static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
-    pkg_file_t pkgFile = {0};
 
     if (get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
         !get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
-        if ((!get_pkg_file_from_json(jsonObj, pkgInfo.version, &pkgFile.file) &&
-                !get_pkg_sha256_from_json(jsonObj, pkgInfo.version, pkgFile.sha256b64) &&
-                !get_pkg_downloaded_from_json(jsonObj, pkgInfo.version, &pkgFile.downloaded))) {
-            //err! backing up only when file property exists due to unnecessary confirm update from dmclient
-
             char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
             remove_old_backup(pkgManifest, pkgInfo.version);
 
-            free(pkgManifest);
-         
-        }
+            free(pkgManifest);         
     }
-
 }
 
 
