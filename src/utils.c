@@ -144,7 +144,7 @@ static int json_get_property(json_object * json, enum json_type typ, void * valu
     json_object * obj = json;
 
     while (node) {
-        BOLT_IF(!json_object_object_get_ex(obj, node, &aux), E_UA_ERR, "No %s property in %s", node, json_object_to_json_string(json));
+        BOLT_IF(!json_object_object_get_ex(obj, node, &aux), E_UA_ERR, "No %s property in json object", node);
 
         node = va_arg(ap, const char* );
         obj = aux;
