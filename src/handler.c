@@ -683,15 +683,6 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
         char * prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
         char * curUpdateVer = 0, * installedVer = 0;
 
-        uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
-
-        /* FAP-514: Don't handle ready-update if the taget version is same as installed version */
-        if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.version, installedVer)) {
-            send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
-            free(pkgManifest);
-            free(prePkgManifest);
-            return ;
-        }
 
         do {
             pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
@@ -703,8 +694,27 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
                     ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
+                /* FAP-514: Don't handle ready-update if the taget version is same as installed version
+                            and it's not rollback initiated by DMClient.
+                */
+                uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
+
                 if (S(pkgInfo.rollback_version)) {
-                    send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, UE_NONE);
+                    if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.rollback_version, installedVer)) {
+                        send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
+                        free(pkgManifest);
+                        free(prePkgManifest);
+                        return ;
+                    }else
+                        send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, UE_NONE);
+                
+                }else {
+                        if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.version, installedVer)) {
+                            send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
+                            free(pkgManifest);
+                            free(prePkgManifest);
+                            return ;
+                        }
                 }
 
                 if (!get_pkg_file_manifest(prePkgManifest, pkgFile.version, &updateFile) ||
