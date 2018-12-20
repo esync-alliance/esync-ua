@@ -704,6 +704,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                         send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
                         free(pkgManifest);
                         free(prePkgManifest);
+                        ua_intl.state = UA_STATE_UPDATE_DONE;
                         return ;
                     }else
                         send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, UE_NONE);
@@ -713,6 +714,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                             send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
                             free(pkgManifest);
                             free(prePkgManifest);
+                            ua_intl.state = UA_STATE_UPDATE_DONE;
                             return ;
                         }
                 }
