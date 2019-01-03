@@ -623,13 +623,14 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
                 !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
                 ((!get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 
-            if(!ua_intl.prepare_version) {
+            if(!ua_intl.prepare_version || strcmp(ua_intl.prepare_version, pkgInfo.version)){
 
+                if(ua_intl.prepare_version) {
+                    free(ua_intl.prepare_version);
+                    ua_intl.prepare_version = 0;
+                }
                 ua_intl.prepare_version = f_strdup(pkgInfo.version);
-                state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
-
-            }else if(strcmp(ua_intl.prepare_version, pkgInfo.version)){
-
+                
                 state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 
             }
