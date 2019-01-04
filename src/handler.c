@@ -91,8 +91,10 @@ int ua_stop() {
     if (ua_intl.cache_dir) { free(ua_intl.cache_dir); ua_intl.cache_dir = NULL; }
     if (ua_intl.backup_dir) { free(ua_intl.backup_dir); ua_intl.backup_dir = NULL; }
     delta_stop();
-    return xl4bus_client_stop();
+    if(ua_intl.state == UA_STATE_IDLE_INIT)
+        return xl4bus_client_stop();
 
+    return 0;
 }
 
 
@@ -760,6 +762,12 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
                 (pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
+            
+            if(updateErr == UE_TERMINAL_FAILURE) {
+                
+                if(json_object_array_length(pkgInfo.rollback_versions) > 0)
+                    pkgInfo.rollback_version = (char*) json_object_get_string(json_object_array_get_idx(pkgInfo.rollback_versions, 0));
+            }
             send_install_status(&pkgInfo, INSTALL_FAILED, &updateFile, updateErr);
         }               
 
