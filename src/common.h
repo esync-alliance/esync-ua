@@ -35,7 +35,7 @@
 #include "uthash.h"
 #include "utlist.h"
 #include "debug.h"
-
+#include "pthread.h"
 
 char * f_asprintf(char * fmt, ...);
 char * f_strdup(const char *);
