@@ -13,6 +13,15 @@ static char * get_zip_error(int ze);
 
 size_t ua_rw_buff_size = 16 * 1024;
 
+struct sha256_list {
+    unsigned char sha256[SHA256_DIGEST_LENGTH];
+    struct sha256_list * next;
+};
+
+int sha256cmp(struct sha256_list * a, struct sha256_list * b) { 
+    return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH); 
+}
+
 uint64_t currentms() {
 
     struct timespec tp;
@@ -379,7 +388,8 @@ int zip_find_file(const char * archive, const char * path) {
 int copy_file(const char * from, const char * to) {
 
     int err = E_UA_OK;
-    FILE *in, *out;
+    FILE *in = 0;
+    FILE *out = 0;
     char * buf = 0;
     size_t nread;
 
@@ -472,10 +482,9 @@ int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
     BIO *b64;
     BUF_MEM *bptr;
     SHA256_CTX ctx;
-    struct sha256_list {
-        unsigned char sha256[SHA256_DIGEST_LENGTH];
-        struct sha256_list * next;
-    } *sl, *aux, *sha256List = NULL;
+    struct sha256_list *sl = 0;
+    struct sha256_list *aux = 0;
+    struct sha256_list *sha256List = 0;
 
     do {
 
@@ -518,7 +527,6 @@ int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
 
         if (!err) {
             SHA256_Init(&ctx);
-            int sha256cmp(struct sha256_list * a, struct sha256_list * b) { return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH); }
             LL_SORT(sha256List, sha256cmp);
             LL_FOREACH(sha256List, sl) {
                 SHA256_Update(&ctx, sl->sha256, SHA256_DIGEST_LENGTH);
