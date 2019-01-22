@@ -197,6 +197,18 @@ typedef struct log_data {
 
 XL4_PUB int ua_send_log_report(char * pkgType, log_type_t logtype, log_data_t * logdata);
 
+#ifdef HAVE_INSTALL_LOG_HANDLER
+typedef enum ua_log_type {
+    ua_debug_log,
+    ua_info_log,
+    ua_warning_log,
+    ua_error_log,
+    ua_fatal_log
+}ua_log_type_t;
+
+typedef void (*ua_log_handler_f)(ua_log_type_t type, const char *log);
+XL4_PUB void ua_install_log_handler(ua_log_handler_f handler);
+#endif
 
 #endif /* _json_h_ */
 
