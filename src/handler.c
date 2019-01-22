@@ -45,6 +45,14 @@ int ua_debug = 0;
 ua_internal_t ua_intl = {0};
 runner_info_hash_tree_t * ri_tree = 0;
 
+#ifdef HAVE_INSTALL_LOG_HANDLER
+ua_log_handler_f ua_log_handler = 0;
+
+void ua_install_log_handler(ua_log_handler_f handler)
+{
+    ua_log_handler = handler;
+}
+#endif
 
 int ua_init(ua_cfg_t * uaConfig) {
 

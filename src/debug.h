@@ -6,8 +6,13 @@
 #define _UA_DEBUG_H_
 
 #include "common.h"
+#include "xl4ua.h"
 
 extern int ua_debug;
+
+#ifdef HAVE_INSTALL_LOG_HANDLER
+extern ua_log_handler_f ua_log_handler;
+#endif
 
 #if !XL4_HAVE_GETTIMEOFDAY
 #define _ltime_ \
@@ -24,6 +29,39 @@ extern int ua_debug;
     strftime(__now, 20, "%m-%d:%H:%M:%S.", &__tmnow); \
     sprintf(__now+15, "%03d", (int)(__tv.tv_usec/1000))
 #endif
+
+#ifdef HAVE_INSTALL_LOG_HANDLER
+
+#define DBG(a,b...) do { if (ua_debug) { \
+    _ltime_; \
+    char * _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
+    if (_str) { \
+        if (ua_log_handler) { \
+            ua_log_handler(ua_debug_log, _str); \
+        } else { \
+            printf("%s\n", _str); \
+            fflush(stdout); \
+        } \
+        free(_str); \
+    } \
+} } while(0)
+
+#define DBG_SYS(a,b...) do { if (ua_debug) { \
+    int _errno = errno; \
+    _ltime_; \
+    char * _str = f_asprintf("[%s] %s:%d error %s(%d): " a, __now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
+    if (_str) { \
+        if (ua_log_handler) { \
+            ua_log_handler(ua_debug_log, _str); \
+        } else { \
+            printf("%s\n", _str); \
+            fflush(stdout); \
+        } \
+        free(_str); \
+    } \
+} } while(0)
+
+#else
 
 #define DBG(a,b...) do { if (ua_debug) { \
     _ltime_; \
@@ -45,6 +83,8 @@ extern int ua_debug;
         free(_str); \
     } \
 } } while(0)
+
+#endif
 
 #define BOLT_MEM(a) if (!(a)) { \
     err = E_UA_MEMORY; \
