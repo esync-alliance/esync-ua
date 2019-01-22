@@ -32,6 +32,8 @@ int get_downloaded_bytes_from_json(json_object * jsonObj, int64_t * value);
 
 int get_total_bytes_from_json(json_object * jsonObj, int64_t * value);
 
+int get_body_rollback_from_json(json_object * jsonObj, int * value);
+
 int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char ** nextVer);
 
 int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char value[SHA256_B64_LENGTH]);

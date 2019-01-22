@@ -99,6 +99,11 @@ int get_pkg_sha256_from_json(json_object * jsonObj, char * version, char value[S
 
 }
 
+int get_body_rollback_from_json(json_object * jsonObj, int * value) {
+
+    return json_get_property(jsonObj, json_type_boolean, value, "body", "rollback", NULL);
+
+}
 
 int get_pkg_next_rollback_version(json_object * jsonArr, char * currentVer, char ** nextVer) {
 
