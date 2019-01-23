@@ -815,14 +815,17 @@ static int patch_delta(char * pkgManifest, char * version, char * diffFile, char
 static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj) {
 
     pkg_info_t pkgInfo = {0};
+    int rollback = 0;
 
-    if (get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version) &&
-        !get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
+    if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 
             char * pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
+        if(!get_body_rollback_from_json(jsonObj, &rollback) && rollback && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
+            remove_old_backup(pkgManifest, pkgInfo.rollback_version);
+        else
             remove_old_backup(pkgManifest, pkgInfo.version);
 
             ua_intl.state = UA_STATE_IDLE_INIT;
