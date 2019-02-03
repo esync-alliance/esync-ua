@@ -643,6 +643,11 @@ static void process_prepare_update(ua_routine_t * uar, json_object * jsonObj) {
                 
                 state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 
+                if (state == INSTALL_FAILED) {
+                    free(ua_intl.prepare_version);
+                    ua_intl.prepare_version = 0;
+                }
+
             }
             
             send_install_status(&pkgInfo, state, &pkgFile, updateErr);
