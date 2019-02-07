@@ -23,6 +23,13 @@ int get_replyid_from_json(json_object * jsonObj, char ** value) {
 }
 
 
+int get_replyto_from_json(json_object * jsonObj, char ** value) {
+
+    return json_get_property(jsonObj, json_type_string, value, "reply-to", NULL);
+
+}
+
+
 int get_pkg_version_from_json(json_object * jsonObj, char ** value) {
 
     return json_get_property(jsonObj, json_type_string, value, "body", "package", "version", NULL);
@@ -81,6 +88,12 @@ int get_downloaded_bytes_from_json(json_object * jsonObj, int64_t * value) {
 int get_total_bytes_from_json(json_object * jsonObj, int64_t * value) {
 
     return json_get_property(jsonObj, json_type_int, value, "body", "total-bytes", NULL);
+
+}
+
+int get_update_status_response_from_json(json_object * jsonObj, int * value) {
+
+    return json_get_property(jsonObj, json_type_boolean, value, "body", "successful", NULL);
 
 }
 

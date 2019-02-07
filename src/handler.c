@@ -23,6 +23,7 @@ static void process_confirm_update(ua_routine_t * uar, json_object * jsonObj);
 static void process_download_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_sota_report(ua_routine_t * uar, json_object * jsonObj);
 static void process_log_report(ua_routine_t * uar, json_object * jsonObj);
+static void process_update_status(ua_routine_t * uar, json_object * jsonObj);
 static int transfer_file_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile, int bck, pkg_file_t * updateFile, update_err_t * ue);
 static download_state_t prepare_download_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
@@ -32,6 +33,7 @@ static void post_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo);
 static void send_install_status(pkg_info_t * pkgInfo, install_state_t state, pkg_file_t * pkgFile, update_err_t ue);
 static void send_download_status(pkg_info_t * pkgInfo, download_state_t state);
 static int send_update_report(const char * pkgName, const char * version, int indeterminate, int percent, update_stage_t us);
+static int send_current_report_version(pkg_info_t * pkgInfo, char *report_version);
 static int backup_package(pkg_info_t * pkgInfo, pkg_file_t * pkgFile);
 static int patch_delta(char * pkgManifest, char * version, char * diffFile, char * newFile);
 static char * install_state_string(install_state_t state);
@@ -43,7 +45,7 @@ static void query_hash_tree(runner_info_hash_tree_t * current, runner_info_t * r
 
 int ua_debug = 0;
 ua_internal_t ua_intl = {0};
-runner_info_hash_tree_t * ri_tree = 0;
+runner_info_hash_tree_t * ri_tree = NULL;
 
 #ifdef HAVE_INSTALL_LOG_HANDLER
 ua_log_handler_f ua_log_handler = 0;
@@ -127,7 +129,7 @@ int ua_register(ua_handler_t * uah, int len) {
             BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
             BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
             BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
-            query_hash_tree(ri_tree, ri, ri->unit.type, 0, 0, 0);
+            query_hash_tree(ri_tree, ri, ri->unit.type, 0, 0, 0);            
             DBG("Registered: %s", ri->unit.type);
         } while (0);
 
@@ -138,6 +140,12 @@ int ua_register(ua_handler_t * uah, int len) {
             break;
         }
     }
+    
+    do {
+        BOLT_SYS(pthread_mutex_init(&ua_intl.update_status_info.lock, NULL), "update status lock init");
+        BOLT_SYS(pthread_cond_init(&ua_intl.update_status_info.cond, 0), "update status cond init");
+        ua_intl.update_status_info.reply_id = NULL;
+    }while(0);
 
     return err;
 }
@@ -182,6 +190,11 @@ int ua_unregister(ua_handler_t * uah, int len) {
         }
 
         utarray_done(&ri_list);
+    }
+
+    if(ua_intl.update_status_info.reply_id) {
+        free(ua_intl.update_status_info.reply_id);
+        ua_intl.update_status_info.reply_id = NULL;
     }
 
     return ret;
@@ -451,6 +464,8 @@ static void process_message(ua_unit_t * ui, const char * msg, size_t len) {
                     process_run(ui, process_sota_report, jObj, 0);
                 } else if (!strcmp(type, LOG_REPORT)) {
                     process_run(ui, process_log_report, jObj, 0);
+                } else if (!strcmp(type, UPDATE_STATUS)) {
+                    process_run(ui, process_update_status, jObj, 0);
                 } else {
                     DBG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
                 }
@@ -865,6 +880,28 @@ static void process_log_report(ua_routine_t * uar, json_object * jsonObj) {
 
 }
 
+static void process_update_status(ua_routine_t * uar, json_object * jsonObj) {
+
+    char * replyTo;
+    
+    if (!get_replyto_from_json(jsonObj, &replyTo) &&
+        ua_intl.update_status_info.reply_id &&
+        !strcmp(replyTo, ua_intl.update_status_info.reply_id)) {
+
+        free(ua_intl.update_status_info.reply_id);
+        ua_intl.update_status_info.reply_id = NULL;
+
+        if (pthread_mutex_lock(&ua_intl.update_status_info.lock)) {
+            DBG_SYS("lock failed");
+        }
+
+        get_update_status_response_from_json(jsonObj, &ua_intl.update_status_info.successful);
+
+        pthread_cond_signal(&ua_intl.update_status_info.cond);
+        pthread_mutex_unlock(&ua_intl.update_status_info.lock);
+    }
+
+}
 
 static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile, int bck, pkg_file_t * updateFile, update_err_t * ue) {
 
@@ -951,13 +988,47 @@ static download_state_t prepare_download_action(ua_routine_t * uar, pkg_info_t *
     return state;
 }
 
-
 static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInfo, pkg_file_t * pkgFile) {
 
     install_state_t state = INSTALL_IN_PROGRESS;
 
     if (uar->on_pre_install) {
         state = (*uar->on_pre_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
+    }
+
+    if(state == INSTALL_IN_PROGRESS) {
+
+        //Send update-status with reply-id
+        if(send_current_report_version(pkgInfo, NULL) == E_UA_OK) {
+            //Wait for response of update-status. 
+            if (pthread_mutex_lock(&ua_intl.update_status_info.lock)) {
+                DBG_SYS("lock failed");
+            }
+
+            //pthread_cond_wait(&ua_intl.update_status_info.cond, &ua_intl.update_status_info.lock);
+            int rc = 0;
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += 10;
+            rc = pthread_cond_timedwait(&ua_intl.update_status_info.cond, &ua_intl.update_status_info.lock, &ts);
+
+            if (rc == ETIMEDOUT) {
+                DBG("Timed out waiting for update status response");
+                if(ua_intl.update_status_info.reply_id) {
+                    free(ua_intl.update_status_info.reply_id);
+                    ua_intl.update_status_info.reply_id = NULL;                    
+                }                
+            }
+
+            //Check if update-status reponse was set to successful.        
+            if(!ua_intl.update_status_info.successful)
+                state = INSTALL_FAILED;
+            else
+                ua_intl.update_status_info.successful = 0;
+
+            pthread_mutex_unlock(&ua_intl.update_status_info.lock);            
+        }
+
     }
 
     send_install_status(pkgInfo, state, 0, 0);
@@ -1060,6 +1131,64 @@ static void send_download_status(pkg_info_t * pkgInfo, download_state_t state) {
     ua_send_message(jObject);
 
     json_object_put(jObject);
+}
+
+#define REPLY_ID_STR_LEN    24
+static char* randstring(int length) {
+
+	char* string     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
+	size_t stringLen = 26*2+10+7;
+	char* randomString;
+
+	randomString = malloc(sizeof(char) * (length +1));
+
+	if (randomString == NULL) {
+		return (char*)0;
+	}
+
+	unsigned int key = 0;
+
+	for (int n = 0; n < length; n++) {
+		key             = rand() % stringLen;
+		randomString[n] = string[key];
+	}
+
+	randomString[length] = '\0';
+
+	return randomString;
+}
+
+
+static int send_current_report_version(pkg_info_t * pkgInfo, char *report_version) {
+
+    int err = E_UA_OK;
+
+    json_object * pkgObject = json_object_new_object();
+    json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
+    json_object_object_add(pkgObject, "version", S(report_version) ? json_object_new_string(report_version) : NULL);
+    json_object_object_add(pkgObject, "status", json_object_new_string("CURRENT_REPORT"));
+
+    json_object * bodyObject = json_object_new_object();
+    json_object_object_add(bodyObject, "package", pkgObject);
+
+    json_object * jObject = json_object_new_object();
+    json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+    json_object_object_add(jObject, "body", bodyObject);
+    
+    if(ua_intl.update_status_info.reply_id) {
+        free(ua_intl.update_status_info.reply_id);
+        ua_intl.update_status_info.reply_id = NULL;
+    }
+    
+    ua_intl.update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
+    if(ua_intl.update_status_info.reply_id)
+	    json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.update_status_info.reply_id ));
+
+    err = ua_send_message(jObject);
+
+    json_object_put(jObject);
+
+    return err;
 }
 
 

@@ -106,6 +106,15 @@ typedef enum ua_state {
 
 }ua_state_t;
 
+typedef struct async_update_status {
+
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    char * reply_id;
+    int successful;
+
+}async_update_status_t;
+
 typedef struct ua_internal {
 
     ua_state_t state;
@@ -113,6 +122,7 @@ typedef struct ua_internal {
     char * cache_dir;
     char * backup_dir;
     char * prepare_version;
+    async_update_status_t update_status_info;
 
 } ua_internal_t;
 
