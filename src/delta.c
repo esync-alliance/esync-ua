@@ -2,7 +2,7 @@
 #include "delta.h"
 #include "xml.h"
 
-static int add_delta_tool(delta_tool_hh_t ** hash, delta_tool_t * tool, int count, int isPatchTool);
+static int add_delta_tool(delta_tool_hh_t ** hash, const delta_tool_t * tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t * hash);
 static char * get_deflt_delta_cap(delta_tool_hh_t * patchTool, delta_tool_hh_t * decompTool);
 static char * expand_tool_args(const char * args, const char * old, const char * new, const char * diff);
@@ -11,13 +11,13 @@ static int verify_file(const char * file, const char * sha256);
 
 delta_stg_t delta_stg = {0};
 
-delta_tool_t deflt_patch_tools[] = {
+const  delta_tool_t deflt_patch_tools[] = {
         {"bsdiff", "bspatch", OFA" "NFA" "PFA, 1},
         {"rfc3284", "xdelta3", "-d -s "OFA" "PFA" "NFA, 0},
         {"esdiff", "espatch", OFA" "NFA" "PFA, 1}
 };
 
-delta_tool_t deflt_decomp_tools[] = {
+const delta_tool_t deflt_decomp_tools[] = {
         {"gzip", "gzip", "-cd "OFA" > "NFA, 0},
         {"bzip2", "bzip2", "-cd "OFA" > "NFA, 0},
         {"xz", "xz", "-cd "OFA" > "NFA, 0}
@@ -34,8 +34,8 @@ int delta_init(char * cacheDir, delta_cfg_t * deltaConfig) {
 
         BOLT_IF(!S(cacheDir) || chkdirp(delta_stg.cache_dir = cacheDir), E_UA_ARG, "cache directory invalid");
 
-        BOLT_IF(add_delta_tool(&delta_stg.patch_tool, deflt_patch_tools, sizeof(deflt_patch_tools)/sizeof(delta_tool_t), 1), E_UA_ERR, "default patch tools adding failed");
-        BOLT_IF(add_delta_tool(&delta_stg.decomp_tool, deflt_decomp_tools, sizeof(deflt_decomp_tools)/sizeof(delta_tool_t), 0), E_UA_ERR, "default decompression tools adding failed");
+        BOLT_IF(add_delta_tool(&delta_stg.patch_tool, deflt_patch_tools, sizeof(deflt_patch_tools)/sizeof(deflt_patch_tools[0]), 1), E_UA_ERR, "default patch tools adding failed");
+        BOLT_IF(add_delta_tool(&delta_stg.decomp_tool, deflt_decomp_tools, sizeof(deflt_decomp_tools)/sizeof(deflt_decomp_tools[0]), 0), E_UA_ERR, "default decompression tools adding failed");
 
         BOLT_IF(deltaConfig && deltaConfig->patch_tools && add_delta_tool(&delta_stg.patch_tool, deltaConfig->patch_tools, deltaConfig->patch_tool_cnt, 1), E_UA_ARG, "patch tools adding failed");
         BOLT_IF(deltaConfig && deltaConfig->decomp_tools && add_delta_tool(&delta_stg.decomp_tool, deltaConfig->decomp_tools, deltaConfig->decomp_tool_cnt, 0), E_UA_ARG, "decompression tools adding failed");
@@ -55,17 +55,17 @@ int delta_init(char * cacheDir, delta_cfg_t * deltaConfig) {
 
 void delta_stop() {
 
-    if (delta_stg.patch_tool) {
+    if (delta_stg.patch_tool != NULL) {
         clear_delta_tool(delta_stg.patch_tool);
         delta_stg.patch_tool = NULL;
     }
 
-    if (delta_stg.decomp_tool) {
+    if (delta_stg.decomp_tool != NULL) {
         clear_delta_tool(delta_stg.decomp_tool);
         delta_stg.decomp_tool = NULL;
     }
 
-    if(delta_stg.delta_cap) {
+    if(delta_stg.delta_cap != NULL) {
         free(delta_stg.delta_cap);
         delta_stg.delta_cap = NULL;
     }
@@ -167,7 +167,7 @@ int delta_reconstruct(const char * oldPkgFile, const char * diffPkgFile, const c
 }
 
 
-static int add_delta_tool(delta_tool_hh_t ** hash, delta_tool_t * tool, int count, int isPatchTool) {
+static int add_delta_tool(delta_tool_hh_t ** hash, const delta_tool_t * tool, int count, int isPatchTool) {
 
     int i, err = E_UA_OK;
     delta_tool_hh_t *dth, *aux;

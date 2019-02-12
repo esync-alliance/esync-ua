@@ -4,7 +4,7 @@
 
 #include "misc.h"
 #include "delta.h"
-
+#include <sys/wait.h>
 #if 0
 static int zip_archive_add_file(struct zip * za, const char * path, const char * base);
 static int zip_archive_add_dir(struct zip *za, const char *path, const char *base);
@@ -152,6 +152,37 @@ int newdirp(const char * path, int umask) {
     return rc;
 }
 
+int run_cmd(char* cmd, char* argv[])
+{
+	int rc     = E_UA_OK;
+	int status = 0;
+
+	if(cmd && argv) {
+
+		pid_t pid=fork();
+
+		if ( pid == -1) {
+			DBG("fork failed");
+			rc = E_UA_SYS;
+
+		}else if ( pid == 0) {
+			execvp(cmd, argv);
+			DBG("execv %s failed", cmd);
+			rc = E_UA_SYS;
+
+		}else { 
+			if (waitpid(pid, &status, 0) == -1) {
+				rc = E_UA_SYS;
+			}else {
+				WEXITSTATUS(status);
+			}
+		}		
+	}else{
+		rc = E_UA_SYS;
+	}
+
+	return rc;
+}
 
 static char * get_zip_error(int ze) {
 
@@ -266,14 +297,20 @@ int zip(const char * archive, const char * path) {
 #endif
 
     int err = E_UA_OK;
-    char * cmd = 0;
-    do {
-        BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
-        cmd = f_asprintf("cd %s; rm -f %s; zip -r %s *", path, archive, archive);
-        DBG("Executing: %s", cmd);
-        BOLT_SYS(system(cmd), "failed to zip files");
-    } while (0);
-    if (cmd) free(cmd);
+
+    if(archive && path) {
+
+        do {
+            BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
+            remove(archive);
+
+            char cmd[] = "zip";
+            char* argv[] = {cmd, "-r", "-j", (char*)archive, (char*)path, NULL};
+            BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
+
+        } while (0);
+
+    }
 
     return err;
 }
