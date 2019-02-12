@@ -21,11 +21,11 @@ static xl4bus_asn1_t * load_full(char * path);
 static char * simple_password (struct xl4bus_X509v3_Identity * id);
 
 xl4bus_client_t m_xl4bus_clt = {0};
-char * m_xl4bus_url = 0;
+char * m_xl4bus_url = NULL;
 
 void debug_print(const char * msg) {
-
-    DBG("%s", msg);
+    if(ua_debug > 1)
+        DBG("%s", msg);
 
 }
 
@@ -66,13 +66,14 @@ int xl4bus_client_init(char * url, char * cert_dir) {
         BOLT_IF(load_xl4_x509_creds(&m_xl4bus_clt.identity, cert_dir), E_UA_ERR, "x509 credentials load failed!");
 
 #endif
-
-        BOLT_SUB(xl4bus_init_client(&m_xl4bus_clt, m_xl4bus_url));
+        if(m_xl4bus_url)
+            BOLT_SUB(xl4bus_init_client(&m_xl4bus_clt, m_xl4bus_url));
 
     } while (0);
 
     if (err) {
-        free(m_xl4bus_url);
+        f_free(m_xl4bus_url);
+        m_xl4bus_url = NULL; 
     }
 
     return err;
@@ -82,7 +83,8 @@ int xl4bus_client_init(char * url, char * cert_dir) {
 
 int xl4bus_client_stop(void) {
 
-    free(m_xl4bus_url);
+    f_free(m_xl4bus_url);
+    m_xl4bus_url = NULL; 
     return xl4bus_stop_client(&m_xl4bus_clt);
 
 }
@@ -213,8 +215,8 @@ static void on_xl4bus_presence(xl4bus_client_t * client, xl4bus_address_t * conn
 }
 
 static void on_xl4bus_reconnect(xl4bus_client_t * client) {
-
-    xl4bus_init_client(&m_xl4bus_clt, m_xl4bus_url);
+    if(m_xl4bus_url)
+        xl4bus_init_client(&m_xl4bus_clt, m_xl4bus_url);
 
 }
 

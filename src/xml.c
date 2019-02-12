@@ -333,7 +333,7 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
     xmlDocPtr doc = NULL;
     xmlNodePtr root, node, n, aux;
     xmlChar * c;
-    char rb_order[8];
+    char rb_order[32] = {0};
     do {
 
         if (!access(xmlFile, W_OK)) {
@@ -360,8 +360,11 @@ int add_pkg_file_manifest(char * xmlFile, pkg_file_t * pkgFile) {
             if ((n = get_xml_child(node, XMLT "rollback-order"))){
                 //Increment rollback-order for each version.
                  if ((c = xmlNodeGetContent(n))) {
-                    snprintf(rb_order, 8, "%d", atoi((const char *)c)+1);
-                    xmlNodeSetContent(n, XMLT rb_order);
+                    int rc = snprintf(rb_order, sizeof(rb_order), "%d", atoi((const char *)c)+1);
+                    if(rc > 0 && rc < sizeof(rb_order))
+                        xmlNodeSetContent(n, XMLT rb_order);
+                    else
+                        err = E_UA_ERR;                    
                 }
                 xmlFree(c);
             }

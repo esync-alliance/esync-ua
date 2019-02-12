@@ -57,5 +57,5 @@ int mkdirp(const char * path, int umask);
 int newdirp(const char * path, int umask);
 int rmdirp(const char * path);
 int chkdirp(const char * path);
-
+int run_cmd(char* cmd, char* argv[]);
 #endif /* _UA_MISC_H_ */
