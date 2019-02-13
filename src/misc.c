@@ -200,7 +200,7 @@ static char * get_zip_error(int ze) {
 
 }
 
-
+#if 0
 int unzip(const char * archive, const char * path) {
 
     int i, len, fd, zerr, err = E_UA_OK;
@@ -261,7 +261,28 @@ int unzip(const char * archive, const char * path) {
 
     return err;
 }
+#else
+int unzip(const char * archive, const char * path) {
 
+    int err = E_UA_OK;
+
+    if(archive && path) {
+
+        do {
+            BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
+ 
+            char cmd[] = "unzip";
+            char* argv[] = {cmd, (char*)archive, "-d", (char*)path, NULL};
+            BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
+
+        } while (0);
+
+    }
+
+    return err;
+}
+
+#endif 
 
 int zip(const char * archive, const char * path) {
 
