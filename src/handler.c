@@ -781,11 +781,10 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                         post_update_action(uar, &pkgInfo);
 
+                        curUpdateVer = f_strdup(updateFile.version);
                     }
 
-                    curUpdateVer = f_strdup(updateFile.version);
-                    
-                    free(updateFile.file);
+                    f_free(updateFile.file);
                     if(state != INSTALL_COMPLETED)
                         free(updateFile.version);
 
@@ -793,8 +792,8 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                 if (bck) {
                     bck = 0;
-                    free(pkgFile.version);
-                    free(pkgFile.file);
+                    f_free(pkgFile.version);
+                    f_free(pkgFile.file);
                 }
 
             } else {
@@ -809,7 +808,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                 S(pkgInfo.rollback_version));
 
         if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
-                (pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
+                (curUpdateVer != NULL && pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
             
             if(updateErr == UE_TERMINAL_FAILURE) {
                 
@@ -932,6 +931,7 @@ static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * p
     install_state_t state = INSTALL_READY;
     char *newFile = 0;
     char *installedVer = 0;
+    int err = E_UA_OK;
 
     updateFile->version = f_strdup(pkgFile->version);
 
@@ -951,9 +951,10 @@ static install_state_t prepare_install_action(ua_routine_t * uar, pkg_info_t * p
             DBG("get version for %s failed!", pkgInfo->name);
         }
 
-        if (pkgManifest == NULL || patch_delta(pkgManifest, installedVer, pkgFile->file, updateFile->file)) {
+        if (pkgManifest == NULL || (err = patch_delta(pkgManifest, installedVer, pkgFile->file, updateFile->file)) == E_UA_ERR) {
 
-            *ue = UE_INCREMENTAL_FAILED;
+            if(err == E_UA_ERR)
+                *ue = UE_INCREMENTAL_FAILED;
             state = INSTALL_FAILED;
         }
 
@@ -1029,11 +1030,10 @@ static install_state_t pre_update_action(ua_routine_t * uar, pkg_info_t * pkgInf
                 DBG_SYS("lock failed");
             }
 
-            //pthread_cond_wait(&ua_intl.update_status_info.cond, &ua_intl.update_status_info.lock);
             int rc = 0;
             struct timespec ts;
             clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_sec += 10;
+            ts.tv_sec += 300;
             rc = pthread_cond_timedwait(&ua_intl.update_status_info.cond, &ua_intl.update_status_info.lock, &ts);
 
             if (rc == ETIMEDOUT) {
