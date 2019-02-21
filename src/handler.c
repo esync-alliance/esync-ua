@@ -543,18 +543,18 @@ static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
             !get_replyid_from_json(jsonObj, &replyId)) {
 
-        uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
-        if(uae == E_UA_OK)
-            DBG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
-        else
-            DBG("get version for %s failed! err=%d", pkgInfo.name, uae);
-
         json_object * bodyObject = json_object_new_object();
         json_object * pkgObject = json_object_new_object();
 
         if(ua_intl.state == UA_STATE_UPDATE_STARTED) {
             json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
         }else {
+
+			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
+			if(uae == E_UA_OK)
+				DBG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
+			else
+				DBG("get version for %s failed! err=%d", pkgInfo.name, uae);
 
             json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo.type));
             json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo.name));
