@@ -41,6 +41,7 @@ static inline const char * chop_path(const char * path) {
 
 #define SHA256_HEX_LENGTH    SHA256_DIGEST_LENGTH * 2 + 1
 #define SHA256_B64_LENGTH    44 + 1
+#define REPLY_ID_STR_LEN    24
 
 extern size_t ua_rw_buff_size;
 
@@ -58,4 +59,5 @@ int newdirp(const char * path, int umask);
 int rmdirp(const char * path);
 int chkdirp(const char * path);
 int run_cmd(char* cmd, char* argv[]);
+char* randstring(int length);
 #endif /* _UA_MISC_H_ */

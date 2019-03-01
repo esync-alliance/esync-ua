@@ -55,7 +55,9 @@ typedef struct incoming_msg {
 
 } incoming_msg_t;
 
-typedef void (*process_f)(ua_routine_t *, json_object *);
+typedef struct ua_component_context ua_component_context_t;
+
+typedef void (*process_f)(ua_component_context_t *, json_object *);
 
 typedef struct worker_info {
 
@@ -66,13 +68,13 @@ typedef struct worker_info {
 
 } worker_info_t;
 
-typedef struct ua_unit {
+typedef struct ua_component_context {
 
     char * type;
     ua_routine_t * uar;
     worker_info_t worker;
 
-} ua_unit_t;
+} ua_component_context_t;
 
 typedef struct runner_info {
 
@@ -81,7 +83,7 @@ typedef struct runner_info {
     pthread_cond_t cond;
     int run;
     incoming_msg_t * queue;
-    ua_unit_t unit;
+    ua_component_context_t component;
 
 } runner_info_t;
 
@@ -104,6 +106,10 @@ typedef enum ua_state {
     UA_STATE_UPDATE_STARTED,
     UA_STATE_UPDATE_DONE,
 
+	UA_STATE_BROKER_NOT_CONNECTED,
+	UA_STATE_BROKER_CONNECTED_NO_DMC, 
+	UA_STATE_BROKER_AND_DMC_CONNECTED,
+
 }ua_state_t;
 
 typedef struct async_update_status {
@@ -123,6 +129,8 @@ typedef struct ua_internal {
     char * backup_dir;
     char * prepare_version;
     async_update_status_t update_status_info;
+
+	int esync_bus_conn_status;
 
 } ua_internal_t;
 
