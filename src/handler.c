@@ -449,6 +449,34 @@ void * runner_loop(void * arg) {
 }
 
 
+static int get_local_next_rollback_version(char * manifest, char * currentVer, char ** nextVer) {
+
+	int err = E_UA_OK;
+	pkg_file_t *pf = NULL, *aux = NULL, *pkgFile = NULL;
+	json_object * rbVersArray = json_object_new_array();
+
+	char * tmp_next_version = NULL;
+
+	if (rbVersArray && manifest && !parse_pkg_manifest(manifest, &pkgFile)) {
+
+		DL_FOREACH_SAFE(pkgFile, pf, aux) {
+			json_object_array_add(rbVersArray, json_object_new_string(pf->version));
+			free_pkg_file(pf);
+		}
+		err = get_pkg_next_rollback_version(rbVersArray, currentVer, &tmp_next_version);
+		*nextVer = f_strdup(tmp_next_version);
+
+	} else{
+		err = E_UA_ERR;
+	}
+
+	if(rbVersArray != NULL)
+		json_object_put(rbVersArray);
+
+	return err;
+}
+
+
 static void process_message(ua_unit_t * ui, const char * msg, size_t len) {
 
     char * type;
@@ -530,7 +558,6 @@ static void process_run(ua_unit_t * ui, process_f func, json_object * jObj, int 
         }
     }
 }
-
 
 static void process_query_package(ua_routine_t * uar, json_object * jsonObj) {
 
@@ -751,14 +778,16 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                 uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
 
                 if (S(pkgInfo.rollback_version)) {
+
+					send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, UE_NONE);
+
                     if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.rollback_version, installedVer)) {
                         send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
                         f_free(pkgManifest);
                         f_free(prePkgManifest);
                         ua_intl.state = UA_STATE_UPDATE_DONE;
                         return ;
-                    }else
-                        send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, UE_NONE);
+                    }
                 
                 }else {
                         if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.version, installedVer)) {
@@ -804,8 +833,9 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
             }
 
         } while ((state == INSTALL_FAILED) &&
-                !get_pkg_next_rollback_version(pkgInfo.rollback_versions, curUpdateVer, &pkgInfo.rollback_version) &&
-                S(pkgInfo.rollback_version));
+                ((!get_pkg_next_rollback_version(pkgInfo.rollback_versions, curUpdateVer, &pkgInfo.rollback_version) ||
+				 !get_local_next_rollback_version(pkgManifest, curUpdateVer, &pkgInfo.rollback_version))
+				&& S(pkgInfo.rollback_version)));
 
         if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
                 (curUpdateVer != NULL && pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
