@@ -37,14 +37,14 @@
 #include "debug.h"
 #include "pthread.h"
 
-char * f_asprintf(char * fmt, ...);
-char * f_strdup(const char *);
-char * f_strndup(const void *s, size_t len);
-void * f_malloc(size_t);
-void * f_realloc(void *, size_t);
-void f_free(void * p);
-char * f_dirname(const char * s);
-char * f_basename(const char * s);
+char* f_asprintf(char* fmt, ...);
+char* f_strdup(const char*);
+char* f_strndup(const void* s, size_t len);
+void* f_malloc(size_t);
+void* f_realloc(void*, size_t);
+void f_free(void* p);
+char* f_dirname(const char* s);
+char* f_basename(const char* s);
 
 #include "misc.h"
 
