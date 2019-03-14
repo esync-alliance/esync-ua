@@ -743,7 +743,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
     pkg_file_t pkgFile, updateFile = {0};
     update_err_t updateErr = UE_NONE;
     install_state_t state;
-    int bck = 0, uae = 0;
+    int bck = 0, uae = 0, local_rollback = 0;
 
     if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
             !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -783,6 +783,8 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
                     if(uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.rollback_version, installedVer)) {
                         send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
+						if(local_rollback)
+							f_free(pkgInfo.rollback_version);
                         f_free(pkgManifest);
                         f_free(prePkgManifest);
                         ua_intl.state = UA_STATE_UPDATE_DONE;
@@ -816,6 +818,10 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
                     f_free(updateFile.file);
                     if(state != INSTALL_COMPLETED)
                         free(updateFile.version);
+					if(local_rollback) {
+						f_free(pkgInfo.rollback_version);
+						pkgInfo.rollback_version = NULL;
+					}
 
                 } else if ((state == INSTALL_FAILED) && (updateErr != UE_NONE)) break;
 
@@ -834,7 +840,7 @@ static void process_ready_update(ua_routine_t * uar, json_object * jsonObj) {
 
         } while ((state == INSTALL_FAILED) &&
                 ((!get_pkg_next_rollback_version(pkgInfo.rollback_versions, curUpdateVer, &pkgInfo.rollback_version) ||
-				 !get_local_next_rollback_version(pkgManifest, curUpdateVer, &pkgInfo.rollback_version))
+				 (!get_local_next_rollback_version(pkgManifest, curUpdateVer, &pkgInfo.rollback_version) && (local_rollback = 1)))
 				&& S(pkgInfo.rollback_version)));
 
         if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
