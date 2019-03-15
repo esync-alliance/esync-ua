@@ -3,11 +3,17 @@
  */
 
 #include "tmpl_updateagent.h"
+#include <fcntl.h>           /* Definition of AT_* constants */
+#include <unistd.h>
+#include <stdio.h>
 
 pkg_version_t* package_version = 0;
 
 static int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
+	if(access("/data/sota/esync/backup/kill", F_OK)) {
+		TMPL_VER_SET(pkgName, "JS1814P2");
+	}
 	TMPL_VER_GET(pkgName, *version);
 	return E_UA_OK;
 
@@ -28,6 +34,11 @@ static install_state_t do_tmpl_pre_install(const char* type, const char* pkgName
 
 static install_state_t do_tmpl_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
 {
+	if(!access("/data/sota/esync/backup/kill", F_OK)) {
+		printf("aborting update ....\n");
+		abort();
+
+	}
 	return INSTALL_COMPLETED;
 
 }

@@ -27,7 +27,14 @@ typedef enum download_state {
 #define E_UA_ARG    (-3)
 #define E_UA_SYS    (-4)
 
-
+/**
+ * Defines function to use for setting installed version of UA.
+ * @param type UA component handler type.
+ * @param pkgName component package name.
+ * @param version shall return current installed version of UA,
+ * caller will not release memory alloacated for version. 
+ * @return ::
+ */
 typedef int (*ua_on_get_version)(const char* type, const char* pkgName, char** version);
 
 typedef int (*ua_on_set_version)(const char* type, const char* pkgName, const char* version);
@@ -168,7 +175,7 @@ XL4_PUB int ua_send_install_progress(const char* pkgName, const char* version, i
 
 XL4_PUB int ua_send_transfer_progress(const char* pkgName, const char* version, int indeterminate, int percent);
 
-XL4_PUB int ua_backup_package(char* pkgName, char* version);
+//XL4_PUB int ua_backup_package(char* pkgName, char* version);
 
 #ifdef _json_h_
 

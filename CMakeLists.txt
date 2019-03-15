@@ -122,14 +122,16 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/common.c
     src/misc.c
     src/delta.c
-    src/xml.c
+	src/xml.c
+	src/updater.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
     src/common.h
     src/misc.h
     src/delta.h
-    src/xml.h
+	src/xml.h
+	src/updater.h
     src/debug.h
     src/uthash.h
     src/utlist.h
@@ -160,7 +162,7 @@ if (XL4_PROVIDE_THREADS)
 endif()
 
 if (DEBUG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()

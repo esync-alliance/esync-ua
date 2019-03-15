@@ -20,8 +20,8 @@ static void release_identity(xl4bus_identity_t* identity);
 static xl4bus_asn1_t* load_full(char* path);
 static char* simple_password (struct xl4bus_X509v3_Identity* id);
 
-xl4bus_client_t m_xl4bus_clt = {0};
-char* m_xl4bus_url = NULL;
+static xl4bus_client_t m_xl4bus_clt = {0};
+static char* m_xl4bus_url = NULL;
 
 void debug_print(const char* msg)
 {
@@ -193,21 +193,38 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	int num_connected    = 0;
 	int num_disconnected = 0;
 	char* as;
+	esync_bus_conn_state_t conn = 0;
 
 	for (xl4bus_address_t* a = connected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("CONNECTED: %s", as);
 		num_connected++;
 		free(as);
+		if (a->type == XL4BAT_SPECIAL) {
+			if (a->special == XL4BAS_DM_CLIENT)
+				conn = BUS_CONN_DMC_CONNECTED;
+			else if (a->special == XL4BAS_DM_BROKER)
+				conn = BUS_CONN_BROKER_CONNECTED;
+
+		}
+
 	}
 	for (xl4bus_address_t* a = disconnected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("DISCONNECTED: %s", as);
 		num_disconnected++;
 		free(as);
+		if (a->type == XL4BAT_SPECIAL) {
+			if (a->special == XL4BAS_DM_CLIENT)
+				conn = BUS_CONN_DMC_NOT_CONNECTED;
+			else if (a->special == XL4BAS_DM_BROKER)
+				conn = BUS_CONN_BROKER_NOT_CONNECTED;
+
+		}
+
 	}
 
-	handle_presence(num_connected, num_disconnected);
+	handle_presence(num_connected, num_disconnected, conn);
 
 }
 

@@ -52,8 +52,8 @@ typedef struct incoming_msg {
 
 } incoming_msg_t;
 
+//Forward declaration.
 typedef struct ua_component_context ua_component_context_t;
-
 typedef void (*process_f)(ua_component_context_t*, json_object*);
 
 typedef struct worker_info {
@@ -64,43 +64,24 @@ typedef struct worker_info {
 
 } worker_info_t;
 
-typedef struct ua_component_context {
-	char* type;
-	ua_routine_t* uar;
-	worker_info_t worker;
+typedef enum esync_bus_conn_state {
+	BUS_CONN_NONE,
+	BUS_CONN_BROKER_NOT_CONNECTED,
+	BUS_CONN_BROKER_CONNECTED,
+	BUS_CONN_DMC_NOT_CONNECTED,
+	BUS_CONN_DMC_CONNECTED,
 
-} ua_component_context_t;
-
-typedef struct runner_info {
-	pthread_t thread;
-	pthread_mutex_t lock;
-	pthread_cond_t cond;
-	int run;
-	incoming_msg_t* queue;
-	ua_component_context_t component;
-
-} runner_info_t;
-
-typedef struct runner_info_hash_tree {
-	char* key;
-	UT_hash_handle hh;
-	UT_array items;
-	struct runner_info_hash_tree* nodes;
-	struct runner_info_hash_tree* parent;
-
-} runner_info_hash_tree_t;
+}esync_bus_conn_state_t;
 
 typedef enum ua_state {
 	UA_STATE_UNKNOWN,
 	UA_STATE_IDLE_INIT,
-	UA_STATE_DOWNLOADING_UPDATE,
-	UA_STATE_PREPARING_UPDATE,
-	UA_STATE_UPDATE_STARTED,
-	UA_STATE_UPDATE_DONE,
-
-	UA_STATE_BROKER_NOT_CONNECTED,
-	UA_STATE_BROKER_CONNECTED_NO_DMC,
-	UA_STATE_BROKER_AND_DMC_CONNECTED,
+	UA_STATE_READY_DOWNLOAD_STARTED,
+	UA_STATE_READY_DOWNLOAD_DONE,
+	UA_STATE_PREPARE_UPDATE_STARTED,
+	UA_STATE_PREPARE_UPDATE_DONE,
+	UA_STATE_READY_UPDATE_STARTED,
+	UA_STATE_READY_UPDATE_DONE,
 
 }ua_state_t;
 
@@ -109,18 +90,31 @@ typedef struct async_update_status {
 	pthread_cond_t cond;
 	char* reply_id;
 	int successful;
-
 }async_update_status_t;
 
+typedef struct runner_info_hash_tree {
+	char* key;
+	UT_hash_handle hh;
+	UT_array items;
+	struct runner_info_hash_tree* nodes;
+	struct runner_info_hash_tree* parent;
+} runner_info_hash_tree_t;
+
+typedef enum ua_internal_state {
+	UAI_STATE_NOT_KNOWN,
+	UAI_STATE_INITIALIZED, 
+	UAI_STATE_RESUME_STARTED,
+	UAI_STATE_RESUME_DONE,	
+
+}ua_internal_state_t;
+
 typedef struct ua_internal {
-	ua_state_t state;
 	int delta;
 	char* cache_dir;
 	char* backup_dir;
-	char* prepare_version;
-	async_update_status_t update_status_info;
-
+	char* record_file;
 	int esync_bus_conn_status;
+	ua_internal_state_t state;
 
 } ua_internal_t;
 
@@ -136,12 +130,57 @@ typedef enum update_stage {
 	US_INSTALL
 } update_stage_t;
 
+typedef enum update_rollback {
+	URB_NONE,
+	URB_DMC_INITIATED,  /* ready-update has rollback-version. */
+	URB_UA_INITIATED,   /* ready-update has rollback-versions. */
+	URB_UA_LOCAL_BACKUP /* local backup folder supports rollback. */
+
+} update_rollback_t;
+
+typedef struct ua_component_context {
+	char* type;
+	ua_state_t state;
+	ua_routine_t* uar;
+	worker_info_t worker;
+	async_update_status_t update_status_info;
+	pkg_file_t update_file_info;
+	pkg_info_t update_pkg;
+	update_rollback_t rb_type;
+	update_err_t update_error;
+	char* manifest;
+	char* backup_manifest;
+	char* record_file;
+} ua_component_context_t;
+
+
+typedef struct runner_info {
+	pthread_t thread;
+	pthread_mutex_t lock;
+	pthread_cond_t cond;
+	int run;
+	incoming_msg_t* queue;
+	ua_component_context_t component;
+} runner_info_t;
 
 void handle_status(int status);
 void handle_delivered(const char* msg, int ok);
-void handle_presence(int connected, int disconnected);
+void handle_presence(int connected, int disconnected, esync_bus_conn_state_t conn);
 void handle_message(const char* type, const char* msg, size_t len);
 
 void free_pkg_file(pkg_file_t* pkgFile);
+install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue);
+install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
+install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 
+void handler_set_internal_state(ua_internal_state_t st);
+
+void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
+void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
+void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
+int ua_backup_package(ua_component_context_t* uacc, char* pkgName, char* version);
+int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
+void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
+
+void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* ri_tree);
 #endif /* _UA_HANDLER_H_ */

@@ -405,7 +405,10 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 	xmlNodePtr root = NULL;
 	pkg_file_t* pf  = NULL;
 
-	if (!xmlFile || !version || !pkgFile) return E_UA_ERR;
+	if (!xmlFile || !version || !pkgFile) {
+		DBG("Got null pointer(s) xmlFile(%p), version(%p), pkgFile(%p)", xmlFile, version, pkgFile);
+		return E_UA_ERR;
+	}
 
 	do {
 		BOLT_SYS(access(xmlFile, R_OK), "pkg manifest not available %s", xmlFile);
