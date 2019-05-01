@@ -12,13 +12,14 @@
 #include "xml.h"
 #include "xl4busclient.h"
 #include "ua_version.h"
+#include "updater.h"
 
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
 static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_ready_download(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_prepare_update(ua_component_context_t* uacc, json_object* jsonObj);
-//static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_confirm_update(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_download_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj);
@@ -733,7 +734,50 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	}
 }
 
+#if 1
 
+static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj)
+{
+	install_state_t update_sts = INSTALL_READY;
+	json_object* jo            = json_object_get(jsonObj);
+	extern ua_internal_t ua_intl;
+
+	if (uacc && jo && update_parse_json_ready_update(uacc, jo) == E_UA_OK) {
+		uacc->state = UA_STATE_READY_UPDATE_STARTED;
+		if (uacc->manifest == NULL)
+			uacc->manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+
+		update_set_rollback_info(uacc);
+
+		if (uacc->rb_type == URB_DMC_INITIATED) {
+			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version);
+
+		}else {
+			if ((update_sts = update_start_install_operations(uacc)) == INSTALL_FAILED &&
+			    uacc->rb_type >= URB_UA_INITIATED) {
+				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
+				update_sts =  update_start_rollback_operations(uacc, rb_version);
+
+			}
+		}
+
+		if (update_sts == INSTALL_COMPLETED) {
+			ua_backup_package(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
+		}
+
+		json_object_put(jo);
+		uacc->state = UA_STATE_READY_UPDATE_DONE;
+
+	}else {
+		if (uacc == NULL || jsonObj == NULL)
+			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
+		else
+			DBG("Error: parsing ready-update.");
+	}
+
+}
+
+#else
 void process_ready_update_OLD(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	ua_routine_t* uar  = (uacc != NULL) ? uacc->uar : NULL;
@@ -844,7 +888,7 @@ void process_ready_update_OLD(ua_component_context_t* uacc, json_object* jsonObj
 		f_free(curUpdateVer);
 	}
 }
-
+#endif
 
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {

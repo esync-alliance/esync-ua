@@ -176,11 +176,10 @@ install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo,
 void handler_set_internal_state(ua_internal_state_t st);
 
 void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
-void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
+//void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
 void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
 int ua_backup_package(ua_component_context_t* uacc, char* pkgName, char* version);
 int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
 void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
 
-void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* ri_tree);
 #endif /* _UA_HANDLER_H_ */

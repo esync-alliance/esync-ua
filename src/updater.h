@@ -13,21 +13,6 @@
 
 #include "handler.h"
 
-typedef enum comp_update_state {
-	CUS_NONE,
-	CUS_DOWNLOAD_STARTED,
-	CUS_DOWNLOAD_COMPLETD,
-	CUS_PREPARE_UPDATE_STARTED,
-	CUS_PREPARE_UPDATE_COMPLETED,
-	CUS_READY_UPDATE_STARTED,
-	CUS_READ_UPDATE_COMPLETED,
-	CUS_BACKUP_STARTED,
-	CUS_BACUP_COMPLETED,
-	CUS_CONFIRM_UPDATE_STARTED,
-	CUS_CONFIRM_UPDATE_COMPLETED,
-
-}comp_update_state_t;
-
 typedef struct thread_resume {
 	ua_component_context_t* uacc;
 	json_object* jo_update_rec;
@@ -36,8 +21,18 @@ typedef struct thread_resume {
 
 void update_release_comp_context(ua_component_context_t* uacc);
 
-int update_record_save(ua_component_context_t* uacc);
+int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
 
-char* update_record_load(char* rec_file);
+void update_set_rollback_info(ua_component_context_t* uacc);
+
+install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version);
+
+install_state_t update_start_install_operations(ua_component_context_t* uacc);
+
+char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version);
+
+void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* ri_tree);
+
+
 
 #endif //UPDATER_H_
