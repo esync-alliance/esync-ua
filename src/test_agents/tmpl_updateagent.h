@@ -35,6 +35,14 @@ typedef struct pkg_version {
 } while (0)
 
 
+typedef enum update_mode {
+	UPDATE_MODE_SUCCESSFUL,
+	UPDATE_MODE_FAILURE,
+	UPDATE_MODE_ALTERNATE_FAILURE_SUCCESSFUL,
+}update_mode_t;
+
+int get_tmpl_version(const char* type, const char* pkgName, char** version);
 ua_routine_t* get_tmpl_routine(void);
+void set_test_installation_mode(update_mode_t mode, int reboot);
 
 #endif /* _TMPL_UPDATEAGENT_H_ */

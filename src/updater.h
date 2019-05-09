@@ -25,9 +25,9 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 void update_set_rollback_info(ua_component_context_t* uacc);
 
-install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version);
+install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version, int reboot_support);
 
-install_state_t update_start_install_operations(ua_component_context_t* uacc);
+install_state_t update_start_install_operations(ua_component_context_t* uacc, int reboot_support);
 
 char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version);
 

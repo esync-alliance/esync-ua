@@ -25,6 +25,7 @@ static void _help(const char* app)
 	       "  -D         : disable delta reconstruction\n"
 	       "  -a <cap>   : delta capability\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
+	       "  -t <type>  : handler type\n"
 	       "  -h         : display this help and exit\n"
 	       );
 	_exit(1);

@@ -135,6 +135,11 @@ typedef struct ua_cfg {
 	// specifies the buffer size for read/write, in kilobytes
 	long rw_buffer_size;
 
+	//indicate whether to use library reboot feature. 
+	//0 = default, ua implements its own reboot/resume support.  
+	//1 = ua uses libary's reboot/resume support.
+	int reboot_support;
+
 } ua_cfg_t;
 
 
@@ -174,8 +179,6 @@ XL4_PUB const char* ua_get_xl4bus_version(void);
 XL4_PUB int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent);
 
 XL4_PUB int ua_send_transfer_progress(const char* pkgName, const char* version, int indeterminate, int percent);
-
-//XL4_PUB int ua_backup_package(char* pkgName, char* version);
 
 #ifdef _json_h_
 

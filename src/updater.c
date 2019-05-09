@@ -165,17 +165,28 @@ char* update_record_load(char* record_file)
 		fclose(fd);
 
 	}else{
-		DBG("Error load update record file %s", NULL_STR(record_file));
+		DBG("Could not open update record file %s", NULL_STR(record_file));
 
 	}
 
 	return jstring;
 }
 
+
 void update_release_comp_context(ua_component_context_t* uacc)
 {
 	if (uacc->rb_type == URB_UA_LOCAL_BACKUP && uacc->update_pkg.rollback_versions)
 		json_object_put(uacc->update_pkg.rollback_versions);
+	
+	uacc->update_pkg.name = NULL;
+	uacc->update_pkg.version = NULL;
+	uacc->update_pkg.type = NULL;
+	uacc->update_pkg.rollback_version = NULL;
+	uacc->update_pkg.rollback_versions = NULL;
+
+	f_free(uacc->update_file_info.version);
+	f_free(uacc->update_file_info.file);
+	uacc->update_file_info.rollback_order = 0;
 }
 
 int update_installed_version_same(ua_component_context_t* uacc, char* target_version)
@@ -191,27 +202,32 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 
 }
 
-install_state_t update_start_install_operations(ua_component_context_t* uacc)
+install_state_t update_start_install_operations(ua_component_context_t* uacc, int reboot_support)
 {
 	install_state_t update_sts;
 
+	DBG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
 	if (update_installed_version_same(uacc, uacc->update_pkg.version)) {
 		send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
 		update_sts = INSTALL_COMPLETED;
 	}else {
-		update_record_save(uacc);
+		if(reboot_support)
+			update_record_save(uacc);
 
 		update_sts = pre_update_action(uacc, &uacc->update_pkg, &uacc->update_file_info);
 
 		if (update_sts == INSTALL_IN_PROGRESS)
 			update_sts = update_action(uacc, &uacc->update_pkg, &uacc->update_file_info);
-
 		if (update_sts == INSTALL_COMPLETED)
 			post_update_action(uacc, &uacc->update_pkg);
 
-		remove(uacc->record_file);
+		if(reboot_support)
+			remove(uacc->record_file);
 	}
-
+	if(update_sts == INSTALL_COMPLETED)
+		DBG("Installation of %s for version %s has completed successfully.", uacc->update_pkg.name, uacc->update_file_info.version);
+	else
+		DBG("Installation of %s for version %s did not succeed.", uacc->update_pkg.name, uacc->update_file_info.version);
 	return update_sts;
 }
 
@@ -238,8 +254,10 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 				}
 
 				if (json_object_array_length(uacc->update_pkg.rollback_versions) > 0) {
+					DBG("Found local backup available for rollback");
 					uacc->rb_type = URB_UA_LOCAL_BACKUP;
 				}else {
+					DBG("No local backup available for rollback");
 					json_object_put(uacc->update_pkg.rollback_versions);
 					uacc->update_pkg.rollback_versions = NULL;
 
@@ -254,7 +272,6 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version)
 {
 	char* rb_version = NULL;
-
 	if (uacc->update_pkg.rollback_versions != NULL)
 		get_pkg_next_rollback_version(uacc->update_pkg.rollback_versions,
 		                              cur_version, &rb_version);
@@ -262,62 +279,65 @@ char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_v
 	return rb_version;
 }
 
-int update_package_available(ua_component_context_t* uacc, char* version)
+int update_package_available(pkg_file_t* updat_file, char* version)
 {
 	int avail = 0;
 
-	if (uacc && version) {
-		avail = (!strcmp(uacc->update_file_info.version, version) &&
-		         uacc->update_file_info.downloaded == 1 &&
-		         !access(uacc->update_file_info.file, F_OK));
+	if (updat_file && version) {
+		avail = (!strcmp(updat_file->version, version) &&
+		         updat_file->downloaded == 1 &&
+		         !access(updat_file->file, F_OK));
 	}
 	return avail;
 }
 
-install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version)
+install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version, int reboot_support)
 {
-	install_state_t update_sts  = INSTALL_IN_PROGRESS;
+	install_state_t update_sts  = INSTALL_FAILED;
 	char* next_rb_version       = rb_version;
 	char* tmp_cur_version       = NULL;
 	pkg_file_t tmp_rb_file_info = {0};
 
-	while (next_rb_version != NULL) {
+	while (update_sts != INSTALL_COMPLETED && next_rb_version != NULL) {
 		DBG("Starting rollback type(%d) to version(%s)", uacc->rb_type, rb_version);
 		uacc->update_pkg.rollback_version = rb_version;
-		send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 
 		if (update_installed_version_same(uacc, next_rb_version)) {
+			send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 			DBG("Found installed version is same as rollback version.");
+			update_sts  = INSTALL_COMPLETED;
 			send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
 			next_rb_version = NULL;
 
-		}else if (!update_package_available(uacc, next_rb_version)) {
-			DBG("Rollback package file is not available locally, asking eSync client to download it.");
-			send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK,
-			                    &uacc->update_file_info, UE_NONE);
-			next_rb_version = NULL;
-
 		}else{
-			DBG("Rollback package found, rollback installation starts now.");
 			tmp_rb_file_info.version = next_rb_version;
 
-			if (!get_pkg_file_manifest(uacc->backup_manifest, tmp_rb_file_info.version, &tmp_rb_file_info)) {
+			if (!get_pkg_file_manifest(uacc->backup_manifest, tmp_rb_file_info.version, &tmp_rb_file_info) 
+				&& update_package_available(&tmp_rb_file_info, next_rb_version)) {
+				DBG("Rollback package found, rollback installation starts now.");
+				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
+
+				f_free(uacc->update_file_info.version);
+				f_free(uacc->update_file_info.file);
 				update_sts = prepare_install_action(uacc, &uacc->update_pkg, &tmp_rb_file_info,
 				                                    0, &uacc->update_file_info, &uacc->update_error);
 				if (update_sts == INSTALL_READY) {
-					if ((update_sts = update_start_install_operations(uacc)) != INSTALL_COMPLETED) {
+					if ((update_sts = update_start_install_operations(uacc, reboot_support)) != INSTALL_COMPLETED) {
 						tmp_cur_version = next_rb_version;
 						next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
 
 					}
-
 				}
-
-				f_free(uacc->update_file_info.version);
-				f_free(uacc->update_file_info.file);
 
 				f_free(tmp_rb_file_info.version);
 				f_free(tmp_rb_file_info.file);
+
+			} else {
+				DBG("Rollback package file is not available locally, asking eSync client to download it.");
+				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK,
+									&uacc->update_file_info, UE_NONE);
+				next_rb_version = NULL;
+				update_sts  = INSTALL_IN_PROGRESS;
 
 			}
 
@@ -347,7 +367,6 @@ void* update_resume_from_reboot(void* arg)
 		uacc->worker.worker_running = 1;
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			DBG("Resume: update installation was successful.");
-			//send INTALL_COMPLETED, include rollback-version if it was rollback install before reboot.
 			send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
 
 		}else {
@@ -355,7 +374,7 @@ void* update_resume_from_reboot(void* arg)
 				DBG("Resume: update installation failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL)
-					update_start_rollback_operations(uacc, rb_version);
+					update_start_rollback_operations(uacc, rb_version, 1);
 				else
 					send_install_status(&uacc->update_pkg, INSTALL_FAILED,
 					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
@@ -481,7 +500,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			uacc->update_file_info.version = S(uacc->update_pkg.rollback_version) ?
 			                                 uacc->update_pkg.rollback_version : uacc->update_pkg.version;
 
-			if (E_UA_ERR == get_pkg_file_manifest(uacc->manifest, uacc->update_file_info.version, &uacc->update_file_info))
+			if (E_UA_ERR == get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info))
 			{
 				DBG("Could not load intermediate manifest, getting info from json package object instead.");
 				get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.file);
@@ -494,45 +513,3 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 	return err;
 }
-# if 0
-void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj)
-{
-	install_state_t update_sts = INSTALL_READY;
-	json_object* jo            = json_object_get(jsonObj);
-	extern ua_internal_t ua_intl;
-
-	if (uacc && jo && update_parse_json_ready_update(uacc, jo) == E_UA_OK) {
-		uacc->state = UA_STATE_READY_UPDATE_STARTED;
-		if (uacc->manifest == NULL)
-			uacc->manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
-
-		update_set_rollback_info(uacc);
-
-		if (uacc->rb_type == URB_DMC_INITIATED) {
-			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version);
-
-		}else {
-			if ((update_sts = update_start_install_operations(uacc)) == INSTALL_FAILED &&
-			    uacc->rb_type >= URB_UA_INITIATED) {
-				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				update_sts =  update_start_rollback_operations(uacc, rb_version);
-
-			}
-		}
-
-		if (update_sts == INSTALL_COMPLETED) {
-			ua_backup_package(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
-		}
-
-		json_object_put(jo);
-		uacc->state = UA_STATE_READY_UPDATE_DONE;
-
-	}else {
-		if (uacc == NULL || jsonObj == NULL)
-			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
-		else
-			DBG("Error: parsing ready-update.");
-	}
-
-}
-#endif 

@@ -8,12 +8,12 @@
 #include <stdio.h>
 
 pkg_version_t* package_version = 0;
+update_mode_t test_update_mode = 0;
+int test_reboot = 0;
 
-static int get_tmpl_version(const char* type, const char* pkgName, char** version)
+int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
-	if(access("/data/sota/esync/backup/kill", F_OK)) {
-		TMPL_VER_SET(pkgName, "JS1814P2");
-	}
+
 	TMPL_VER_GET(pkgName, *version);
 	return E_UA_OK;
 
@@ -34,12 +34,38 @@ static install_state_t do_tmpl_pre_install(const char* type, const char* pkgName
 
 static install_state_t do_tmpl_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
 {
-	if(!access("/data/sota/esync/backup/kill", F_OK)) {
-		printf("aborting update ....\n");
+	install_state_t rc = INSTALL_COMPLETED;
+	static int cnt = 0;
+	printf("Emulate installation of %s for %s(%s) using %s\n", type, pkgName, version, pkgFile);
+	if(test_reboot) {
+		printf("Emulate system reboot for update installation.\n");
 		abort();
+	} else {
+		switch (test_update_mode) {
+			case UPDATE_MODE_FAILURE:
+				rc = INSTALL_FAILED;
+				break;
 
+			case UPDATE_MODE_ALTERNATE_FAILURE_SUCCESSFUL:
+				if(cnt++ % 2 == 0) {
+					rc = INSTALL_FAILED;
+				}
+				break;
+				
+			case UPDATE_MODE_SUCCESSFUL:
+				rc = INSTALL_COMPLETED;
+				break;
+			default:
+				break;
+		}
 	}
-	return INSTALL_COMPLETED;
+
+	if(rc == INSTALL_COMPLETED)
+		printf("Emulate installation succeeded\n");
+	else
+		printf("Emulate installation failed(%d)\n", rc);
+
+	return rc;
 
 }
 
@@ -75,4 +101,10 @@ ua_routine_t* get_tmpl_routine(void)
 {
 	return &tmpl_rtns;
 
+}
+
+void set_test_installation_mode(update_mode_t mode, int reboot)
+{
+	test_update_mode = mode;
+	test_reboot = reboot;
 }

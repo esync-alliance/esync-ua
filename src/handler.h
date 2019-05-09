@@ -115,6 +115,7 @@ typedef struct ua_internal {
 	char* record_file;
 	int esync_bus_conn_status;
 	ua_internal_state_t state;
+	int reboot_support;
 
 } ua_internal_t;
 
@@ -148,7 +149,7 @@ typedef struct ua_component_context {
 	pkg_info_t update_pkg;
 	update_rollback_t rb_type;
 	update_err_t update_error;
-	char* manifest;
+	char* update_manifest;
 	char* backup_manifest;
 	char* record_file;
 } ua_component_context_t;
@@ -169,14 +170,13 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 void handle_message(const char* type, const char* msg, size_t len);
 
 void free_pkg_file(pkg_file_t* pkgFile);
+
 install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue);
 install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
+void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
 
 void handler_set_internal_state(ua_internal_state_t st);
-
-void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
-//void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
 void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
 int ua_backup_package(ua_component_context_t* uacc, char* pkgName, char* version);
 int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
