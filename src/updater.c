@@ -175,18 +175,21 @@ char* update_record_load(char* record_file)
 
 void update_release_comp_context(ua_component_context_t* uacc)
 {
-	if (uacc->rb_type == URB_UA_LOCAL_BACKUP && uacc->update_pkg.rollback_versions)
-		json_object_put(uacc->update_pkg.rollback_versions);
+	if (uacc->rb_type == URB_UA_LOCAL_BACKUP) {
+		if(uacc->update_pkg.rollback_versions)
+			json_object_put(uacc->update_pkg.rollback_versions);
+		f_free(uacc->update_file_info.version);
+	}
+		
+	f_free(uacc->update_file_info.file);
 	
 	uacc->update_pkg.name = NULL;
 	uacc->update_pkg.version = NULL;
 	uacc->update_pkg.type = NULL;
 	uacc->update_pkg.rollback_version = NULL;
-	uacc->update_pkg.rollback_versions = NULL;
-
-	f_free(uacc->update_file_info.version);
-	f_free(uacc->update_file_info.file);
+	uacc->update_pkg.rollback_versions = NULL;		
 	uacc->update_file_info.rollback_order = 0;
+
 }
 
 int update_installed_version_same(ua_component_context_t* uacc, char* target_version)
