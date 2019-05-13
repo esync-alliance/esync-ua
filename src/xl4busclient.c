@@ -115,12 +115,40 @@ int xl4bus_client_send_msg(const char* message)
 
 	if (err != E_XL4BUS_OK) {
 		xl4bus_free_address(addr, 1);
+		DBG("Error sending message: %s", message);
 	}
 
 	return err;
 
 }
 
+
+int xl4bus_client_send_msg_to_addr(const char* message, xl4bus_address_t* xl4_address)
+{
+	int err = E_XL4BUS_OK;
+	char* msg;
+	xl4bus_message_t* xl4bus_msg = 0;
+
+	do {
+		BOLT_MEM(msg = f_strdup(message));
+
+		BOLT_MALLOC(xl4bus_msg, sizeof(xl4bus_message_t));
+		xl4bus_msg->address      = xl4_address;
+		xl4bus_msg->content_type = "application/json";
+		xl4bus_msg->data         = msg;
+		xl4bus_msg->data_len     = strlen((char*) xl4bus_msg->data) + 1;
+
+		BOLT_SUB(xl4bus_send_message(&m_xl4bus_clt, xl4bus_msg, 0));
+
+	} while (0);
+
+	if (err != E_XL4BUS_OK) {
+		xl4bus_free_address(xl4_address, 1);
+		DBG("Error sending message: %s", message);
+	}
+
+	return err;
+}
 
 char* addr_to_string(xl4bus_address_t* addr)
 {

@@ -224,11 +224,18 @@ int ua_send_message(json_object* jsonObj)
 {
 	char* msg = (char*)json_object_to_json_string(jsonObj);
 
-	DBG("Sending : %s", msg);
+	DBG("Sending to DMC : %s", msg);
 	return xl4bus_client_send_msg(msg);
 
 }
 
+XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address)
+{
+	char* msg = (char*)json_object_to_json_string(jsonObj);
+
+	DBG("Sending with bus addr: %s", msg);
+	return xl4bus_client_send_msg_to_addr(msg, xl4_address);	
+}
 
 int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent)
 {
