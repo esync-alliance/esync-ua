@@ -75,7 +75,6 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.cache_dir      = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
 		ua_intl.backup_dir     = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 		ua_intl.record_file    = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
-
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 
 		ua_intl.state = UAI_STATE_INITIALIZED;
@@ -109,6 +108,9 @@ int ua_register(ua_handler_t* uah, int len)
 {
 	int err           = E_UA_OK;
 	runner_info_t* ri = 0;
+
+	ua_intl.uah = uah;
+	ua_intl.n_uah = len;
 
 	if (!ri_tree) {
 		ri_tree = f_malloc(sizeof(runner_info_hash_tree_t));
@@ -203,6 +205,20 @@ int ua_unregister(ua_handler_t* uah, int len)
 	return ret;
 }
 
+int ua_handle_dmc_presence()
+{
+	int ret = E_UA_OK;
+	if(ua_intl.uah) {
+		for (int i = 0; i < ua_intl.n_uah; i++) {
+			ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
+			if(uar && uar->on_dmc_presence)
+				ret = (*uar->on_dmc_presence)(NULL);
+
+		}
+	}
+
+	return ret;
+}
 
 int ua_send_message(json_object* jsonObj)
 {
@@ -306,24 +322,23 @@ void handle_delivered(const char* msg, int ok)
 void handle_presence(int connected, int disconnected, esync_bus_conn_state_t conn)
 {
 	DBG("Connected : %d,  Disconnected : %d", connected, disconnected);
-	if (ua_intl.reboot_support)
+	switch (conn)
 	{
-		switch (conn)
-		{
-			case BUS_CONN_BROKER_NOT_CONNECTED:
-				break;
-			case BUS_CONN_BROKER_CONNECTED:
-				break;
-			case BUS_CONN_DMC_NOT_CONNECTED:
-				break;
-			case BUS_CONN_DMC_CONNECTED:
-				if (ua_intl.state < UAI_STATE_RESUME_STARTED)
-					update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
-				break;
-			default:
-				break;
+		case BUS_CONN_BROKER_NOT_CONNECTED:
+			break;
+		case BUS_CONN_BROKER_CONNECTED:
+			break;
+		case BUS_CONN_DMC_NOT_CONNECTED:
+			break;
+		case BUS_CONN_DMC_CONNECTED:
+			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
+				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
+			
+			ua_handle_dmc_presence();
+			break;
+		default:
+			break;
 
-		}
 	}
 
 }

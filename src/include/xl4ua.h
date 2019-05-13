@@ -35,6 +35,11 @@ typedef enum download_state {
  * caller will not release memory alloacated for version. 
  * @return ::
  */
+
+typedef struct dmc_presence {
+
+}dmc_presence_t;
+
 typedef int (*ua_on_get_version)(const char* type, const char* pkgName, char** version);
 
 typedef int (*ua_on_set_version)(const char* type, const char* pkgName, const char* version);
@@ -50,6 +55,8 @@ typedef int (*ua_on_transfer_file)(const char* type, const char* pkgName, const 
 typedef install_state_t (*ua_on_prepare_install)(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile);
 
 typedef download_state_t (*ua_on_prepare_download)(const char* type, const char* pkgName, const char* version);
+
+typedef int (*ua_on_dmc_presence)(dmc_presence_t *dp);
 
 #ifdef _json_h_
 
@@ -88,6 +95,9 @@ typedef struct ua_routine {
 
 	// (optional) called on xl4bus messages
 	ua_on_message on_message;
+
+	// (optional) called when dmc is connnected to xl4bus.
+	ua_on_dmc_presence on_dmc_presence;
 
 } ua_routine_t;
 

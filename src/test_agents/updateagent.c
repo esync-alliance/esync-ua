@@ -46,6 +46,7 @@ int main(int argc, char** argv)
 	cfg.url        = "tcp://localhost:9133";
 	cfg.cache_dir  = "/tmp/esync/";
 	cfg.backup_dir = "/data/sota/esync/";
+	cfg.reboot_support = 0;
 
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:dDh")) != -1) {
 		switch (c) {

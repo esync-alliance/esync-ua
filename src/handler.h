@@ -116,6 +116,8 @@ typedef struct ua_internal {
 	int esync_bus_conn_status;
 	ua_internal_state_t state;
 	int reboot_support;
+	ua_handler_t *uah;
+	int n_uah;
 
 } ua_internal_t;
 

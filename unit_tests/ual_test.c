@@ -104,8 +104,8 @@ int main(int argc, char** argv)
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_normal_update),
 		//cmocka_unit_test(test_rollback_by_dmc),
-		//cmocka_unit_test(test_rollback_ua_controlled_success),
-		//cmocka_unit_test(test_rollback_ua_controlled_failed),
+		cmocka_unit_test(test_rollback_ua_controlled_success),
+		cmocka_unit_test(test_rollback_ua_controlled_failed),
 		//cmocka_unit_test(test_resume_normal_update),
 		//cmocka_unit_test(test_resume_rollback_update),
 	};

@@ -224,7 +224,7 @@ if(UNIT_TEST)
 						unit_tests/test_setup.h
 						unit_tests/ual_test.c
 					)
-	set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg )
+	set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
 	target_compile_definitions(ual_test PRIVATE WITH_UNIT_TEST)
 	target_compile_options(ual_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
 	target_link_libraries(ual_test xl4bus pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${JSON_C_LIB} ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})

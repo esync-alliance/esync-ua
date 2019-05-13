@@ -175,13 +175,14 @@ char* update_record_load(char* record_file)
 
 void update_release_comp_context(ua_component_context_t* uacc)
 {
+	DBG("VVVV: rb-type(%d)", uacc->rb_type);
 	if (uacc->rb_type == URB_UA_LOCAL_BACKUP) {
 		if(uacc->update_pkg.rollback_versions)
 			json_object_put(uacc->update_pkg.rollback_versions);
 		f_free(uacc->update_file_info.version);
 	}
-		
-	f_free(uacc->update_file_info.file);
+	if (uacc->rb_type != URB_NONE)	
+		f_free(uacc->update_file_info.file);
 	
 	uacc->update_pkg.name = NULL;
 	uacc->update_pkg.version = NULL;

@@ -29,9 +29,6 @@ int test_ua_setup(void** state)
 	cfg.backup_dir     = "/data/sota/esync/";
 	cfg.delta_config   = &(delta_cfg_t){.delta_cap = "A:3;B:3;C:10"};
 
-	will_return(__wrap_xl4bus_client_init, 0);
-	will_return(__wrap_xl4bus_client_stop, 0);
-
 	if (ua_init(&cfg)) {
 		printf("Updateagent failed!");
 		_exit(1);
@@ -52,15 +49,12 @@ int test_ua_teardown(void** state)
 
 int __wrap_xl4bus_client_init(char* url, char* cert_dir)
 {
-	mock_type(int);
 	return 0;
-	//return mock_type(int);
 }
 
 int __wrap_xl4bus_client_stop(void)
 {
 	usleep(500*1000);
-	mock_type(int);
 	return 0;
 
 }
@@ -68,5 +62,14 @@ int __wrap_xl4bus_client_stop(void)
 int __wrap_xl4bus_client_send_msg(const char* message)
 {
 	return 0;
-	return mock_type(int);
+}
+
+char* __wrap_randstring(int length)
+{
+	char* randomString;
+
+	randomString = malloc(sizeof(char) * (length +1));
+	strcpy(randomString, FAKE_RAND_STRING);
+	return randomString;
+
 }

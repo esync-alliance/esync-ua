@@ -87,6 +87,10 @@ static download_state_t do_prepare_download(const char* type, const char* pkgNam
 
 }
 
+static int tmpl_on_dmc_presence(dmc_presence_t *dp)
+{
+	return 0;
+}
 ua_routine_t tmpl_rtns = {
 	.on_get_version      = get_tmpl_version,
 	.on_set_version      = set_tmpl_version,
@@ -94,7 +98,8 @@ ua_routine_t tmpl_rtns = {
 	.on_install          = do_tmpl_install,
 	.on_post_install     = do_tmpl_post_install,
 	.on_prepare_install  = do_prepare_install,
-	.on_prepare_download = do_prepare_download
+	.on_prepare_download = do_prepare_download,
+	.on_dmc_presence     = tmpl_on_dmc_presence
 };
 
 ua_routine_t* get_tmpl_routine(void)
