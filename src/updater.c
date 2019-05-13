@@ -372,6 +372,7 @@ void* update_resume_from_reboot(void* arg)
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			DBG("Resume: update installation was successful.");
 			send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
+			post_update_action(uacc, &uacc->update_pkg);
 
 		}else {
 			if (uacc->rb_type != URB_NONE) {
