@@ -6,150 +6,148 @@
 #include "delta.h"
 #include <sys/wait.h>
 #if 0
-static int zip_archive_add_file(struct zip * za, const char * path, const char * base);
-static int zip_archive_add_dir(struct zip *za, const char *path, const char *base);
+static int zip_archive_add_file(struct zip* za, const char* path, const char* base);
+static int zip_archive_add_dir(struct zip* za, const char* path, const char* base);
 #endif
-static char * get_zip_error(int ze);
+static char* get_zip_error(int ze);
 
 size_t ua_rw_buff_size = 16 * 1024;
 
 struct sha256_list {
-    unsigned char sha256[SHA256_DIGEST_LENGTH];
-    struct sha256_list * next;
+	unsigned char sha256[SHA256_DIGEST_LENGTH];
+	struct sha256_list* next;
 };
 
-int sha256cmp(struct sha256_list * a, struct sha256_list * b) { 
-    return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH); 
+int sha256cmp(struct sha256_list* a, struct sha256_list* b)
+{
+	return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH);
 }
 
-uint64_t currentms() {
+uint64_t currentms()
+{
+	struct timespec tp;
 
-    struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-
-    return ((uint64_t)tp.tv_sec) * 1000ULL +
-        tp.tv_nsec / 1000000ULL;
-
-}
-
-
-int mkdirp(const char * path, int umask) {
-
-    char * dpath = f_strdup(path);
-    char * aux = dpath;
-    int rc;
-    struct stat statb;
-
-    if (*aux != '/') {
-        errno = EINVAL;
-        free(dpath);
-        return 1;
-    }
-
-    while (*(aux+1) == '/') { aux++; }
-
-    if (!*(aux+1)) { free(dpath); return 0; }
-
-    while (1) {
-
-        *aux = '/';
-        aux++;
-        if (!*aux) { break; }
-        aux = strchr(aux, '/');
-
-        if (aux) {
-            while (*(aux+1) == '/') { aux++; }
-            *aux = 0;
-        }
-
-        rc = stat(dpath, &statb);
-
-        if (rc || !S_ISDIR(statb.st_mode)) {
-            rc = mkdir(dpath, umask);
-            if (rc) { free(dpath); return rc; }
-        }
-
-        if (!aux) { break; }
-
-    }
-
-    free(dpath);
-    return 0;
+	return ((uint64_t)tp.tv_sec) * 1000ULL +
+	       tp.tv_nsec / 1000000ULL;
 
 }
 
 
-int rmdirp(const char * path) {
+int mkdirp(const char* path, int umask)
+{
+	char* dpath = f_strdup(path);
+	char* aux   = dpath;
+	int rc;
+	struct stat statb;
 
-    int err = E_UA_OK;
-    DIR *dir;
-    struct dirent *entry;
-    char * filepath;
+	if (*aux != '/') {
+		errno = EINVAL;
+		free(dpath);
+		return 1;
+	}
 
-    DBG("removing dir %s", path);
+	while (*(aux+1) == '/') { aux++; }
 
-    do {
+	if (!*(aux+1)) { free(dpath); return 0; }
 
-        BOLT_SYS(!(dir = opendir(path)), "failed to open directory %s", path);
+	while (1) {
+		*aux = '/';
+		aux++;
+		if (!*aux) { break; }
+		aux = strchr(aux, '/');
 
-        while ((entry = readdir(dir)) != NULL) {
+		if (aux) {
+			while (*(aux+1) == '/') { aux++; }
+			*aux = 0;
+		}
 
-            filepath = JOIN(path, entry->d_name);
+		rc = stat(dpath, &statb);
 
-            if (entry->d_type != DT_DIR) {
-                if (remove(filepath) < 0) {
-                    err = E_UA_SYS;
-                    DBG_SYS("error removing file: %s", filepath);
-                }
-            } else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
-                err = rmdirp(filepath);
-            }
+		if (rc || !S_ISDIR(statb.st_mode)) {
+			rc = mkdir(dpath, umask);
+			if (rc) { free(dpath); return rc; }
+		}
 
-            free(filepath);
-            if (err) break;
-        }
+		if (!aux) { break; }
 
-        closedir(dir);
-        BOLT_SYS(remove(path), "error removing directory: %s", path);
+	}
 
-    } while (0);
+	free(dpath);
+	return 0;
 
-    return err;
 }
 
 
-int chkdirp(const char * path) {
+int rmdirp(const char* path)
+{
+	int err = E_UA_OK;
+	DIR* dir;
+	struct dirent* entry;
+	char* filepath;
 
-    int rc;
-    struct stat statb;
-    char * dir = f_dirname(path);
+	DBG("removing dir %s", path);
 
-    rc = stat(dir, &statb);
+	do {
+		BOLT_SYS(!(dir = opendir(path)), "failed to open directory %s", path);
 
-    if (rc || !S_ISDIR(statb.st_mode)) {
-        rc = mkdirp(dir, 0755);
-    }
+		while ((entry = readdir(dir)) != NULL) {
+			filepath = JOIN(path, entry->d_name);
 
-    free(dir);
-    return rc;
+			if (entry->d_type != DT_DIR) {
+				if (remove(filepath) < 0) {
+					err = E_UA_SYS;
+					DBG_SYS("error removing file: %s", filepath);
+				}
+			} else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
+				err = rmdirp(filepath);
+			}
+
+			free(filepath);
+			if (err) break;
+		}
+
+		closedir(dir);
+		BOLT_SYS(remove(path), "error removing directory: %s", path);
+
+	} while (0);
+
+	return err;
 }
 
 
-int newdirp(const char * path, int umask) {
+int chkdirp(const char* path)
+{
+	int rc;
+	struct stat statb;
+	char* dir = f_dirname(path);
 
-    int rc;
-    struct stat statb;
+	rc = stat(dir, &statb);
 
-    rc = stat(path, &statb);
+	if (rc || !S_ISDIR(statb.st_mode)) {
+		rc = mkdirp(dir, 0755);
+	}
 
-    if (!rc) {
-        rmdirp(path);
-    }
+	free(dir);
+	return rc;
+}
 
-    rc = mkdirp(path, umask);
 
-    return rc;
+int newdirp(const char* path, int umask)
+{
+	int rc;
+	struct stat statb;
+
+	rc = stat(path, &statb);
+
+	if (!rc) {
+		rmdirp(path);
+	}
+
+	rc = mkdirp(path, umask);
+
+	return rc;
 }
 
 int run_cmd(char* cmd, char* argv[])
@@ -157,8 +155,7 @@ int run_cmd(char* cmd, char* argv[])
 	int rc     = E_UA_OK;
 	int status = 0;
 
-	if(cmd && argv) {
-
+	if (cmd && argv) {
 		pid_t pid=fork();
 
 		if ( pid == -1) {
@@ -170,13 +167,13 @@ int run_cmd(char* cmd, char* argv[])
 			DBG("execv %s failed", cmd);
 			rc = E_UA_SYS;
 
-		}else { 
+		}else {
 			if (waitpid(pid, &status, 0) == -1) {
 				rc = E_UA_SYS;
 			}else {
 				WEXITSTATUS(status);
 			}
-		}		
+		}
 	}else{
 		rc = E_UA_SYS;
 	}
@@ -184,469 +181,453 @@ int run_cmd(char* cmd, char* argv[])
 	return rc;
 }
 
-static char * get_zip_error(int ze) {
+static char* get_zip_error(int ze)
+{
+	int se = errno;
+	char buf[256];
+	char* buf2 = 0;
+	int x      = zip_error_to_str(buf, 256, ze, se);
 
-    int se = errno;
-    char buf[256];
-    char * buf2 = 0;
-    int x = zip_error_to_str(buf, 256, ze, se);
-    if (x >= 255) {
-        buf2 = f_malloc(x+1);
-        zip_error_to_str(buf2, x+1, ze, se);
-    }
+	if (x >= 255) {
+		buf2 = f_malloc(x+1);
+		zip_error_to_str(buf2, x+1, ze, se);
+	}
 
-    if (buf2) { return buf2; }
-    return f_strdup(buf);
+	if (buf2) { return buf2; }
+	return f_strdup(buf);
 
 }
 
 #if 0
-int unzip(const char * archive, const char * path) {
+int unzip(const char* archive, const char* path)
+{
+	int i, len, fd, zerr, err = E_UA_OK;
+	char* buf = 0;
+	long sum;
+	char* aux   = 0;
+	char* fpath = 0;
+	struct zip* za;
+	struct zip_file* zf;
+	struct zip_stat sb;
 
-    int i, len, fd, zerr, err = E_UA_OK;
-    char * buf = 0;
-    long sum;
-    char * aux = 0;
-    char * fpath = 0;
-    struct zip *za;
-    struct zip_file *zf;
-    struct zip_stat sb;
+	DBG("unziping archive %s to %s", archive, path);
 
-    DBG("unziping archive %s to %s", archive, path);
+	do {
+		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
+		        "failed to open file as ZIP %s : %s", archive, aux = get_zip_error(zerr));
 
-    do {
+		BOLT_MALLOC(buf, ua_rw_buff_size);
 
-        BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-                "failed to open file as ZIP %s : %s", archive, aux = get_zip_error(zerr));
+		for (i = 0; i < zip_get_num_entries(za, 0); i++) {
+			BOLT_IF(zip_stat_index(za, i, 0, &sb), E_UA_ERR, "failed reading stat at index %d: %s", i, zip_strerror(za));
 
-        BOLT_MALLOC(buf, ua_rw_buff_size);
+			fpath = JOIN(path, sb.name);
+			len   = strlen(sb.name);
+			if (sb.name[len - 1] == '/') {
+				BOLT_SYS(mkdirp(fpath, 0755) && (errno != EEXIST), "failed to make directory %s", fpath);
+			} else {
+				BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
+				BOLT_SYS(chkdirp(fpath), "failed to prepare directory for %s", fpath);
+				BOLT_SYS((fd = open(fpath, O_RDWR | O_TRUNC | O_CREAT, 0644)) < 0, "failed to open/create %s", fpath);
 
-        for (i = 0; i < zip_get_num_entries(za, 0); i++) {
+				sum = 0;
+				while (sum != sb.size) {
+					BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0,
+					        E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
+					write(fd, buf, len);
+					sum += len;
+				}
 
-            BOLT_IF(zip_stat_index(za, i, 0, &sb), E_UA_ERR, "failed reading stat at index %d: %s", i, zip_strerror(za));
+				close(fd);
+				zip_fclose(zf);
+			}
+			free(fpath);
+			fpath = 0;
+		}
 
-            fpath = JOIN(path, sb.name);
-            len = strlen(sb.name);
-            if (sb.name[len - 1] == '/') {
-                BOLT_SYS(mkdirp(fpath, 0755) && (errno != EEXIST), "failed to make directory %s", fpath);
-            } else {
-                BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
-                BOLT_SYS(chkdirp(fpath), "failed to prepare directory for %s", fpath);
-                BOLT_SYS((fd = open(fpath, O_RDWR | O_TRUNC | O_CREAT, 0644)) < 0, "failed to open/create %s", fpath);
+	} while (0);
 
-                sum = 0;
-                while (sum != sb.size) {
-                    BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0,
-                            E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
-                    write(fd, buf, len);
-                    sum += len;
-                }
+	if (buf) free(buf);
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
-                close(fd);
-                zip_fclose(zf);
-            }
-            free(fpath);
-            fpath = 0;
-        }
+	if (err) {
+		if (aux) free(aux);
+		if (fpath) free(fpath);
+	}
 
-    } while (0);
-
-    if (buf) free(buf);
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
-
-    if (err) {
-        if(aux) free(aux);
-        if(fpath) free(fpath);
-    }
-
-    return err;
+	return err;
 }
 #else
-int unzip(const char * archive, const char * path) {
+int unzip(const char* archive, const char* path)
+{
+	int err = E_UA_OK;
 
-    int err = E_UA_OK;
+	if (archive && path) {
+		do {
+			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
 
-    if(archive && path) {
+			char cmd[]   = "unzip";
+			char* argv[] = {cmd, (char*)archive, "-d", (char*)path, NULL};
+			BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
 
-        do {
-            BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
- 
-            char cmd[] = "unzip";
-            char* argv[] = {cmd, (char*)archive, "-d", (char*)path, NULL};
-            BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
+		} while (0);
 
-        } while (0);
+	}
 
-    }
-
-    return err;
+	return err;
 }
 
-#endif 
+#endif
 
-int zip(const char * archive, const char * path) {
-
-    DBG("ziping %s to %s", path, archive);
+int zip(const char* archive, const char* path)
+{
+	DBG("ziping %s to %s", path, archive);
 
 #if 0 //ESYNC-3166 - todo: make zip as fast as zip tool
 
-    int zerr, err = E_UA_OK;
-    char * aux = 0;
-    struct stat path_stat;
-    struct zip * za = 0;
+	int zerr, err = E_UA_OK;
+	char* aux = 0;
+	struct stat path_stat;
+	struct zip* za = 0;
 
-    DBG("ziping %s to %s", path, archive);
+	DBG("ziping %s to %s", path, archive);
 
-    do {
+	do {
+		BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
+		BOLT_IF(!S_ISREG(path_stat.st_mode) && !S_ISDIR(path_stat.st_mode), E_UA_ERR, "path is not file or directory");
+		BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
+		BOLT_IF(!(za = zip_open(archive, ZIP_CREATE | ZIP_TRUNCATE, &zerr)), E_UA_ERR,
+		        "failed to create zip file %s : %s", archive, aux = get_zip_error(zerr));
 
-        BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
-        BOLT_IF(!S_ISREG(path_stat.st_mode) && !S_ISDIR(path_stat.st_mode), E_UA_ERR, "path is not file or directory");
-        BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
-        BOLT_IF(!(za = zip_open(archive, ZIP_CREATE | ZIP_TRUNCATE, &zerr)), E_UA_ERR,
-                            "failed to create zip file %s : %s", archive, aux = get_zip_error(zerr));
+		err = S_ISREG(path_stat.st_mode) ? zip_archive_add_file(za, path, 0) : zip_archive_add_dir(za, path, 0);
 
-        err = S_ISREG(path_stat.st_mode) ? zip_archive_add_file(za, path, 0) : zip_archive_add_dir(za, path, 0);
+	} while (0);
 
-    } while (0);
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
-
-    if (err) {
-        if (aux) free(aux);
-        if (za) zip_discard(za);
-    }
+	if (err) {
+		if (aux) free(aux);
+		if (za) zip_discard(za);
+	}
 #endif
 
-    int err = E_UA_OK;
+	int err = E_UA_OK;
 
-    if(archive && path) {
+	if (archive && path) {
+		do {
+			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
+			remove(archive);
 
-        do {
-            BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
-            remove(archive);
+			char cmd[]   = "zip";
+			char* argv[] = {cmd, "-r", "-j", (char*)archive, (char*)path, NULL};
+			BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
 
-            char cmd[] = "zip";
-            char* argv[] = {cmd, "-r", "-j", (char*)archive, (char*)path, NULL};
-            BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
+		} while (0);
 
-        } while (0);
+	}
 
-    }
-
-    return err;
+	return err;
 }
 
 #if 0
-static int zip_archive_add_file(struct zip * za, const char * path, const char * base) {
+static int zip_archive_add_file(struct zip* za, const char* path, const char* base)
+{
+	int err = E_UA_OK;
+	zip_source_t* s;
+	char* file;
 
-    int err = E_UA_OK;
-    zip_source_t *s;
-    char * file;
+	DBG("adding file %s to zip", path);
 
-    DBG("adding file %s to zip", path);
+	do {
+		char* bname = f_basename(path);
+		file = JOIN(SAFE_STR(base), bname);
+		free(bname);
 
-    do {
+		BOLT_IF(!(s = zip_source_file(za, path, 0, 0)), E_UA_ERR, "failed to source file %s : %s", path, zip_strerror(za));
 
-        char * bname = f_basename(path);
-        file = JOIN(SAFE_STR(base), bname);
-        free(bname);
+		if (zip_file_add(za, file, s, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8) < 0) {
+			zip_source_free(s);
+			BOLT_SAY(E_UA_ERR, "error adding file: %s", zip_strerror(za));
+		}
 
-        BOLT_IF(!(s = zip_source_file(za, path, 0, 0)), E_UA_ERR, "failed to source file %s : %s", path, zip_strerror(za));
+	} while (0);
 
-        if (zip_file_add(za, file, s, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8) < 0) {
-            zip_source_free(s);
-            BOLT_SAY(E_UA_ERR, "error adding file: %s", zip_strerror(za));
-        }
-
-    } while (0);
-
-    free(file);
-    return err;
+	free(file);
+	return err;
 }
 
 
-static int zip_archive_add_dir(struct zip * za, const char * path, const char * base) {
+static int zip_archive_add_dir(struct zip* za, const char* path, const char* base)
+{
+	int err = E_UA_OK;
+	DIR* dir;
+	struct dirent* entry;
+	char* filepath;
+	char* basepath;
 
-    int err = E_UA_OK;
-    DIR *dir;
-    struct dirent *entry;
-    char * filepath;
-    char * basepath;
+	DBG("adding directory %s to zip", path);
 
-    DBG("adding directory %s to zip", path);
+	do {
+		BOLT_IF (!(dir = opendir(path)), E_UA_ERR, "failed to open directory %s", path);
 
-    do {
-        BOLT_IF (!(dir = opendir(path)), E_UA_ERR, "failed to open directory %s", path);
+		while ((entry = readdir(dir)) != NULL) {
+			filepath = JOIN(path, entry->d_name);
+			basepath = JOIN(SAFE_STR(base), entry->d_name);
 
-        while ((entry = readdir(dir)) != NULL) {
+			if (entry->d_type != DT_DIR) {
+				err = zip_archive_add_file(za, filepath, base);
 
-            filepath = JOIN(path, entry->d_name);
-            basepath = JOIN(SAFE_STR(base), entry->d_name);
+			} else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
+				if (zip_add_dir(za, basepath) < 0) {
+					DBG("error adding directory: %s", basepath);
+					err = E_UA_ERR;
+				} else {
+					zip_archive_add_dir(za, filepath, basepath);
+				}
 
-            if (entry->d_type != DT_DIR) {
+			}
 
-                err = zip_archive_add_file(za, filepath, base);
+			free(filepath);
+			free(basepath);
 
-            } else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
+			if (err) break;
+		}
 
-                if (zip_add_dir(za, basepath) < 0) {
-                    DBG("error adding directory: %s", basepath);
-                    err = E_UA_ERR;
-                } else {
-                    zip_archive_add_dir(za, filepath, basepath);
-                }
+		closedir(dir);
 
-            }
+	} while (0);
 
-            free(filepath);
-            free(basepath);
-
-            if (err) break;
-        }
-
-        closedir(dir);
-
-    } while (0);
-
-    return err;
+	return err;
 }
 #endif
 
-int zip_find_file(const char * archive, const char * path) {
+int zip_find_file(const char* archive, const char* path)
+{
+	int zerr, err = E_UA_OK;
+	char* aux = 0;
+	struct zip* za;
 
-    int zerr, err = E_UA_OK;
-    char * aux = 0;
-    struct zip *za;
+	do {
+		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
+		        "failed to open file as zip %s : %s", archive, aux = get_zip_error(zerr));
+		if (zip_name_locate(za, path, 0) < 0) {
+			DBG("file: %s not found in zip: %s", path, archive);
+			err = E_UA_ERR;
+		} else {
+			DBG("file: %s found in zip: %s", path, archive);
+			err = E_UA_OK;
+		}
 
-    do {
+	} while (0);
 
-        BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-                        "failed to open file as zip %s : %s", archive, aux = get_zip_error(zerr));
-        if (zip_name_locate(za, path, 0) < 0) {
-            DBG("file: %s not found in zip: %s", path, archive);
-            err = E_UA_ERR;
-        } else {
-            DBG("file: %s found in zip: %s", path, archive);
-            err = E_UA_OK;
-        }
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
-    } while (0);
+	if (err) {
+		if (aux) free(aux);
+	}
 
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
-
-    if (err) {
-        if(aux) free(aux);
-    }
-
-    return err;
+	return err;
 
 }
 
 
-int copy_file(const char * from, const char * to) {
+int copy_file(const char* from, const char* to)
+{
+	int err   = E_UA_OK;
+	FILE* in  = 0;
+	FILE* out = 0;
+	char* buf = 0;
+	size_t nread;
 
-    int err = E_UA_OK;
-    FILE *in = 0;
-    FILE *out = 0;
-    char * buf = 0;
-    size_t nread;
+	DBG("copying file from %s to %s", from, to);
 
-    DBG("copying file from %s to %s", from, to);
+	do {
+		BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
 
-    do {
+		BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
+		BOLT_SYS(!(out = fopen(to, "w")), "creating file: %s", to);
 
-        BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
+		BOLT_MALLOC(buf, ua_rw_buff_size);
 
-        BOLT_SYS(chkdirp(to), "failed to prepare directory for %s", to);
-        BOLT_SYS(!(out = fopen(to, "w")), "creating file: %s", to);
+		do {
+			BOLT_SYS(((nread = fread(buf, sizeof(char), sizeof(buf), in)) == 0) && ferror(in), "reading from file: %s", from);
+			BOLT_SYS(nread && (fwrite(buf, sizeof(char), nread, out) != nread), "writing to file: %s", to);
+		} while (nread);
 
-        BOLT_MALLOC(buf, ua_rw_buff_size);
+	} while (0);
 
-        do {
-            BOLT_SYS(((nread = fread(buf, sizeof(char), sizeof(buf), in)) == 0) && ferror(in), "reading from file: %s", from);
-            BOLT_SYS(nread && (fwrite(buf, sizeof(char), nread, out) != nread), "writing to file: %s", to);
-        } while (nread);
+	if (buf) free(buf);
+	if (in && fclose(in)) DBG_SYS("closing file: %s", from);
+	if (out && fclose(out)) DBG_SYS("closing file: %s", to);
 
-    } while (0);
-
-    if (buf) free(buf);
-    if (in && fclose(in)) DBG_SYS("closing file: %s", from);
-    if (out && fclose(out)) DBG_SYS("closing file: %s", to);
-
-    return err;
+	return err;
 }
 
 
-int calc_sha256(const char * fpath, unsigned char obuff[SHA256_DIGEST_LENGTH]) {
+int calc_sha256(const char* fpath, unsigned char obuff[SHA256_DIGEST_LENGTH])
+{
+	int err = E_UA_OK;
+	FILE* file;
+	SHA256_CTX ctx;
+	char* buf = 0;
+	size_t nread;
 
-    int err = E_UA_OK;
-    FILE *file;
-    SHA256_CTX ctx;
-    char * buf = 0;
-    size_t nread;
+	do {
+		BOLT_SYS(!(file = fopen(fpath, "rb")), "opening file: %s", fpath);
 
-    do {
+		BOLT_MALLOC(buf, ua_rw_buff_size);
 
-        BOLT_SYS(!(file = fopen(fpath, "rb")), "opening file: %s", fpath);
+		SHA256_Init(&ctx);
 
-        BOLT_MALLOC(buf, ua_rw_buff_size);
+		while ((nread = fread(buf, sizeof(char), sizeof(buf), file))) {
+			SHA256_Update(&ctx, buf, nread);
+		}
 
-        SHA256_Init(&ctx);
+		SHA256_Final(obuff, &ctx);
 
-        while ((nread = fread(buf, sizeof(char), sizeof(buf), file))) {
-            SHA256_Update(&ctx, buf, nread);
-        }
+		BOLT_SYS(fclose(file), "closing file: %s", fpath);
 
-        SHA256_Final(obuff, &ctx);
+	} while (0);
 
-        BOLT_SYS(fclose(file), "closing file: %s", fpath);
+	if (buf) free(buf);
 
-    } while (0);
-
-    if (buf) free(buf);
-
-    return err;
+	return err;
 }
 
-int calc_sha256_hex(const char * fpath, char obuff[SHA256_HEX_LENGTH]) {
+int calc_sha256_hex(const char* fpath, char obuff[SHA256_HEX_LENGTH])
+{
+	int i, err = E_UA_OK;
+	unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    int i, err = E_UA_OK;
-    unsigned char hash[SHA256_DIGEST_LENGTH];
+	if (!(err = calc_sha256(fpath, hash))) {
+		for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+			sprintf(obuff + (i * 2), "%02x", (unsigned char)hash[i]);
+		}
 
-    if (!(err = calc_sha256(fpath, hash))) {
+		obuff[SHA256_HEX_LENGTH - 1] = 0;
 
-        for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            sprintf(obuff + (i * 2), "%02x", (unsigned char)hash[i]);
-        }
+	}
 
-        obuff[SHA256_HEX_LENGTH - 1] = 0;
-
-    }
-
-    return err;
-}
-
-
-int calc_sha256_x(const char * archive, char obuff[SHA256_B64_LENGTH]) {
-
-    int i, len, zerr, err = E_UA_OK;
-    char * buf = 0;
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    long sum;
-    char * zstr = 0;
-    struct zip *za;
-    struct zip_file *zf;
-    struct zip_stat sb;
-    BIO *b64;
-    BUF_MEM *bptr;
-    SHA256_CTX ctx;
-    struct sha256_list *sl = 0;
-    struct sha256_list *aux = 0;
-    struct sha256_list *sha256List = 0;
-
-    do {
-
-        BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-                "failed to open file as ZIP %s : %s", archive, zstr = get_zip_error(zerr));
-
-        BOLT_MALLOC(buf, ua_rw_buff_size);
-
-        for (i = 0; i < zip_get_num_entries(za, 0); i++) {
-
-            BOLT_IF(zip_stat_index(za, i, 0, &sb), E_UA_ERR, "failed reading stat at index %d: %s", i, zip_strerror(za));
-
-            if (sb.name[strlen(sb.name) - 1] != '/') {
-
-                if (!strcmp(sb.name, MANIFEST) ||
-                        !strcmp(sb.name, MANIFEST_DIFF) ||
-                        !strncmp(sb.name, XL4_X_PREFIX, strlen(XL4_X_PREFIX)) ||
-                        !strncmp(sb.name, XL4_SIGNATURE_PREFIX, strlen(XL4_SIGNATURE_PREFIX)))
-                    continue;
-
-                BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
-
-                SHA256_Init(&ctx);
-                SHA256_Update(&ctx, sb.name, strlen(sb.name));
-
-                sum = 0;
-                while (sum != sb.size) {
-                    BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
-                    SHA256_Update(&ctx, buf, len);
-                    sum += len;
-                }
-
-                sl = f_malloc(sizeof(struct sha256_list));
-                SHA256_Final(sl->sha256, &ctx);
-                LL_APPEND(sha256List, sl);
-
-                zip_fclose(zf);
-            }
-        }
-
-        if (!err) {
-            SHA256_Init(&ctx);
-            LL_SORT(sha256List, sha256cmp);
-            LL_FOREACH(sha256List, sl) {
-                SHA256_Update(&ctx, sl->sha256, SHA256_DIGEST_LENGTH);
-            }
-            SHA256_Final(hash, &ctx);
-
-            b64 = BIO_push(BIO_new(BIO_f_base64()), BIO_new(BIO_s_mem()));
-
-            BIO_write(b64, hash, SHA256_DIGEST_LENGTH);
-            BIO_flush(b64);
-            BIO_get_mem_ptr(b64, &bptr);
-
-            memcpy(obuff, bptr->data, SHA256_B64_LENGTH - 1);
-            obuff[SHA256_B64_LENGTH - 1] = 0;
-
-            BIO_free_all(b64);
-        }
-
-    } while (0);
-
-    if (buf) free(buf);
-    if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
-
-    LL_FOREACH_SAFE(sha256List, sl, aux) {
-        LL_DELETE(sha256List, sl);
-        free(sl);
-    }
-
-    if (err) {
-        if(zstr) free(zstr);
-    }
-
-    return err;
+	return err;
 }
 
 
-int is_cmd_runnable(const char * cmd) {
+int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
+{
+	int i, len, zerr, err = E_UA_OK;
+	char* buf = 0;
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	long sum;
+	char* zstr = 0;
+	struct zip* za;
+	struct zip_file* zf;
+	struct zip_stat sb;
+	BIO* b64;
+	BUF_MEM* bptr;
+	SHA256_CTX ctx;
+	struct sha256_list* sl         = 0;
+	struct sha256_list* aux        = 0;
+	struct sha256_list* sha256List = 0;
 
-    int err = E_UA_OK;
-    char * path = 0;
+	do {
+		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
+		        "failed to open file as ZIP %s : %s", archive, zstr = get_zip_error(zerr));
 
-    do {
+		BOLT_MALLOC(buf, ua_rw_buff_size);
 
-        if(strchr(cmd, '/')) {
-            err = access(cmd, X_OK);
-            break;
-        }
+		for (i = 0; i < zip_get_num_entries(za, 0); i++) {
+			BOLT_IF(zip_stat_index(za, i, 0, &sb), E_UA_ERR, "failed reading stat at index %d: %s", i, zip_strerror(za));
 
-        BOLT_IF(!(path = f_strdup(getenv("PATH"))), E_UA_ERR, "PATH env empty");
+			if (sb.name[strlen(sb.name) - 1] != '/') {
+				if (!strcmp(sb.name, MANIFEST) ||
+				    !strcmp(sb.name, MANIFEST_DIFF) ||
+				    !strncmp(sb.name, XL4_X_PREFIX, strlen(XL4_X_PREFIX)) ||
+				    !strncmp(sb.name, XL4_SIGNATURE_PREFIX, strlen(XL4_SIGNATURE_PREFIX)))
+					continue;
 
-        char * pch = strtok(path, ":");
-        while (pch != NULL) {
-            char * p = JOIN(pch, cmd);
-            if((err = access(p, X_OK)) == 0) {
-                free(p);
-                break;
-            }
-            free(p);
-            pch = strtok(NULL, ":");
-       }
-    } while (0);
+				BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
 
-    if (path) free(path);
-    return err;
+				SHA256_Init(&ctx);
+				SHA256_Update(&ctx, sb.name, strlen(sb.name));
+
+				sum = 0;
+				while (sum != sb.size) {
+					BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
+					SHA256_Update(&ctx, buf, len);
+					sum += len;
+				}
+
+				sl = f_malloc(sizeof(struct sha256_list));
+				SHA256_Final(sl->sha256, &ctx);
+				LL_APPEND(sha256List, sl);
+
+				zip_fclose(zf);
+			}
+		}
+
+		if (!err) {
+			SHA256_Init(&ctx);
+			LL_SORT(sha256List, sha256cmp);
+			LL_FOREACH(sha256List, sl) {
+				SHA256_Update(&ctx, sl->sha256, SHA256_DIGEST_LENGTH);
+			}
+			SHA256_Final(hash, &ctx);
+
+			b64 = BIO_push(BIO_new(BIO_f_base64()), BIO_new(BIO_s_mem()));
+
+			BIO_write(b64, hash, SHA256_DIGEST_LENGTH);
+			BIO_flush(b64);
+			BIO_get_mem_ptr(b64, &bptr);
+
+			memcpy(obuff, bptr->data, SHA256_B64_LENGTH - 1);
+			obuff[SHA256_B64_LENGTH - 1] = 0;
+
+			BIO_free_all(b64);
+		}
+
+	} while (0);
+
+	if (buf) free(buf);
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
+
+	LL_FOREACH_SAFE(sha256List, sl, aux) {
+		LL_DELETE(sha256List, sl);
+		free(sl);
+	}
+
+	if (err) {
+		if (zstr) free(zstr);
+	}
+
+	return err;
+}
+
+
+int is_cmd_runnable(const char* cmd)
+{
+	int err    = E_UA_OK;
+	char* path = 0;
+
+	do {
+		if (strchr(cmd, '/')) {
+			err = access(cmd, X_OK);
+			break;
+		}
+
+		BOLT_IF(!(path = f_strdup(getenv("PATH"))), E_UA_ERR, "PATH env empty");
+
+		char* pch = strtok(path, ":");
+		while (pch != NULL) {
+			char* p = JOIN(pch, cmd);
+			if ((err = access(p, X_OK)) == 0) {
+				free(p);
+				break;
+			}
+			free(p);
+			pch = strtok(NULL, ":");
+		}
+	} while (0);
+
+	if (path) free(path);
+	return err;
 }
