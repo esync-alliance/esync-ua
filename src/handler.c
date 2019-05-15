@@ -205,19 +205,18 @@ int ua_unregister(ua_handler_t* uah, int len)
 	return ret;
 }
 
-int ua_handle_dmc_presence()
+void* ua_handle_dmc_presence(void* arg)
 {
-	int ret = E_UA_OK;
 	if(ua_intl.uah) {
 		for (int i = 0; i < ua_intl.n_uah; i++) {
 			ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
 			if(uar && uar->on_dmc_presence)
-				ret = (*uar->on_dmc_presence)(NULL);
+				(*uar->on_dmc_presence)(NULL);
 
 		}
 	}
 
-	return ret;
+	return NULL;
 }
 
 int ua_send_message(json_object* jsonObj)
@@ -341,7 +340,11 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
 				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
 			
-			ua_handle_dmc_presence();
+			pthread_t thread_dmc_presence;
+			if (pthread_create(&thread_dmc_presence, 0, ua_handle_dmc_presence, NULL)) {
+				DBG("Failed to spawn thread_dmc_presence.");
+
+			}
 			break;
 		default:
 			break;
@@ -764,10 +767,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	install_state_t update_sts = INSTALL_READY;
 	json_object* jo            = json_object_get(jsonObj);
 
-	if (uacc && jo && update_parse_json_ready_update(uacc, jo) == E_UA_OK) {
+	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir) == E_UA_OK) {
 		uacc->state = UA_STATE_READY_UPDATE_STARTED;
-		if (uacc->update_manifest == NULL)
-			uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
 
 		update_set_rollback_info(uacc);
 

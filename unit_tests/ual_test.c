@@ -27,7 +27,7 @@ static void test_from_file(char* filename)
 		while (fgets(bus_message, sizeof(bus_message), fd))
 			if (strlen(bus_message) > UT_MIN_MESSAGE_LEN) {
 				handle_message(handler_type, bus_message, strlen(bus_message));
-				usleep(100*1000);
+				usleep(200*1000);
 
 			}
 		fclose(fd);
@@ -104,8 +104,8 @@ int main(int argc, char** argv)
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_normal_update),
 		//cmocka_unit_test(test_rollback_by_dmc),
-		cmocka_unit_test(test_rollback_ua_controlled_success),
-		cmocka_unit_test(test_rollback_ua_controlled_failed),
+		//cmocka_unit_test(test_rollback_ua_controlled_success),
+		//cmocka_unit_test(test_rollback_ua_controlled_failed),
 		//cmocka_unit_test(test_resume_normal_update),
 		//cmocka_unit_test(test_resume_rollback_update),
 	};

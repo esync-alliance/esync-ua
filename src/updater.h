@@ -21,7 +21,7 @@ typedef struct thread_resume {
 
 void update_release_comp_context(ua_component_context_t* uacc);
 
-int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
+int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir);
 
 void update_set_rollback_info(ua_component_context_t* uacc);
 
