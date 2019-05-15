@@ -109,7 +109,7 @@ int ua_register(ua_handler_t* uah, int len)
 	int err           = E_UA_OK;
 	runner_info_t* ri = 0;
 
-	ua_intl.uah = uah;
+	ua_intl.uah   = uah;
 	ua_intl.n_uah = len;
 
 	if (!ri_tree) {
@@ -207,10 +207,10 @@ int ua_unregister(ua_handler_t* uah, int len)
 
 void* ua_handle_dmc_presence(void* arg)
 {
-	if(ua_intl.uah) {
+	if (ua_intl.uah) {
 		for (int i = 0; i < ua_intl.n_uah; i++) {
 			ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
-			if(uar && uar->on_dmc_presence)
+			if (uar && uar->on_dmc_presence)
 				(*uar->on_dmc_presence)(NULL);
 
 		}
@@ -233,7 +233,7 @@ XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t*
 	char* msg = (char*)json_object_to_json_string(jsonObj);
 
 	DBG("Sending with bus addr: %s", msg);
-	return xl4bus_client_send_msg_to_addr(msg, xl4_address);	
+	return xl4bus_client_send_msg_to_addr(msg, xl4_address);
 }
 
 int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent)
@@ -339,7 +339,7 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 		case BUS_CONN_DMC_CONNECTED:
 			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
 				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
-			
+
 			pthread_t thread_dmc_presence;
 			if (pthread_create(&thread_dmc_presence, 0, ua_handle_dmc_presence, NULL)) {
 				DBG("Failed to spawn thread_dmc_presence.");
@@ -785,7 +785,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}
 
 		if (update_sts == INSTALL_COMPLETED) {
-			ua_backup_package(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
+			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 
 		json_object_put(jo);
@@ -1297,7 +1297,7 @@ const char* ua_get_xl4bus_version()
 
 }
 
-int ua_backup_package(ua_component_context_t* uacc, char* pkgName, char* version)
+int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* version)
 {
 	int ret               = E_UA_OK;
 	pkg_info_t pkgInfo    = {0};
@@ -1323,6 +1323,31 @@ int ua_backup_package(ua_component_context_t* uacc, char* pkgName, char* version
 	}
 
 	return ret;
+
+}
+
+int ua_backup_package(char* pkgName, char* version)
+{
+	UT_array ri_list;
+
+	for (int i = 0; i < ua_intl.n_uah; i++) {
+		const char* type = (ua_intl.uah + i)->type_handler;
+
+		utarray_init(&ri_list, &ut_ptr_icd);
+		query_hash_tree(ri_tree, 0, type, 0, &ri_list, 1);
+
+		int l = utarray_len(&ri_list);
+		for (int j = 0; j < l; j++) {
+			runner_info_t* ri          = *(runner_info_t**) utarray_eltptr(&ri_list, j);
+			ua_component_context_t* cc = &ri->component;
+			if (!strcmp(cc->update_pkg.name, pkgName)) {
+				return handler_backup_actions(cc, pkgName, version);
+
+			}
+		}
+	}
+
+	return E_UA_ERR;
 
 }
 

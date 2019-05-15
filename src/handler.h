@@ -102,9 +102,9 @@ typedef struct runner_info_hash_tree {
 
 typedef enum ua_internal_state {
 	UAI_STATE_NOT_KNOWN,
-	UAI_STATE_INITIALIZED, 
+	UAI_STATE_INITIALIZED,
 	UAI_STATE_RESUME_STARTED,
-	UAI_STATE_RESUME_DONE,	
+	UAI_STATE_RESUME_DONE,
 
 }ua_internal_state_t;
 
@@ -116,7 +116,7 @@ typedef struct ua_internal {
 	int esync_bus_conn_status;
 	ua_internal_state_t state;
 	int reboot_support;
-	ua_handler_t *uah;
+	ua_handler_t* uah;
 	int n_uah;
 
 } ua_internal_t;
@@ -180,7 +180,7 @@ void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
 
 void handler_set_internal_state(ua_internal_state_t st);
 void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
-int ua_backup_package(ua_component_context_t* uacc, char* pkgName, char* version);
+int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* version);
 int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
 void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
 

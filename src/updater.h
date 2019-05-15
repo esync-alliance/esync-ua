@@ -16,7 +16,7 @@
 typedef struct thread_resume {
 	ua_component_context_t* uacc;
 	json_object* jo_update_rec;
-	
+
 }thread_resume_t;
 
 void update_release_comp_context(ua_component_context_t* uacc);
