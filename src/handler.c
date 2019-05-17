@@ -718,6 +718,28 @@ static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj)
 	}
 }
 
+static void set_flashing_time_log_data(log_data_t* ld, double time, char* pkg_name, install_state_t state)
+{
+	if(ld) {
+		json_object * msg_obj = json_object_new_object();
+		char tmp_str[64];
+		snprintf(tmp_str, sizeof(tmp_str), "%f", time);
+		ld->compound = 1;
+		ld->binary = NULL;
+		ld->timestamp = NULL;
+		ld->message = msg_obj;
+
+		if(msg_obj) {
+			json_object_object_add(msg_obj, "units", json_object_new_string("seconds"));
+			json_object_object_add(msg_obj, "code", json_object_new_string("9000"));
+			json_object_object_add(msg_obj, "value", json_object_new_string(tmp_str));
+			json_object_object_add(msg_obj, "moduleID", S(pkg_name) ? json_object_new_string(pkg_name) : NULL);
+			json_object_object_add(msg_obj, "status", json_object_new_string(install_state_string(state)));
+
+		}
+	}
+
+}
 
 static void process_ready_update(ua_routine_t* uar, json_object* jsonObj)
 {
@@ -726,10 +748,13 @@ static void process_ready_update(ua_routine_t* uar, json_object* jsonObj)
 	update_err_t updateErr = UE_NONE;
 	install_state_t state;
 	int bck = 0, uae = 0, local_rollback = 0;
+	clock_t start_time;
+	double flashing_time;
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+		start_time = clock();
 		if (ua_intl.prepare_version && !strcmp(ua_intl.prepare_version, pkgInfo.version)) {
 			free(ua_intl.prepare_version);
 			ua_intl.prepare_version = 0;
@@ -834,6 +859,10 @@ static void process_ready_update(ua_routine_t* uar, json_object* jsonObj)
 			free(updateFile.version);
 		}
 
+		log_data_t ld;
+		flashing_time = (double)(clock()-start_time) / CLOCKS_PER_SEC;
+		set_flashing_time_log_data(&ld, flashing_time, pkgInfo.name, state);
+		ua_send_log_report(pkgInfo.type, LOG_INFO, &ld);
 		ua_intl.state = UA_STATE_UPDATE_DONE;
 
 		f_free(curUpdateVer);
