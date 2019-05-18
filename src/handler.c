@@ -325,10 +325,10 @@ void handle_delivered(const char* msg, int ok)
 }
 
 
-void handle_presence(int connected, int disconnected, esync_bus_conn_state_t conn)
+void handle_presence(int connected, int disconnected, esync_bus_conn_state_t connection_state)
 {
 	DBG("Connected : %d,  Disconnected : %d", connected, disconnected);
-	switch (conn)
+	switch (connection_state)
 	{
 		case BUS_CONN_BROKER_NOT_CONNECTED:
 			break;

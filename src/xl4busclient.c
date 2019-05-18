@@ -221,7 +221,7 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	int num_connected    = 0;
 	int num_disconnected = 0;
 	char* as;
-	esync_bus_conn_state_t conn = 0;
+	esync_bus_conn_state_t connection_state = 0;
 
 	for (xl4bus_address_t* a = connected; a; a=a->next) {
 		as = addr_to_string(a);
@@ -230,9 +230,9 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 		free(as);
 		if (a->type == XL4BAT_SPECIAL) {
 			if (a->special == XL4BAS_DM_CLIENT)
-				conn = BUS_CONN_DMC_CONNECTED;
+				connection_state = BUS_CONN_DMC_CONNECTED;
 			else if (a->special == XL4BAS_DM_BROKER)
-				conn = BUS_CONN_BROKER_CONNECTED;
+				connection_state = BUS_CONN_BROKER_CONNECTED;
 
 		}
 
@@ -244,15 +244,15 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 		free(as);
 		if (a->type == XL4BAT_SPECIAL) {
 			if (a->special == XL4BAS_DM_CLIENT)
-				conn = BUS_CONN_DMC_NOT_CONNECTED;
+				connection_state = BUS_CONN_DMC_NOT_CONNECTED;
 			else if (a->special == XL4BAS_DM_BROKER)
-				conn = BUS_CONN_BROKER_NOT_CONNECTED;
+				connection_state = BUS_CONN_BROKER_NOT_CONNECTED;
 
 		}
 
 	}
 
-	handle_presence(num_connected, num_disconnected, conn);
+	handle_presence(num_connected, num_disconnected, connection_state);
 
 }
 

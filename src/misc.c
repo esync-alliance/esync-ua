@@ -636,7 +636,7 @@ int is_cmd_runnable(const char* cmd)
 char* randstring(int length)
 {
 	char* string     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
-	size_t stringLen = 26*2+10+7;
+	size_t stringLen = strlen(string);
 	char* randomString;
 
 	randomString = malloc(sizeof(char) * (length +1));
