@@ -25,6 +25,7 @@ static void _help(const char* app)
 	       "  -D         : disable delta reconstruction\n"
 	       "  -a <cap>   : delta capability\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
+	       "  -t <type>  : handler type\n"
 	       "  -h         : display this help and exit\n"
 	       );
 	_exit(1);
@@ -45,6 +46,7 @@ int main(int argc, char** argv)
 	cfg.url        = "tcp://localhost:9133";
 	cfg.cache_dir  = "/tmp/esync/";
 	cfg.backup_dir = "/data/sota/esync/";
+	cfg.reboot_support = 0;
 
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:dDh")) != -1) {
 		switch (c) {

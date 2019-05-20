@@ -4,6 +4,9 @@
 
 #ifndef _XL4UA_H_
 #define _XL4UA_H_
+#include <libxl4bus/low_level.h>
+#include <libxl4bus/high_level.h>
+#include <libxl4bus/types.h>
 
 typedef enum install_state {
 	INSTALL_READY,
@@ -27,7 +30,23 @@ typedef enum download_state {
 #define E_UA_ARG    (-3)
 #define E_UA_SYS    (-4)
 
+typedef struct dmc_presence {
+	int size;	/* reserved for future use */
 
+}dmc_presence_t;
+
+/**
+ * callback function for UA to return installed version string.
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, UA shall return current installed version of UA,
+ *        libary does not change/release memory pointed by version. 
+ * 
+ * @return When UA returns E_UA_OK, library sends the version string to eSync
+ *         client. If version is NULL, json null is used in version reporting. 
+ *         When UA returns E_UA_ERR, library sends "update-incapable"
+ *         to eSync Client. 
+ */
 typedef int (*ua_on_get_version)(const char* type, const char* pkgName, char** version);
 
 typedef int (*ua_on_set_version)(const char* type, const char* pkgName, const char* version);
@@ -43,6 +62,14 @@ typedef int (*ua_on_transfer_file)(const char* type, const char* pkgName, const 
 typedef install_state_t (*ua_on_prepare_install)(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile);
 
 typedef download_state_t (*ua_on_prepare_download)(const char* type, const char* pkgName, const char* version);
+
+/**
+ * callback function when eSync Client is connected to bus.
+ * @param dp, pointer to dmc_presence_t structure, reserved for future use. 
+ * 
+ * @return UA returns E_UA_OK, or E_UA_ERR.
+ */
+typedef int (*ua_on_dmc_presence)(dmc_presence_t *dp);
 
 #ifdef _json_h_
 
@@ -81,6 +108,9 @@ typedef struct ua_routine {
 
 	// (optional) called on xl4bus messages
 	ua_on_message on_message;
+
+	// (optional) called when dmc is connnected to xl4bus.
+	ua_on_dmc_presence on_dmc_presence;
 
 } ua_routine_t;
 
@@ -128,6 +158,11 @@ typedef struct ua_cfg {
 	// specifies the buffer size for read/write, in kilobytes
 	long rw_buffer_size;
 
+	//indicate whether to use library reboot feature. 
+	//0 = default, ua implements its own reboot/resume support.  
+	//1 = ua uses libary's reboot/resume support.
+	int reboot_support;
+
 } ua_cfg_t;
 
 
@@ -174,6 +209,7 @@ XL4_PUB int ua_backup_package(char* pkgName, char* version);
 
 XL4_PUB int ua_send_message(json_object* message);
 
+XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address);
 
 typedef enum log_type {
 	LOG_EVENT,

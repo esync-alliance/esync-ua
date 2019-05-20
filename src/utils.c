@@ -5,7 +5,7 @@
 #include "utils.h"
 
 
-static int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
+//static int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
 
 
 
@@ -153,7 +153,7 @@ int get_pkg_next_rollback_version(json_object* jsonArr, char* currentVer, char**
 
 
 
-static int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... )
+int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... )
 {
 	int err = E_UA_OK;
 	json_object* aux;

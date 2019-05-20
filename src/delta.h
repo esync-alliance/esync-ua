@@ -10,6 +10,7 @@
 #define MANIFEST_DIFF        "manifest_diff.xml"
 #define MANIFEST_PKG         "manifest_pkg.xml"
 #define MANIFEST             "manifest.xml"
+#define UPDATE_REC_FILE      "update.rec"
 #define XL4_X_PREFIX         "xl4-x-"
 #define XL4_SIGNATURE_PREFIX "xl4-signature"
 

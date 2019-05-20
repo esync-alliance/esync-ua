@@ -20,8 +20,8 @@ static void release_identity(xl4bus_identity_t* identity);
 static xl4bus_asn1_t* load_full(char* path);
 static char* simple_password (struct xl4bus_X509v3_Identity* id);
 
-xl4bus_client_t m_xl4bus_clt = {0};
-char* m_xl4bus_url = NULL;
+static xl4bus_client_t m_xl4bus_clt = {0};
+static char* m_xl4bus_url = NULL;
 
 void debug_print(const char* msg)
 {
@@ -115,12 +115,40 @@ int xl4bus_client_send_msg(const char* message)
 
 	if (err != E_XL4BUS_OK) {
 		xl4bus_free_address(addr, 1);
+		DBG("Error sending message: %s", message);
 	}
 
 	return err;
 
 }
 
+
+int xl4bus_client_send_msg_to_addr(const char* message, xl4bus_address_t* xl4_address)
+{
+	int err = E_XL4BUS_OK;
+	char* msg;
+	xl4bus_message_t* xl4bus_msg = 0;
+
+	do {
+		BOLT_MEM(msg = f_strdup(message));
+
+		BOLT_MALLOC(xl4bus_msg, sizeof(xl4bus_message_t));
+		xl4bus_msg->address      = xl4_address;
+		xl4bus_msg->content_type = "application/json";
+		xl4bus_msg->data         = msg;
+		xl4bus_msg->data_len     = strlen((char*) xl4bus_msg->data) + 1;
+
+		BOLT_SUB(xl4bus_send_message(&m_xl4bus_clt, xl4bus_msg, 0));
+
+	} while (0);
+
+	if (err != E_XL4BUS_OK) {
+		xl4bus_free_address(xl4_address, 1);
+		DBG("Error sending message: %s", message);
+	}
+
+	return err;
+}
 
 char* addr_to_string(xl4bus_address_t* addr)
 {
@@ -193,21 +221,45 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	int num_connected    = 0;
 	int num_disconnected = 0;
 	char* as;
+	esync_bus_conn_state_t connection_state = 0;
 
+	/* connection_state is mainly used for detecting whether eSync Client is
+	   connected to eSync bus to support sending installation status if reboot
+	   is required after update. In the context of eSync bus design, the
+	   value of connection_state will be set appropriately in either loop for
+	   handle_presence.
+	*/
 	for (xl4bus_address_t* a = connected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("CONNECTED: %s", as);
 		num_connected++;
 		free(as);
+		if (a->type == XL4BAT_SPECIAL) {
+			if (a->special == XL4BAS_DM_CLIENT)
+				connection_state = BUS_CONN_DMC_CONNECTED;
+			else if (a->special == XL4BAS_DM_BROKER)
+				connection_state = BUS_CONN_BROKER_CONNECTED;
+
+		}
+
 	}
+
 	for (xl4bus_address_t* a = disconnected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("DISCONNECTED: %s", as);
 		num_disconnected++;
 		free(as);
+		if (a->type == XL4BAT_SPECIAL) {
+			if (a->special == XL4BAS_DM_CLIENT)
+				connection_state = BUS_CONN_DMC_NOT_CONNECTED;
+			else if (a->special == XL4BAS_DM_BROKER)
+				connection_state = BUS_CONN_BROKER_NOT_CONNECTED;
+
+		}
+
 	}
 
-	handle_presence(num_connected, num_disconnected);
+	handle_presence(num_connected, num_disconnected, connection_state);
 
 }
 

@@ -123,6 +123,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/misc.c
     src/delta.c
     src/xml.c
+    src/updater.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
@@ -130,6 +131,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/misc.h
     src/delta.h
     src/xml.h
+    src/updater.h
     src/debug.h
     src/uthash.h
     src/utlist.h
@@ -160,7 +162,7 @@ if (XL4_PROVIDE_THREADS)
 endif()
 
 if (DEBUG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
@@ -192,6 +194,7 @@ if (BUILD_STATIC)
     install(TARGETS ua-static ARCHIVE DESTINATION lib)
 endif()
 
+
 if (BUILD_BINS)
     add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
 
@@ -211,4 +214,21 @@ if (BUILD_BINS)
 endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
+
+if(UNIT_TEST)
+    find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
+    add_executable(	ual_test ${LIB_SOURCE}
+                    src/test_agents/tmpl_updateagent.c
+                    src/test_agents/tmpl_updateagent.h
+                    unit_tests/test_setup.c
+                    unit_tests/test_setup.h
+                    unit_tests/ual_test.c
+                    )
+    set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
+    target_compile_definitions(ual_test PRIVATE WITH_UNIT_TEST)
+    target_compile_options(ual_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
+    target_link_libraries(ual_test xl4bus pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${JSON_C_LIB} ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
+
+endif()
+
 

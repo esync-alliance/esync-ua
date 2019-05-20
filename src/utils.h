@@ -42,4 +42,6 @@ int get_pkg_next_rollback_version(json_object* jsonArr, char* currentVer, char**
 
 int get_pkg_sha256_from_json(json_object * jsonObj, char* version, char value[SHA256_B64_LENGTH]);
 
+int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
+
 #endif /* _UA_UTILS_H_ */
