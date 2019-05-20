@@ -223,6 +223,12 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	char* as;
 	esync_bus_conn_state_t connection_state = 0;
 
+	/* connection_state is mainly used for detecting whether eSync Client is
+	   connected to eSync bus to support sending installation status if reboot
+	   is required after update. In the context of eSync bus design, the
+	   value of connection_state will be set appropriately in either loop for
+	   handle_presence.
+	*/
 	for (xl4bus_address_t* a = connected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("CONNECTED: %s", as);
@@ -237,6 +243,7 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 		}
 
 	}
+
 	for (xl4bus_address_t* a = disconnected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("DISCONNECTED: %s", as);
