@@ -219,20 +219,21 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 {
 	if (uacc) {
 		uacc->rb_type = URB_NONE;
+
 		if (uacc->update_pkg.rollback_version != NULL) {
 			uacc->rb_type = URB_DMC_INITIATED;
 		}else if (uacc->update_pkg.rollback_versions != NULL) {
 			uacc->rb_type = URB_UA_INITIATED;
 		} else {
 			pkg_file_t* pf = NULL, * aux = NULL, * pkg_file = NULL;
-			uacc->update_pkg.rollback_versions = json_object_new_array();
 			if (uacc->update_pkg.rollback_versions &&
 			    uacc->backup_manifest &&
 			    !parse_pkg_manifest(uacc->backup_manifest, &pkg_file)) {
-				DL_FOREACH_SAFE(pkg_file, pf, aux) {
-					json_object_array_add(uacc->update_pkg.rollback_versions,
-					                      json_object_new_string(pf->version));
-					free_pkg_file(pf);
+					uacc->update_pkg.rollback_versions = json_object_new_array();
+					DL_FOREACH_SAFE(pkg_file, pf, aux) {
+						json_object_array_add(uacc->update_pkg.rollback_versions,
+											json_object_new_string(pf->version));
+						free_pkg_file(pf);
 
 				}
 
@@ -249,7 +250,6 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 			}
 		}
 	}
-
 }
 
 char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version)
