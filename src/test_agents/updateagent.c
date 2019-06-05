@@ -26,6 +26,7 @@ static void _help(const char* app)
 	       "  -a <cap>   : delta capability\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
 	       "  -t <type>  : handler type\n"
+	       "  -M <0/1/2/3> : update mode - 0: success(default); 1: failure; 2: toggle; 3: rollback"
 	       "  -h         : display this help and exit\n"
 	       );
 	_exit(1);
@@ -39,6 +40,7 @@ int main(int argc, char** argv)
 	int c = 0;
 	ua_cfg_t cfg;
 	memset(&cfg, 0, sizeof(ua_cfg_t));
+	int mode = 0;
 
 	cfg.debug      = 0;
 	cfg.delta      = 1;
@@ -47,8 +49,8 @@ int main(int argc, char** argv)
 	cfg.cache_dir  = "/tmp/esync/";
 	cfg.backup_dir = "/data/sota/esync/";
 	cfg.reboot_support = 0;
-
-	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:dDh")) != -1) {
+	
+	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:M:dDh")) != -1) {
 		switch (c) {
 			case 'k':
 				cfg.cert_dir = optarg;
@@ -76,6 +78,10 @@ int main(int argc, char** argv)
 				break;
 			case 'm':
 				if ((cfg.rw_buffer_size = atoi(optarg)) > 0)
+					break;
+			case 'M':
+			    mode = atoi(optarg);
+			    set_test_installation_mode((update_mode_t)mode, 0);
 					break;
 			case 'h':
 			default:
