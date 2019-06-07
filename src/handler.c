@@ -720,16 +720,16 @@ static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj)
 
 static void set_flashing_time_log_data(log_data_t* ld, double time, char* pkg_name, install_state_t state)
 {
-	if(ld) {
-		json_object * msg_obj = json_object_new_object();
+	if (ld) {
+		json_object* msg_obj = json_object_new_object();
 		char tmp_str[64];
 		snprintf(tmp_str, sizeof(tmp_str), "%f", time);
-		ld->compound = 1;
-		ld->binary = NULL;
+		ld->compound  = 1;
+		ld->binary    = NULL;
 		ld->timestamp = NULL;
-		ld->message = msg_obj;
+		ld->message   = msg_obj;
 
-		if(msg_obj) {
+		if (msg_obj) {
 			json_object_object_add(msg_obj, "units", json_object_new_string("seconds"));
 			json_object_object_add(msg_obj, "code", json_object_new_string("9000"));
 			json_object_object_add(msg_obj, "value", json_object_new_string(tmp_str));
@@ -855,7 +855,6 @@ static void process_ready_update(ua_routine_t* uar, json_object* jsonObj)
 		}
 
 		if (state == INSTALL_COMPLETED) {
-			ua_backup_package(pkgInfo.name, updateFile.version);
 			free(updateFile.version);
 		}
 
@@ -1095,9 +1094,14 @@ static install_state_t update_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg
 {
 	install_state_t state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 
-	if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
-		if ((*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version))
-			DBG("set version for %s failed!", pkgInfo->name);
+	if (state == INSTALL_COMPLETED) {
+		if (uar->on_set_version) {
+			if ((*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version))
+				DBG("set version for %s failed!", pkgInfo->name);
+		}
+
+		ua_backup_package(pkgInfo->name, pkgFile->version);
+
 	}
 
 	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
