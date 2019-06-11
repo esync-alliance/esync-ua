@@ -8,26 +8,51 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-
+#define MAX_SIZE 256
+const char backupDir[] = "/data/sota/esync/backup/";
+char rbConfFile[256] = "/data/sota/rbConf";
 pkg_version_t* package_version = 0;
 update_mode_t test_update_mode = 0;
 int test_reboot = 0;
-char rbConfFile[256] = "/data/sota/rbConf";
+char* instVerFile;
+char instVer[60] = "\0";
+char* bkpDir;
+FILE* fp1;
 
 int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
-
-	TMPL_VER_GET(pkgName, *version);
+	//TMPL_VER_GET(pkgName, *version);
+	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
+    getFileName(pkgName);
+    if(getVerFromFile(pkgName) !=0) 
+    {
+    	printf("Version file not available\n");
+    	*version = NULL;
+        free(instVerFile);
+    	return E_UA_OK;
+    }
+    *version = instVer;
+    free(instVerFile);
 	return E_UA_OK;
-
 }
 
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
-	TMPL_VER_SET(pkgName, version);
+	//TMPL_VER_SET(pkgName, version);
+	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
+	getFileName(pkgName);
+    if(setVerToFile(pkgName, version) !=0) 
+    {
+    	printf("Set version to file Failed\n");
+    	free(instVerFile);
+    	return E_UA_ERR;
+    }
+    //printf("Set version to file success\n");
+    free(instVerFile);
 	return E_UA_OK;
-
 }
 
 static install_state_t do_tmpl_pre_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
@@ -186,4 +211,83 @@ void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName)
     }
     free(buff);
     return;
+}
+
+void getFileName(const char *pkgName) 
+{
+	char* verFile = (char*)malloc(MAX_SIZE * sizeof(char));
+
+    sprintf(verFile, "/%s.txt", pkgName);
+    strcpy(instVerFile, backupDir);
+    strcat(instVerFile, pkgName);
+    strcat(instVerFile, verFile);
+    //printf("getFileName: resulting file: %s\n", instVerFile);
+    free(verFile);
+}
+
+void getBackupDir(const char *pkgName) 
+{
+    int ret_dir;
+    strcpy(bkpDir, backupDir);
+    strcat(bkpDir, pkgName);
+    //printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
+    ret_dir = mkdir(bkpDir, 0755);
+    if(ret_dir != 0) {
+        printf("Back up directory creation failed or already exists\n");
+    }
+    else {
+        printf("Back up directory created\n");
+    }
+}
+
+int getVerFromFile(const char *pkgName) 
+{	
+	if(access(instVerFile, F_OK) != -1 ) {
+        if((fp1 = fopen(instVerFile, "r")) != NULL) {   
+            //printf("File open success\n ");
+            if(fgets(instVer, sizeof(instVer), fp1) != NULL) {
+                //printf("getVerFromFile: Installed version: %s \n", instVer);
+                fclose(fp1);
+                return E_UA_OK;
+            }
+            else {
+                printf("file read failed, may be empty file\n");
+                fclose(fp1);
+                return E_UA_ERR;
+            }
+        }
+        else {
+            printf("File open failed\n");
+            return E_UA_ERR;
+        }
+    }
+    else {
+        printf("File not accessable\n");
+        return E_UA_ERR;
+    }
+    fclose(fp1);
+    return E_UA_OK;
+}
+
+int setVerToFile(const char *pkgName, const char *version) 
+{
+    bkpDir = (char*)malloc(MAX_SIZE * sizeof(char));
+    getBackupDir(pkgName);
+    if(access(bkpDir, F_OK) != -1 ) {
+        if((fp1 = fopen(instVerFile, "w")) == NULL)
+        {
+            printf("Version file open failed\n");
+            perror("fopen");
+            return E_UA_ERR;
+        }
+        //printf("Version file open success\n ");
+        fputs(version, fp1);
+        fclose(fp1);
+        free(bkpDir);
+        return E_UA_OK;
+    }
+    else {
+        printf("BackupDir not accessable\n");
+        return E_UA_ERR;
+    }
 }

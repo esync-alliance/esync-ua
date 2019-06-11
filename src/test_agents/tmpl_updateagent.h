@@ -46,5 +46,9 @@ int get_tmpl_version(const char* type, const char* pkgName, char** version);
 ua_routine_t* get_tmpl_routine(void);
 void set_test_installation_mode(update_mode_t mode, int reboot);
 void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName);
+void getFileName(const char* pkgName);
+void getBackupDir(const char* pkgName);
+int getVerFromFile(const char* pkgName);
+int setVerToFile(const char* pkgName, const char* version);
 
 #endif /* _TMPL_UPDATEAGENT_H_ */
