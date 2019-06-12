@@ -602,6 +602,17 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	return err;
 }
 
+int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH])
+{
+	char b64_tmp[SHA256_B64_LENGTH];
+
+	memset(b64_tmp, 0, sizeof(b64_tmp));
+
+	calc_sha256_x(archive, b64_tmp);
+
+	return strcmp(b64, b64_tmp);
+
+}
 
 int is_cmd_runnable(const char* cmd)
 {
