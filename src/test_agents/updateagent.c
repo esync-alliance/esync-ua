@@ -42,14 +42,14 @@ int main(int argc, char** argv)
 	memset(&cfg, 0, sizeof(ua_cfg_t));
 	int mode = 0;
 
-	cfg.debug      = 0;
-	cfg.delta      = 1;
-	cfg.cert_dir   = "./../pki/certs/updateagent";
-	cfg.url        = "tcp://localhost:9133";
-	cfg.cache_dir  = "/tmp/esync/";
-	cfg.backup_dir = "/data/sota/esync/";
+	cfg.debug          = 0;
+	cfg.delta          = 1;
+	cfg.cert_dir       = "./../pki/certs/updateagent";
+	cfg.url            = "tcp://localhost:9133";
+	cfg.cache_dir      = "/tmp/esync/";
+	cfg.backup_dir     = "/data/sota/esync/";
 	cfg.reboot_support = 0;
-	
+
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:M:dDh")) != -1) {
 		switch (c) {
 			case 'k':
@@ -80,9 +80,9 @@ int main(int argc, char** argv)
 				if ((cfg.rw_buffer_size = atoi(optarg)) > 0)
 					break;
 			case 'M':
-			    mode = atoi(optarg);
-			    set_test_installation_mode((update_mode_t)mode, 0);
-					break;
+				mode = atoi(optarg);
+				set_test_installation_mode((update_mode_t)mode, 0);
+				break;
 			case 'h':
 			default:
 				_help(argv[0]);
