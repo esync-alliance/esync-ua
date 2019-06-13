@@ -14,7 +14,6 @@
 #define MAX_SIZE 256
 const char backupDir[]         = "/data/sota/esync/backup/";
 char rbConfFile[256]           = "/data/sota/rbConf";
-pkg_version_t* package_version = 0;
 update_mode_t test_update_mode = 0;
 int test_reboot                = 0;
 char* instVerFile;
@@ -24,7 +23,6 @@ FILE* fp1;
 
 int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
-	//TMPL_VER_GET(pkgName, *version);
 	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
 	getFileName(pkgName);
 	if (getVerFromFile(pkgName) != 0)
@@ -41,7 +39,6 @@ int get_tmpl_version(const char* type, const char* pkgName, char** version)
 
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
-	//TMPL_VER_SET(pkgName, version);
 	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
 	getFileName(pkgName);
 	if (setVerToFile(pkgName, version) != 0)
@@ -50,7 +47,6 @@ static int set_tmpl_version(const char* type, const char* pkgName, const char* v
 		free(instVerFile);
 		return E_UA_ERR;
 	}
-	//printf("Set version to file success\n");
 	free(instVerFile);
 	return E_UA_OK;
 }

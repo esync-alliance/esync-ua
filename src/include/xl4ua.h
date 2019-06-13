@@ -4,8 +4,7 @@
 
 #ifndef _XL4UA_H_
 #define _XL4UA_H_
-#include <libxl4bus/low_level.h>
-#include <libxl4bus/high_level.h>
+
 #include <libxl4bus/types.h>
 
 typedef enum install_state {

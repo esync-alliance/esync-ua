@@ -1,12 +1,11 @@
 /*
- * updateagent.c
+ * main_updateagent.c
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <xl4ua.h>
+#include <stdlib.h>
 #include "tmpl_updateagent.h"
 
 ua_handler_t uah[] = {
