@@ -55,6 +55,7 @@ int copy_file(const char* from, const char* to);
 int calc_sha256(const char* path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
 int calc_sha256_hex(const char* path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH]);
+int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char* cmd);
 int mkdirp(const char* path, int umask);
 int newdirp(const char* path, int umask);

@@ -720,16 +720,16 @@ static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj)
 
 static void set_flashing_time_log_data(log_data_t* ld, double time, char* pkg_name, install_state_t state)
 {
-	if(ld) {
-		json_object * msg_obj = json_object_new_object();
+	if (ld) {
+		json_object* msg_obj = json_object_new_object();
 		char tmp_str[64];
 		snprintf(tmp_str, sizeof(tmp_str), "%f", time);
-		ld->compound = 1;
-		ld->binary = NULL;
+		ld->compound  = 1;
+		ld->binary    = NULL;
 		ld->timestamp = NULL;
-		ld->message = msg_obj;
+		ld->message   = msg_obj;
 
-		if(msg_obj) {
+		if (msg_obj) {
 			json_object_object_add(msg_obj, "units", json_object_new_string("seconds"));
 			json_object_object_add(msg_obj, "code", json_object_new_string("9000"));
 			json_object_object_add(msg_obj, "value", json_object_new_string(tmp_str));
@@ -971,7 +971,9 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 	updateFile->version = f_strdup(pkgFile->version);
 
 	if (!bck && uar->on_transfer_file) {
-		transfer_file_action(uar, pkgInfo, pkgFile);
+		err = transfer_file_action(uar, pkgInfo, pkgFile);
+		if (err != E_UA_OK)
+			return INSTALL_FAILED;
 	}
 
 	if (ua_intl.delta && is_delta_package(pkgFile->file)) {
@@ -1025,6 +1027,7 @@ static int transfer_file_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file
 			pkgFile->file = newFile;
 		} else {
 			//TODO: send transfer failed
+			DBG("Error on_transfer_file");
 		}
 	}
 
@@ -1294,7 +1297,8 @@ static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 		if (backupFile->file && backupFile->version) {
 			strcpy(backupFile->sha256b64, pkgFile->sha256b64);
 
-			if (!strcmp(pkgFile->file, backupFile->file)) {
+			if (!strcmp(pkgFile->file, backupFile->file) ||
+			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {
 				DBG("Back up already exists: %s", backupFile->file);
 
 			} else if (!copy_file(pkgFile->file, backupFile->file) &&
