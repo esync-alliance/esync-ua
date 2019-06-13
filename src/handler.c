@@ -3,12 +3,10 @@
  */
 
 #include "handler.h"
-
-#include <xl4ua.h>
 #include <pthread.h>
 #include "utils.h"
 #include "delta.h"
-#include "misc.h"
+#include "debug.h"
 #include "xml.h"
 #include "xl4busclient.h"
 #include "ua_version.h"
@@ -764,16 +762,16 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 static void set_flashing_time_log_data(log_data_t* ld, double time, char* pkg_name, install_state_t state)
 {
-	if(ld) {
-		json_object * msg_obj = json_object_new_object();
+	if (ld) {
+		json_object* msg_obj = json_object_new_object();
 		char tmp_str[64];
 		snprintf(tmp_str, sizeof(tmp_str), "%f", time);
-		ld->compound = 1;
-		ld->binary = NULL;
+		ld->compound  = 1;
+		ld->binary    = NULL;
 		ld->timestamp = NULL;
-		ld->message = msg_obj;
+		ld->message   = msg_obj;
 
-		if(msg_obj) {
+		if (msg_obj) {
 			json_object_object_add(msg_obj, "units", json_object_new_string("seconds"));
 			json_object_object_add(msg_obj, "code", json_object_new_string("9000"));
 			json_object_object_add(msg_obj, "value", json_object_new_string(tmp_str));
@@ -794,7 +792,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir) == E_UA_OK) {
 		uacc->state = UA_STATE_READY_UPDATE_STARTED;
-		start_time = clock();
+		start_time  = clock();
 		update_set_rollback_info(uacc);
 
 		if (uacc->rb_type == URB_DMC_INITIATED) {

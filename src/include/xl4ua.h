@@ -2,8 +2,8 @@
  * xl4ua.h
  */
 
-#ifndef _XL4UA_H_
-#define _XL4UA_H_
+#ifndef XL4UA_H_
+#define XL4UA_H_
 
 #include <libxl4bus/types.h>
 
@@ -30,7 +30,7 @@ typedef enum download_state {
 #define E_UA_SYS    (-4)
 
 typedef struct dmc_presence {
-	int size;	/* reserved for future use */
+	int size; /* reserved for future use */
 
 }dmc_presence_t;
 
@@ -39,12 +39,12 @@ typedef struct dmc_presence {
  * @param type, UA component handler type.
  * @param pkgName, UA component package name.
  * @param version, UA shall return current installed version of UA,
- *        libary does not change/release memory pointed by version. 
- * 
+ *        libary does not change/release memory pointed by version.
+ *
  * @return When UA returns E_UA_OK, library sends the version string to eSync
- *         client. If version is NULL, json null is used in version reporting. 
+ *         client. If version is NULL, json null is used in version reporting.
  *         When UA returns E_UA_ERR, library sends "update-incapable"
- *         to eSync Client. 
+ *         to eSync Client.
  */
 typedef int (*ua_on_get_version)(const char* type, const char* pkgName, char** version);
 
@@ -64,11 +64,11 @@ typedef download_state_t (*ua_on_prepare_download)(const char* type, const char*
 
 /**
  * callback function when eSync Client is connected to bus.
- * @param dp, pointer to dmc_presence_t structure, reserved for future use. 
- * 
+ * @param dp, pointer to dmc_presence_t structure, reserved for future use.
+ *
  * @return UA returns E_UA_OK, or E_UA_ERR.
  */
-typedef int (*ua_on_dmc_presence)(dmc_presence_t *dp);
+typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
 
 #ifdef _json_h_
 
@@ -157,8 +157,8 @@ typedef struct ua_cfg {
 	// specifies the buffer size for read/write, in kilobytes
 	long rw_buffer_size;
 
-	//indicate whether to use library reboot feature. 
-	//0 = default, ua implements its own reboot/resume support.  
+	//indicate whether to use library reboot feature.
+	//0 = default, ua implements its own reboot/resume support.
 	//1 = ua uses libary's reboot/resume support.
 	int reboot_support;
 
@@ -210,6 +210,7 @@ XL4_PUB int ua_send_message(json_object* message);
 
 XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address);
 
+
 typedef enum log_type {
 	LOG_EVENT,
 	LOG_INFO,
@@ -227,6 +228,8 @@ typedef struct log_data {
 
 XL4_PUB int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata);
 
+#endif /* _json_h_ */
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,
@@ -238,8 +241,7 @@ typedef enum ua_log_type {
 
 typedef void (*ua_log_handler_f)(ua_log_type_t type, const char* log);
 XL4_PUB void ua_install_log_handler(ua_log_handler_f handler);
-#endif
+#endif /* HAVE_INSTALL_LOG_HANDLER */
 
-#endif /* _json_h_ */
 
-#endif /* _XL4UA_H_ */
+#endif /* XL4UA_H_ */

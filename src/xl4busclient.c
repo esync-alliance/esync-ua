@@ -2,11 +2,17 @@
  * xl4busclient.c
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <libxl4bus/low_level.h>
 #include <libxl4bus/high_level.h>
 #include <libxl4bus/types.h>
 #include "xl4busclient.h"
+#include "utarray.h"
+#include "uthash.h"
 #include "handler.h"
+#include "debug.h"
 
 static void on_xl4bus_message(struct xl4bus_client* client, xl4bus_message_t* msg);
 static void on_xl4bus_status(struct xl4bus_client* client, xl4bus_client_condition_t cond);
@@ -228,7 +234,7 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	   is required after update. In the context of eSync bus design, the
 	   value of connection_state will be set appropriately in either loop for
 	   handle_presence.
-	*/
+	 */
 	for (xl4bus_address_t* a = connected; a; a=a->next) {
 		as = addr_to_string(a);
 		DBG("CONNECTED: %s", as);

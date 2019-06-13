@@ -2,10 +2,15 @@
  * debug.h
  */
 
-#ifndef _UA_DEBUG_H_
-#define _UA_DEBUG_H_
+#ifndef UA_DEBUG_H_
+#define UA_DEBUG_H_
 
-#include "common.h"
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <errno.h>
+#include <time.h>
+#include "misc.h"
 #include "xl4ua.h"
 
 extern int ua_debug;
@@ -112,4 +117,4 @@ extern ua_log_handler_f ua_log_handler;
 #define BOLT_MALLOC(var, how_much)       { if (!((var) = f_malloc(how_much))) { BOLT_SAY(E_UA_MEMORY, "failed to alloc %d for %s", how_much, # var); } } do {} while (0)
 
 
-#endif /* _UA_DEBUG_H_ */
+#endif /* UA_DEBUG_H_ */

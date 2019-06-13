@@ -2,10 +2,15 @@
  * misc.h
  */
 
-#ifndef _UA_MISC_H_
-#define _UA_MISC_H_
+#ifndef UA_MISC_H_
+#define UA_MISC_H_
 
 #include "common.h"
+#include <openssl/sha.h>
+#include <stdarg.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <string.h>
 
 #define S(s)           (s && * s)
 #define SAFE_STR(s)    ((s) ? (s) : "")
@@ -63,4 +68,4 @@ int rmdirp(const char* path);
 int chkdirp(const char* path);
 int run_cmd(char* cmd, char* argv[]);
 char* randstring(int length);
-#endif /* _UA_MISC_H_ */
+#endif /* UA_MISC_H_ */

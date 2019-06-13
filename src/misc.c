@@ -5,6 +5,17 @@
 #include "misc.h"
 #include "delta.h"
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <zip.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
+#include "utlist.h"
+#include "xl4ua.h"
+#include "debug.h"
 #if 0
 static int zip_archive_add_file(struct zip* za, const char* path, const char* base);
 static int zip_archive_add_dir(struct zip* za, const char* path, const char* base);

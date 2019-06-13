@@ -2,10 +2,10 @@
  * ua.h
  */
 
-#ifndef _TMPL_UPDATEAGENT_H_
-#define _TMPL_UPDATEAGENT_H_
+#ifndef TMPL_UPDATEAGENT_H_
+#define TMPL_UPDATEAGENT_H_
 
-#include <xl4ua.h>
+#include "xl4ua.h"
 
 typedef enum update_mode {
 	UPDATE_MODE_SUCCESSFUL,
@@ -23,4 +23,4 @@ void getBackupDir(const char* pkgName);
 int getVerFromFile(const char* pkgName);
 int setVerToFile(const char* pkgName, const char* version);
 
-#endif /* _TMPL_UPDATEAGENT_H_ */
+#endif /* TMPL_UPDATEAGENT_H_ */

@@ -3,11 +3,10 @@
  */
 
 #include "utils.h"
-
-
-//static int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
-
-
+#include <string.h>
+#include <stdarg.h>
+#include "xl4ua.h"
+#include "debug.h"
 
 int get_type_from_json(json_object* jsonObj, char** value)
 {
