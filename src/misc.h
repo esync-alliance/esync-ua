@@ -57,6 +57,7 @@ int calc_sha256_hex(const char* path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH]);
 int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char* cmd);
+int remove_subdirs_except(char* parent_dir, char* subdir_to_keep);
 int mkdirp(const char* path, int umask);
 int newdirp(const char* path, int umask);
 int rmdirp(const char* path);

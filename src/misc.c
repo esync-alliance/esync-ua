@@ -5,6 +5,8 @@
 #include "misc.h"
 #include "delta.h"
 #include <sys/wait.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #if 0
 static int zip_archive_add_file(struct zip* za, const char* path, const char* base);
 static int zip_archive_add_dir(struct zip* za, const char* path, const char* base);
@@ -641,4 +643,29 @@ int is_cmd_runnable(const char* cmd)
 
 	if (path) free(path);
 	return err;
+}
+
+int remove_subdirs_except(char* parent_dir, char* subdir_to_keep)
+{
+	DIR* d;
+	struct dirent* dir;
+	struct stat statbuf;
+	char fullpath[PATH_MAX];
+
+	d = opendir(parent_dir);
+	if (d) {
+		while ((dir = readdir(d)) != NULL) {
+			snprintf(fullpath, sizeof(fullpath), "%s/%s", parent_dir, dir->d_name);
+			stat(fullpath, &statbuf);
+			if (S_ISDIR(statbuf.st_mode)
+			    && strcmp(dir->d_name, ".")
+			    && strcmp(dir->d_name, "..")
+			    && strcmp(dir->d_name, subdir_to_keep)) {
+				rmdirp(fullpath);
+
+			}
+		}
+		closedir(d);
+	}
+	return(0);
 }

@@ -1430,8 +1430,6 @@ int ua_backup_package(char* pkgName, char* version)
 		ret = E_UA_ERR;
 	}
 
-
-
 	return ret;
 
 }
