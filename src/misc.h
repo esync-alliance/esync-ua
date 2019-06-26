@@ -52,6 +52,7 @@ int unzip(const char* archive, const char* path);
 int zip(const char* archive, const char* path);
 int zip_find_file(const char* archive, const char* path);
 int copy_file(const char* from, const char* to);
+int make_file_hard_link(const char* from, const char* to);
 int calc_sha256(const char* path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
 int calc_sha256_hex(const char* path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH]);

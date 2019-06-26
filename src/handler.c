@@ -76,10 +76,13 @@ int ua_init(ua_cfg_t* uaConfig)
 
 		memset(&ua_intl, 0, sizeof(ua_internal_t));
 		ua_intl.delta      = uaConfig->delta;
+		ua_intl.backup_source = uaConfig->backup_source;
 		ua_intl.cache_dir  = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
 		ua_intl.backup_dir = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
+
+		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "backup lock init");
 
 		ua_intl.state = UA_STATE_IDLE_INIT;
 
@@ -102,7 +105,7 @@ int ua_stop()
 	delta_stop();
 	if (ua_intl.state == UA_STATE_IDLE_INIT)
 		return xl4bus_client_stop();
-
+	pthread_mutex_destroy(&ua_intl.backup_lock);
 	return 0;
 }
 
@@ -1301,13 +1304,39 @@ static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {
 				DBG("Back up already exists: %s", backupFile->file);
 
-			} else if (!copy_file(pkgFile->file, backupFile->file) &&
-			           !add_pkg_file_manifest(pkgManifest, backupFile)) {
-				DBG("Backed up package: %s", backupFile->file);
-
 			} else {
-				DBG("Backing up failed: %s", backupFile->file);
-				err = E_UA_ERR;
+				char *src_file = pkgFile->file;
+				if(ua_intl.delta && ua_intl.backup_source == 1) {
+					char* bname = f_basename(pkgFile->file);
+					src_file = JOIN(ua_intl.cache_dir, "delta", bname);
+					free(bname);
+
+					if(src_file ) {
+						if(access(src_file, F_OK)) {
+							DBG("Reconstructed file %s is not available", src_file);
+							src_file = pkgFile->file;
+						}
+					}else {
+						DBG("Error generating reconstructed filepath, try using installation path for backup");
+						src_file = pkgFile->file;
+					}
+					
+				}
+
+				if(make_file_hard_link(src_file, backupFile->file) != E_UA_OK)
+					err = copy_file(src_file, backupFile->file);
+				if(err == E_UA_OK)
+					add_pkg_file_manifest(pkgManifest, backupFile);
+				else 
+					DBG("Backing up failed: %s", backupFile->file);
+
+				if(src_file != pkgFile->file) {
+					unlink(src_file);
+					f_free(src_file);
+
+				} else {
+					unlink(pkgFile->file);
+				}
 
 			}
 		}
@@ -1413,6 +1442,9 @@ int ua_backup_package(char* pkgName, char* version)
 	pkgInfo.name    = pkgName;
 	pkgInfo.version = version;
 
+	//No error check, try to proceed with backup if failed to lock. 
+	pthread_mutex_lock(&ua_intl.backup_lock); 
+
 	char* prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
 	if (prePkgManifest != NULL) {
@@ -1430,6 +1462,7 @@ int ua_backup_package(char* pkgName, char* version)
 		ret = E_UA_ERR;
 	}
 
+	pthread_mutex_unlock(&ua_intl.backup_lock);
 	return ret;
 
 }
