@@ -139,6 +139,8 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 		}
 
 		if (!err) {
+			rmdirp(oldPath);
+			rmdirp(diffPath);
 			BOLT_IF(copy_file(manifest_diff, manifest_new), E_UA_ERR, "failed to copy manifest");
 			BOLT_IF(zip(newPkgFile, newPath), E_UA_ERR, "zip failed: %s", newPkgFile);
 		}
