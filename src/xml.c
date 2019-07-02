@@ -3,6 +3,8 @@
  */
 
 #include "xml.h"
+#include "utlist.h"
+#include "debug.h"
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name);
 static diff_info_t* get_xml_diff_info(xmlNodePtr ptr);

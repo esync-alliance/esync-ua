@@ -1,6 +1,8 @@
 
 #include "delta.h"
 #include "xml.h"
+#include "utlist.h"
+#include "debug.h"
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);

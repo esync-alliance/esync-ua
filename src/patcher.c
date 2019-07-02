@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <unistd.h>
 #include "delta.h"
 #include "ua_version.h"
 

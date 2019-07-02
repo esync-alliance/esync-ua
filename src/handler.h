@@ -2,10 +2,16 @@
  * handler.h
  */
 
-#ifndef _UA_HANDLER_H_
-#define _UA_HANDLER_H_
+#ifndef UA_HANDLER_H_
+#define UA_HANDLER_H_
 
-#include "common.h"
+#include "misc.h"
+#include "json-c-rename.h"
+#include <json.h>
+#include "xl4ua.h"
+#include "uthash.h"
+#include "utlist.h"
+#include "utarray.h"
 
 #define MSG_TIMEOUT     10
 
@@ -184,4 +190,4 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
 void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
 
-#endif /* _UA_HANDLER_H_ */
+#endif /* UA_HANDLER_H_ */

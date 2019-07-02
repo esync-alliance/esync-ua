@@ -11,6 +11,9 @@
 #include "updater.h"
 #include "utils.h"
 #include "xml.h"
+#include "utlist.h"
+#include "pthread.h"
+#include "debug.h"
 
 json_object* update_get_pkg_info_jo(pkg_info_t* pkg)
 {
@@ -229,11 +232,11 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 			if (uacc->update_pkg.rollback_versions &&
 			    uacc->backup_manifest &&
 			    !parse_pkg_manifest(uacc->backup_manifest, &pkg_file)) {
-					uacc->update_pkg.rollback_versions = json_object_new_array();
-					DL_FOREACH_SAFE(pkg_file, pf, aux) {
-						json_object_array_add(uacc->update_pkg.rollback_versions,
-											json_object_new_string(pf->version));
-						free_pkg_file(pf);
+				uacc->update_pkg.rollback_versions = json_object_new_array();
+				DL_FOREACH_SAFE(pkg_file, pf, aux) {
+					json_object_array_add(uacc->update_pkg.rollback_versions,
+					                      json_object_new_string(pf->version));
+					free_pkg_file(pf);
 
 				}
 

@@ -199,7 +199,7 @@ if (BUILD_BINS)
     add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
 
     add_executable(tmpl-updateagent
-            src/test_agents/updateagent.c
+            src/test_agents/main_updateagent.c
             src/test_agents/tmpl_updateagent.c
             src/test_agents/tmpl_updateagent.h
     )

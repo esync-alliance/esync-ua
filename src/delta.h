@@ -1,11 +1,12 @@
 /*
  * delta.h
  */
-#ifndef _UA_DELTA_H_
-#define _UA_DELTA_H_
+#ifndef UA_DELTA_H_
+#define UA_DELTA_H_
 
-#include "common.h"
-
+#include "misc.h"
+#include "uthash.h"
+#include "xl4ua.h"
 
 #define MANIFEST_DIFF        "manifest_diff.xml"
 #define MANIFEST_PKG         "manifest_pkg.xml"
@@ -65,4 +66,4 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 void free_diff_info(diff_info_t* di);
 void free_delta_tool_hh (delta_tool_hh_t* dth);
 
-#endif /* _UA_DELTA_H_ */
+#endif /* UA_DELTA_H_ */
