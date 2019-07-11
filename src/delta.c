@@ -140,15 +140,15 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 		if (!err) {
 			rmdirp(oldPath);
-			rmdirp(diffPath);
 			BOLT_IF(copy_file(manifest_diff, manifest_new), E_UA_ERR, "failed to copy manifest");
+			rmdirp(diffPath);
 			BOLT_IF(zip(newPkgFile, newPath), E_UA_ERR, "zip failed: %s", newPkgFile);
 		}
 
 	} while (0);
 
 #define DTR_RM(type) \
-	if (type ## Path) { if (rmdirp(type ## Path)) DBG("failed to remove directory %s", type ## Path); free(type ## Path); } \
+	if ((type ## Path) && !access(type ## Path, F_OK)) { if (rmdirp(type ## Path)) DBG("failed to remove directory %s", type ## Path); free(type ## Path); } \
 	f_free(manifest_ ## type);
 
 	DTR_RM(old);
