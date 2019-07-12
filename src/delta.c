@@ -5,6 +5,7 @@
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool);
+static char* get_config_delta_cap(char* delta_cap);
 static char* expand_tool_args(const char* args, const char* old, const char* new, const char* diff);
 static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, const char* diff);
 static int verify_file(const char* file, const char* sha256);
@@ -39,7 +40,7 @@ int delta_init(char* cacheDir, delta_cfg_t* deltaConfig)
 		BOLT_IF(deltaConfig && deltaConfig->patch_tools && add_delta_tool(&delta_stg.patch_tool, deltaConfig->patch_tools, deltaConfig->patch_tool_cnt, 1), E_UA_ARG, "patch tools adding failed");
 		BOLT_IF(deltaConfig && deltaConfig->decomp_tools && add_delta_tool(&delta_stg.decomp_tool, deltaConfig->decomp_tools, deltaConfig->decomp_tool_cnt, 0), E_UA_ARG, "decompression tools adding failed");
 
-		delta_stg.delta_cap = (deltaConfig && S(deltaConfig->delta_cap)) ? f_strdup(deltaConfig->delta_cap) :
+		delta_stg.delta_cap = (deltaConfig && S(deltaConfig->delta_cap)) ? get_config_delta_cap(deltaConfig->delta_cap) :
 		                      get_deflt_delta_cap(delta_stg.patch_tool, delta_stg.decomp_tool);
 
 	} while (0);
@@ -95,7 +96,8 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	do {
 #define DTR_MK(type) \
 	BOLT_SYS(newdirp(type ## Path = JOIN(delta_stg.cache_dir, "delta", # type), 0755) && (errno != EEXIST), "failed to make directory %s", type ## Path); \
-	manifest_ ## type = JOIN(type ## Path, MANIFEST);
+	manifest_ ## type = JOIN(type ## Path, MANIFEST); do { \
+	} while (0)
 
 		DTR_MK(old);
 		DTR_MK(diff);
@@ -149,7 +151,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 #define DTR_RM(type) \
 	if ((type ## Path) && !access(type ## Path, F_OK)) { if (rmdirp(type ## Path)) DBG("failed to remove directory %s", type ## Path); free(type ## Path); } \
-	f_free(manifest_ ## type);
+	f_free(manifest_ ## type); do { } while (0)
 
 	DTR_RM(old);
 	DTR_RM(diff);
@@ -211,11 +213,82 @@ static void clear_delta_tool(delta_tool_hh_t* hash)
 }
 
 
+static int get_espatch_version(char* ver, int len)
+{
+	int rc = E_UA_OK;
+
+	if (ver) {
+		char output[64];
+		FILE* pf;
+
+		pf = popen("espatch -v", "r");
+		if (!pf) {
+			DBG("Could not run espatch to determine its version, using default V2.5.");
+			rc = E_UA_ERR;
+
+		}else {
+			if (fgets(output, sizeof(output), pf) != NULL) {
+				if (output[strlen(output) - 1] == '\n')
+					output[strlen(output) - 1] = 0;
+				char* tmp = strstr(output, "version: ");
+				if (tmp && (strlen(tmp)- strlen("version: ") < len-1)) {
+					strncpy(ver, tmp+strlen("version: "), len-1);
+					DBG("espatch outputs version: %s", ver);
+				} else {
+					DBG("error: could not parse version from espatch output: %s.", output);
+					rc = E_UA_ERR;
+				}
+
+			} else {
+				DBG("error: espatch has no output.");
+				rc = E_UA_ERR;
+			}
+
+			pclose(pf);
+
+		}
+
+	}
+
+	return rc;
+}
+
+static char* get_config_delta_cap(char* delta_cap)
+{
+	char espatch_ver[7] = "";
+
+	if (delta_cap) {
+		if (!strstr(delta_cap, "E:")) {
+			char* tmp_cap = f_strdup(delta_cap);
+			char* tmp     = strtok(tmp_cap, ";");
+			if (tmp && *tmp == 'A') {
+				char* format = strstr(tmp, ":");
+				while (format) {
+					if (*(format+1) == '3') {
+						if (E_UA_OK == get_espatch_version(espatch_ver, sizeof(espatch_ver)))
+							return f_asprintf("%s;E:%s", delta_cap, espatch_ver);
+					}
+
+					tmp    = format + 1;
+					format = strstr(tmp, ",");
+				}
+
+			}
+			free(tmp_cap);
+		}
+	}
+
+	return f_strdup(delta_cap);
+
+}
+
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool)
 {
 	int memory           = 100;
 	char format[7]       = "";
 	char compression[7]  = "";
+	char espatch_ver[7]   = "";
+	int espatch_ver_valid = E_UA_ERR;
 	delta_tool_hh_t* dth = 0;
 
 	HASH_FIND_STR(patchTool, "bsdiff", dth);
@@ -223,7 +296,10 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	HASH_FIND_STR(patchTool, "rfc3284", dth);
 	if (dth) strcat(format, "2,");
 	HASH_FIND_STR(patchTool, "esdiff", dth);
-	if (dth) strcat(format, "3,");
+	if (dth) {
+		strcat(format, "3,");
+		espatch_ver_valid = get_espatch_version(espatch_ver, sizeof(espatch_ver));
+	}
 
 	HASH_FIND_STR(decompTool, "gzip", dth);
 	if (dth) strcat(compression, "1,");
@@ -235,7 +311,10 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	format[strlen(format) - 1]           = 0;
 	compression[strlen(compression) - 1] = 0;
 
-	return f_asprintf("A:%s;B:%s;C:%d", format, compression, memory);
+	if (espatch_ver_valid == E_UA_OK)
+		return f_asprintf("A:%s;B:%s;C:%d;E:%s", format, compression, memory, espatch_ver);
+	else
+		return f_asprintf("A:%s;B:%s;C:%d", format, compression, memory);
 }
 
 
