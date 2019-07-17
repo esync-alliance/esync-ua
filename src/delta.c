@@ -129,6 +129,11 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 				}
 
+				if(!access(oldFile, R_OK))
+					remove(oldFile);
+				if(!access(diffFile, R_OK))
+					remove(diffFile);
+
 				free(oldFile);
 				free(diffFile);
 				free(newFile);
