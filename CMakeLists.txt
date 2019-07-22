@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.4.3)
 project(libxl4ua)
 
 include(FindPkgConfig)
@@ -10,17 +10,6 @@ include(CMakeForceCompiler)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
-
-# thanks to http://stackoverflow.com/questions/7172670
-function(join OUTPUT GLUE)
-    set(_TMP_RESULT "")
-    set(_GLUE "") # effective glue is empty at the beginning
-    foreach(arg ${ARGN})
-        set(_TMP_RESULT "${_TMP_RESULT}${_GLUE}${arg}")
-        set(_GLUE "${GLUE}")
-    endforeach()
-    set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
-endfunction(join)
 
 function(set_empty OUTPUT VAL)
     if ((NOT DEFINED ${OUTPUT}) OR "${${OUTPUT}}" STREQUAL "")
@@ -50,24 +39,6 @@ function(targets_link_libraries)
     endforeach()
     message("end targets_link_libraries")
 endfunction(targets_link_libraries)
-
-function(influence_pkg_spec TGT PREFIX)
-    if (TARGET ${TGT})
-        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS})
-        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS_OTHER})
-
-        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS})
-        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS_OTHER})
-    endif()
-endfunction(influence_pkg_spec)
-
-function(influence_pkg PREFIX)
-    if (${PREFIX}_FOUND)
-        influence_pkg_spec(ua-shared ${PREFIX})
-        influence_pkg_spec(ua-static ${PREFIX}_STATIC)
-        influence_pkg_spec(updateagent ${PREFIX})
-    endif()
-endfunction(influence_pkg)
 
 set(BUILD_CONFIG $ENV{BUILD_CONFIG})
 if (NOT BUILD_CONFIG)
@@ -215,6 +186,8 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
+install(FILES src/include/xl4ua.h  DESTINATION include)
+
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
     add_executable(	ual_test ${LIB_SOURCE}
@@ -231,4 +204,15 @@ if(UNIT_TEST)
 
 endif()
 
-
+include(FindPythonInterp)
+find_package(PythonInterp)
+if (PYTHONINTERP_FOUND)
+    set(PY_LIBUA_DIR "${CMAKE_SOURCE_DIR}/pylibua")
+	set(SETUP_PY    "${CMAKE_SOURCE_DIR}/setup.py")
+	set(OUTPUT    "${PY_LIBUA_DIR}/_libuamodule.so")
+    add_custom_command(OUTPUT ${OUTPUT}
+                       COMMAND XL4BUS_DIR=${XL4BUS_DIR} ${PYTHON_EXECUTABLE}
+                       ARGS ${SETUP_PY} build_ext -b ${PY_LIBUA_DIR})
+    add_custom_target(target ALL DEPENDS ${OUTPUT})
+	install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install)")	
+endif()

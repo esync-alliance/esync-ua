@@ -468,7 +468,7 @@ void* runner_loop(void* arg)
 	runner_info_t* info = arg;
 
 	while (info->run) {
-		incoming_msg_t* im;
+		incoming_msg_t* im = NULL;
 		if (pthread_mutex_lock(&info->lock)) {
 			DBG_SYS("lock failed");
 			continue;

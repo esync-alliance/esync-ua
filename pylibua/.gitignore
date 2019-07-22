@@ -1,0 +1,5 @@
+build
+libuac_wrap.c
+*.pyc
+_libuamodule.so
+libuamodule.py
