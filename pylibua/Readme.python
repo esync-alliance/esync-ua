@@ -13,21 +13,16 @@ The description in the Readme.python file provides instructions on how to build 
 4. Install swig package
 	sudo apt install swig
 
-[Build Instructions Using distuitils]
+[Build Instructions]
 
-1. Change the following settings in setup.py:
-	xl4bus_build = '/path/to/your/local/libxl4bus/build'
-	libua_build = '/path/to/your/local/updateagent-c/build'
-
-2. To build:
-	python setup.py build_ext
-
-3. To insall the library to the default python system directory
-	python setup.py install
+- Python library build is integrated with c library (libua) build tool cmake. please refer to ../README. 
+- Please make sure "XL4BUS_DIR" is set to build direcotry of eSync bus (libxl4bus) in ../config.cmk
+- All Python build output files are located in pylibua sub-directory.
 
 [Usage of xl4bus Python Library]
 
-1. Xl4bus Python Library Files:
+1. eSync Bus Python Library Files:
+	_libuamodule.so - wrapper C library used by Python UA library.
 	UaXl4bus.py - Base class implementation to communicate with DMClient.  
    	MyUaXl4bus.py - Subclass of UaXl4bus.py, shows a simple implementation of an update agent (UA). 
 
