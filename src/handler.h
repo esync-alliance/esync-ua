@@ -115,7 +115,7 @@ typedef struct ua_internal {
 	async_update_status_t update_status_info;
 	uint32_t backup_source;
 	pthread_mutex_t backup_lock;
-	
+
 } ua_internal_t;
 
 typedef enum update_err {

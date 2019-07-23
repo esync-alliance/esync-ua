@@ -92,8 +92,15 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	char* oldFile, * diffFile, * newFile;
 	char* oldPath       = 0, * diffPath = 0, * newPath = 0;
 	char* diff_manifest = 0, * manifest_old = 0, * manifest_diff = 0, * manifest_new = 0;
+	char* top_delta_dir = 0;
 
 	do {
+		top_delta_dir = JOIN(delta_stg.cache_dir, "delta");
+		if (top_delta_dir && !access(top_delta_dir, W_OK)) {
+			rmdirp(top_delta_dir);
+			free(top_delta_dir);
+		}
+
 #define DTR_MK(type) \
 	BOLT_SYS(newdirp(type ## Path = JOIN(delta_stg.cache_dir, "delta", # type), 0755) && (errno != EEXIST), "failed to make directory %s", type ## Path); \
 	manifest_ ## type = JOIN(type ## Path, MANIFEST); do { \
@@ -129,9 +136,9 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 				}
 
-				if(!access(oldFile, R_OK))
+				if (!access(oldFile, R_OK))
 					remove(oldFile);
-				if(!access(diffFile, R_OK))
+				if (!access(diffFile, R_OK))
 					remove(diffFile);
 
 				free(oldFile);
@@ -289,12 +296,12 @@ static char* get_config_delta_cap(char* delta_cap)
 
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool)
 {
-	int memory           = 100;
-	char format[7]       = "";
-	char compression[7]  = "";
+	int memory            = 100;
+	char format[7]        = "";
+	char compression[7]   = "";
 	char espatch_ver[7]   = "";
 	int espatch_ver_valid = E_UA_ERR;
-	delta_tool_hh_t* dth = 0;
+	delta_tool_hh_t* dth  = 0;
 
 	HASH_FIND_STR(patchTool, "bsdiff", dth);
 	if (dth) strcat(format, "1,");
