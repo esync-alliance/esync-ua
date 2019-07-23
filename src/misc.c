@@ -467,12 +467,12 @@ int copy_file(const char* from, const char* to)
 
 int make_file_hard_link(const char* from, const char* to)
 {
-	int err   = E_UA_OK;
+	int err = E_UA_OK;
 
 	do {
 		BOLT_SYS(chkdirp(to), "Error making directory path for %s", to);
 		BOLT_SYS(link(from, to), "Error creating hard link from % to %s", from, to);
-	}while (0);
+	} while (0);
 
 	return err;
 }

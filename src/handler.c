@@ -75,10 +75,10 @@ int ua_init(ua_cfg_t* uaConfig)
 		BOLT_IF(uaConfig->delta && delta_init(uaConfig->cache_dir, uaConfig->delta_config), E_UA_ARG, "delta initialization error");
 
 		memset(&ua_intl, 0, sizeof(ua_internal_t));
-		ua_intl.delta      = uaConfig->delta;
+		ua_intl.delta         = uaConfig->delta;
 		ua_intl.backup_source = uaConfig->backup_source;
-		ua_intl.cache_dir  = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
-		ua_intl.backup_dir = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
+		ua_intl.cache_dir     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
+		ua_intl.backup_dir    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 
@@ -417,7 +417,7 @@ void* runner_loop(void* arg)
 	runner_info_t* info = arg;
 
 	while (info->run) {
-		incoming_msg_t* im;
+		incoming_msg_t* im = NULL;
 		if (pthread_mutex_lock(&info->lock)) {
 			DBG_SYS("lock failed");
 			continue;
@@ -1305,14 +1305,14 @@ static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 				DBG("Back up already exists: %s", backupFile->file);
 
 			} else {
-				char *src_file = pkgFile->file;
-				if(ua_intl.delta && ua_intl.backup_source == 1) {
+				char* src_file = pkgFile->file;
+				if (ua_intl.delta && ua_intl.backup_source == 1) {
 					char* bname = f_basename(pkgFile->file);
 					src_file = JOIN(ua_intl.cache_dir, "delta", bname);
 					free(bname);
 
-					if(src_file ) {
-						if(access(src_file, F_OK)) {
+					if (src_file ) {
+						if (access(src_file, F_OK)) {
 							DBG("Reconstructed file %s is not available", src_file);
 							src_file = pkgFile->file;
 						}
@@ -1320,17 +1320,17 @@ static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 						DBG("Error generating reconstructed filepath, try using installation path for backup");
 						src_file = pkgFile->file;
 					}
-					
+
 				}
 
-				if(make_file_hard_link(src_file, backupFile->file) != E_UA_OK)
+				if (make_file_hard_link(src_file, backupFile->file) != E_UA_OK)
 					err = copy_file(src_file, backupFile->file);
-				if(err == E_UA_OK)
+				if (err == E_UA_OK)
 					add_pkg_file_manifest(pkgManifest, backupFile);
-				else 
+				else
 					DBG("Backing up failed: %s", backupFile->file);
 
-				if(src_file != pkgFile->file) {
+				if (src_file != pkgFile->file) {
 					unlink(src_file);
 					f_free(src_file);
 
@@ -1442,8 +1442,8 @@ int ua_backup_package(char* pkgName, char* version)
 	pkgInfo.name    = pkgName;
 	pkgInfo.version = version;
 
-	//No error check, try to proceed with backup if failed to lock. 
-	pthread_mutex_lock(&ua_intl.backup_lock); 
+	//No error check, try to proceed with backup if failed to lock.
+	pthread_mutex_lock(&ua_intl.backup_lock);
 
 	char* prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
