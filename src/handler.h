@@ -124,6 +124,7 @@ typedef struct ua_internal {
 	int reboot_support;
 	ua_handler_t* uah;
 	int n_uah;
+	int package_verification_disabled;
 
 } ua_internal_t;
 

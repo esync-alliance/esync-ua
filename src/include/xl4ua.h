@@ -162,6 +162,11 @@ typedef struct ua_cfg {
 	//1 = ua uses libary's reboot/resume support.
 	int reboot_support;
 
+	//Indicate whether to disable sha verification of downloaded package. 
+	//0 = default, verify downloaded package against sha256
+	//1 = disable, do not verify downloaded package against sha256
+	int package_verification_disabled;
+
 } ua_cfg_t;
 
 
@@ -192,7 +197,7 @@ XL4_PUB int ua_register(ua_handler_t* uah, int len);
 
 XL4_PUB int ua_unregister(ua_handler_t* uah, int len);
 
-XL4_PUB int ua_stop();
+XL4_PUB int ua_stop(void);
 
 XL4_PUB const char* ua_get_updateagent_version(void);
 

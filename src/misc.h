@@ -61,6 +61,8 @@ int copy_file(const char* from, const char* to);
 int calc_sha256(const char* path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
 int calc_sha256_hex(const char* path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH]);
+int base64_encode(unsigned char hexdigest[SHA256_DIGEST_LENGTH], char b64buff[SHA256_B64_LENGTH]);
+int verify_file_hash_b64(const char* file, const char* sha256_b64);
 int is_cmd_runnable(const char* cmd);
 int mkdirp(const char* path, int umask);
 int newdirp(const char* path, int umask);

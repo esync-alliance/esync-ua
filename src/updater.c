@@ -386,7 +386,7 @@ void* update_resume_from_reboot(void* arg)
 
 char* update_record_get_type(json_object* jo_cc)
 {
-	char* type = NULL;
+	char* type            = NULL;
 	pkg_info_t update_pkg = {0};
 
 	if (E_UA_OK == update_set_pkg_info(jo_cc, &update_pkg)) {

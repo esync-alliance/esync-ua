@@ -68,11 +68,12 @@ int ua_init(ua_cfg_t* uaConfig)
 		BOLT_IF(uaConfig->delta && delta_init(uaConfig->cache_dir, uaConfig->delta_config), E_UA_ARG, "delta initialization error");
 
 		memset(&ua_intl, 0, sizeof(ua_internal_t));
-		ua_intl.delta          = uaConfig->delta;
-		ua_intl.reboot_support = uaConfig->reboot_support;
-		ua_intl.cache_dir      = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
-		ua_intl.backup_dir     = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
-		ua_intl.record_file    = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
+		ua_intl.delta                         = uaConfig->delta;
+		ua_intl.reboot_support                = uaConfig->reboot_support;
+		ua_intl.cache_dir                     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
+		ua_intl.backup_dir                    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
+		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
+		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 
 		ua_intl.state = UAI_STATE_INITIALIZED;
@@ -89,7 +90,7 @@ int ua_init(ua_cfg_t* uaConfig)
 }
 
 
-int ua_stop()
+int ua_stop(void)
 {
 	if (ua_intl.cache_dir) { free(ua_intl.cache_dir); ua_intl.cache_dir = NULL; }
 	if (ua_intl.backup_dir) { free(ua_intl.backup_dir); ua_intl.backup_dir = NULL; }
@@ -747,8 +748,8 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 				}
 			}
 
-			free(updateFile.version);
-			free(updateFile.file);
+			f_free(updateFile.version);
+			f_free(updateFile.file);
 		}
 
 		if (bck) {
@@ -922,10 +923,14 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 	updateFile->version = f_strdup(pkgFile->version);
 
 	if (!bck && uar->on_transfer_file) {
-		transfer_file_action(uacc, pkgInfo, pkgFile);
+		err = transfer_file_action(uacc, pkgInfo, pkgFile);
 	}
 
-	if (ua_intl.delta && is_delta_package(pkgFile->file)) {
+	if (!ua_intl.package_verification_disabled) {
+		err =  verify_file_hash_b64(pkgFile->file, pkgFile->sha256b64);
+	}
+
+	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file)) {
 		char* bname = f_basename(pkgFile->file);
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
@@ -943,11 +948,12 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 		updateFile->downloaded = 0;
 
 	} else {
-		updateFile->file       = f_strdup(pkgFile->file);
-		updateFile->downloaded = 1;
+		updateFile->file = f_strdup(pkgFile->file);
+		if (err == E_UA_OK)
+			updateFile->downloaded = 1;
 	}
 
-	if (state != INSTALL_FAILED) {
+	if (err == E_UA_OK) {
 		if (uar->on_prepare_install) {
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
 			if (S(newFile)) {
@@ -956,6 +962,8 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 			}
 		}
 
+	} else {
+		state = INSTALL_FAILED;
 	}
 
 	return state;
@@ -973,7 +981,7 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 		if (!ret && S(newFile)) {
 			pkgFile->file = newFile;
 		} else {
-			//TODO: send transfer failed
+			DBG("UA returned error(%d) in callback on_transfer_file.", ret);
 		}
 	}
 

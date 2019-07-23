@@ -41,13 +41,14 @@ int main(int argc, char** argv)
 	memset(&cfg, 0, sizeof(ua_cfg_t));
 	int mode = 0;
 
-	cfg.debug          = 0;
-	cfg.delta          = 1;
-	cfg.cert_dir       = "./../pki/certs/updateagent";
-	cfg.url            = "tcp://localhost:9133";
-	cfg.cache_dir      = "/tmp/esync/";
-	cfg.backup_dir     = "/data/sota/esync/";
-	cfg.reboot_support = 0;
+	cfg.debug                         = 0;
+	cfg.delta                         = 1;
+	cfg.cert_dir                      = "./../pki/certs/updateagent";
+	cfg.url                           = "tcp://localhost:9133";
+	cfg.cache_dir                     = "/tmp/esync/";
+	cfg.backup_dir                    = "/data/sota/esync/";
+	cfg.reboot_support                = 0;
+	cfg.package_verification_disabled = 1;
 
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:M:dDh")) != -1) {
 		switch (c) {
