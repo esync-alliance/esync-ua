@@ -263,6 +263,7 @@ int remove_old_backup(char* xmlFile, char* version)
 	xmlDocPtr doc = NULL;
 	xmlNodePtr root, node, n, aux;
 	xmlChar* c, * backpath;
+	char* tmp_dir;
 
 	do {
 		if (!access(xmlFile, W_OK)) {
@@ -283,7 +284,11 @@ int remove_old_backup(char* xmlFile, char* version)
 						if ((n = get_xml_child(node, XMLT "file"))) {
 							if ((backpath = xmlNodeGetContent(n))) {
 								printf("Removing version(%s) = %s \n", c, f_dirname((const char*)backpath));
-								rmdirp(f_dirname((const char*)backpath));
+								tmp_dir = f_dirname((const char*)backpath);
+								if (tmp_dir) {
+									rmdirp(tmp_dir);
+									free(tmp_dir);
+								}
 								xmlUnlinkNode(node);
 								xmlFreeNode(node);
 
@@ -293,12 +298,16 @@ int remove_old_backup(char* xmlFile, char* version)
 
 							xmlFree(backpath);
 						}
-
-						//xmlFree(n);
 					}
 					xmlFree(c);
 				}
 			}
+		}
+
+		tmp_dir = f_dirname((const char*)xmlFile);
+		if (tmp_dir) {
+			remove_subdirs_except(tmp_dir, version);
+			free(tmp_dir);
 		}
 
 	} while (0);
@@ -354,17 +363,23 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 			}
 		}
 
-		DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
+		if (!sha256xcmp(pkgFile->file, pkgFile->sha256b64)) {
+			DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
 
-		node = xmlNewChild(root, NULL, XMLT "package", NULL);
-		xmlNewChild(node, NULL, XMLT "version", XMLT pkgFile->version);
-		xmlNewChild(node, NULL, XMLT "sha256", XMLT pkgFile->sha256b64);
-		xmlNewChild(node, NULL, XMLT "file", XMLT pkgFile->file);
-		xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pkgFile->downloaded ? "1" : "0"));
-		xmlNewChild(node, NULL, XMLT "rollback-order", XMLT "0");
+			node = xmlNewChild(root, NULL, XMLT "package", NULL);
+			xmlNewChild(node, NULL, XMLT "version", XMLT pkgFile->version);
+			xmlNewChild(node, NULL, XMLT "sha256", XMLT pkgFile->sha256b64);
+			xmlNewChild(node, NULL, XMLT "file", XMLT pkgFile->file);
+			xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pkgFile->downloaded ? "1" : "0"));
+			xmlNewChild(node, NULL, XMLT "rollback-order", XMLT "0");
 
-		BOLT_SYS(chkdirp(xmlFile), "failed to prepare directory for %s", xmlFile);
-		BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
+			BOLT_SYS(chkdirp(xmlFile), "failed to prepare directory for %s", xmlFile);
+			BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
+
+		} else {
+			DBG("Skipping pkg entry for version: %s in %s", pkgFile->version, xmlFile);
+			DBG("Possibly corrupted package file (%s), not matched with exptected sha value (%s)", pkgFile->file, pkgFile->sha256b64);
+		}
 
 	} while (0);
 
