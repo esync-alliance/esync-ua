@@ -932,7 +932,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 		err = transfer_file_action(uacc, pkgInfo, pkgFile);
 	}
 
-	if (!ua_intl.package_verification_disabled) {
+	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
 		if(pkgFile->delta_sha256b64 != NULL) 
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->delta_sha256b64);
 		else
