@@ -40,6 +40,7 @@ typedef struct pkg_file {
 	char* version;
 	char* file;
 	char sha256b64[SHA256_B64_LENGTH];
+	char delta_sha256b64[SHA256_B64_LENGTH];
 	int downloaded;
 	int rollback_order;
 
