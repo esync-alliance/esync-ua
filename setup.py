@@ -28,8 +28,8 @@ moduleconf = {
 			}
 
 if(xl4bus_build is not None):
-	moduleconf['library_dirs'] = [xl4bus_build]
-	moduleconf['runtime_library_dirs'] = [xl4bus_build]
+	moduleconf['library_dirs'] = [xl4bus_build, libua_build]
+	moduleconf['runtime_library_dirs'] = [xl4bus_build, libua_build]
 esyncua_module = Extension(**moduleconf)
 
 setup (name = 'esync-libua-python',
