@@ -182,7 +182,7 @@ int run_cmd(char* cmd, char* argv[])
 			if (waitpid(pid, &status, 0) == -1) {
 				rc = E_UA_SYS;
 			}else {
-				WEXITSTATUS(status);
+				rc = WEXITSTATUS(status);
 			}
 		}
 	}else{
@@ -474,6 +474,17 @@ int copy_file(const char* from, const char* to)
 	return err;
 }
 
+int make_file_hard_link(const char* from, const char* to)
+{
+	int err = E_UA_OK;
+
+	do {
+		BOLT_SYS(chkdirp(to), "Error making directory path for %s", to);
+		BOLT_SYS(link(from, to), "Error creating hard link from % to %s", from, to);
+	} while (0);
+
+	return err;
+}
 
 int calc_sha256(const char* fpath, unsigned char obuff[SHA256_DIGEST_LENGTH])
 {
@@ -646,6 +657,19 @@ int verify_file_hash_b64(const char* file, const char* sha256_b64)
 	}
 
 	return err;
+
+}
+
+int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH])
+{
+	char b64_tmp[SHA256_B64_LENGTH];
+
+	memset(b64_tmp, 0, sizeof(b64_tmp));
+
+	calc_sha256_x(archive, b64_tmp);
+
+	return strcmp(b64, b64_tmp);
+
 }
 
 int is_cmd_runnable(const char* cmd)
@@ -700,4 +724,28 @@ char* randstring(int length)
 	randomString[length] = '\0';
 
 	return randomString;
+}
+int remove_subdirs_except(char* parent_dir, char* subdir_to_keep)
+{
+	DIR* d;
+	struct dirent* dir;
+	struct stat statbuf;
+	char fullpath[PATH_MAX];
+
+	d = opendir(parent_dir);
+	if (d) {
+		while ((dir = readdir(d)) != NULL) {
+			snprintf(fullpath, sizeof(fullpath), "%s/%s", parent_dir, dir->d_name);
+			stat(fullpath, &statbuf);
+			if (S_ISDIR(statbuf.st_mode)
+			    && strcmp(dir->d_name, ".")
+			    && strcmp(dir->d_name, "..")
+			    && strcmp(dir->d_name, subdir_to_keep)) {
+				rmdirp(fullpath);
+
+			}
+		}
+		closedir(d);
+	}
+	return(0);
 }

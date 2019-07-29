@@ -161,6 +161,13 @@ typedef struct ua_cfg {
 	//0 = default, ua implements its own reboot/resume support.
 	//1 = ua uses libary's reboot/resume support.
 	int reboot_support;
+	
+	// specifies which source package file used for backup,
+	// when  delta reconstruction is triggered.
+	// 0 = Use the actual full path used installation, this is default. 
+	// 1 = Use the full path resulted from delta reconstruction. 
+	// Both may or may not be the same full path. 
+	int backup_source;
 
 	//Indicate whether to disable sha verification of downloaded package. 
 	//0 = default, verify downloaded package against sha256

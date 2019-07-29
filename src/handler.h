@@ -126,6 +126,9 @@ typedef struct ua_internal {
 	int n_uah;
 	int package_verification_disabled;
 
+	uint32_t backup_source;
+	pthread_mutex_t backup_lock;
+
 } ua_internal_t;
 
 typedef enum update_err {
