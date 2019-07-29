@@ -705,8 +705,8 @@ static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj)
 				}
 			}
 
-			free(updateFile.version);
-			free(updateFile.file);
+			f_free(updateFile.version);
+			f_free(updateFile.file);
 		}
 
 		if (pkgManifest != NULL) {
@@ -975,14 +975,11 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 
 	if (!bck && uar->on_transfer_file) {
 		err = transfer_file_action(uar, pkgInfo, pkgFile);
-		if (err != E_UA_OK)
-			return INSTALL_FAILED;
 	}
 
-	if (ua_intl.delta && is_delta_package(pkgFile->file)) {
+	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file)) {
 		char* pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG) : NULL;
-
-		char* bname = f_basename(pkgFile->file);
+		char* bname       = f_basename(pkgFile->file);
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
 
@@ -1000,11 +997,12 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 		updateFile->downloaded = 0;
 
 	} else {
-		updateFile->file       = f_strdup(pkgFile->file);
-		updateFile->downloaded = 1;
+		updateFile->file = f_strdup(pkgFile->file);
+		if (err == E_UA_OK)
+			updateFile->downloaded = 1;
 	}
 
-	if (state != INSTALL_FAILED) {
+	if (err == E_UA_OK) {
 		if (uar->on_prepare_install) {
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
 			if (S(newFile)) {
@@ -1013,9 +1011,12 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 			}
 		}
 
+	} else {
+		state = INSTALL_FAILED;
 	}
 
 	return state;
+
 }
 
 
