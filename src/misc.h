@@ -62,6 +62,8 @@ int make_file_hard_link(const char* from, const char* to);
 int calc_sha256(const char* path, unsigned char obuff[SHA256_DIGEST_LENGTH]);
 int calc_sha256_hex(const char* path, char obuff[SHA256_HEX_LENGTH]);
 int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH]);
+int base64_encode(unsigned char hexdigest[SHA256_DIGEST_LENGTH], char b64buff[SHA256_B64_LENGTH]);
+int verify_file_hash_b64(const char* file, const char* sha256_b64);
 int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH]);
 int is_cmd_runnable(const char* cmd);
 int remove_subdirs_except(char* parent_dir, char* subdir_to_keep);

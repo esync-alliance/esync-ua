@@ -40,6 +40,7 @@ typedef struct pkg_file {
 	char* version;
 	char* file;
 	char sha256b64[SHA256_B64_LENGTH];
+	char delta_sha256b64[SHA256_B64_LENGTH];
 	int downloaded;
 	int rollback_order;
 
@@ -124,6 +125,7 @@ typedef struct ua_internal {
 	int reboot_support;
 	ua_handler_t* uah;
 	int n_uah;
+	int package_verification_disabled;
 
 	uint32_t backup_source;
 	pthread_mutex_t backup_lock;

@@ -169,6 +169,11 @@ typedef struct ua_cfg {
 	// Both may or may not be the same full path. 
 	int backup_source;
 
+	//Indicate whether to disable sha verification of downloaded package. 
+	//0 = default, verify downloaded package against sha256
+	//1 = disable, do not verify downloaded package against sha256
+	int package_verification_disabled;
+
 } ua_cfg_t;
 
 

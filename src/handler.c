@@ -68,12 +68,13 @@ int ua_init(ua_cfg_t* uaConfig)
 		BOLT_IF(uaConfig->delta && delta_init(uaConfig->cache_dir, uaConfig->delta_config), E_UA_ARG, "delta initialization error");
 
 		memset(&ua_intl, 0, sizeof(ua_internal_t));
-		ua_intl.delta          = uaConfig->delta;
-		ua_intl.reboot_support = uaConfig->reboot_support;
-		ua_intl.cache_dir      = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
-		ua_intl.backup_dir     = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
-		ua_intl.record_file    = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
-		ua_intl.backup_source  = uaConfig->backup_source;
+		ua_intl.delta                         = uaConfig->delta;
+		ua_intl.reboot_support                = uaConfig->reboot_support;
+		ua_intl.cache_dir                     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
+		ua_intl.backup_dir                    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
+		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
+		ua_intl.backup_source                 = uaConfig->backup_source;
+		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "backup lock init");
@@ -713,9 +714,9 @@ static void process_ready_download(ua_component_context_t* uacc, json_object* js
 
 static void process_prepare_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	int bck            = 0;
-	pkg_info_t pkgInfo = {0};
-	pkg_file_t pkgFile, updateFile = {0};
+	int bck                = 0;
+	pkg_info_t pkgInfo     = {0};
+	pkg_file_t pkgFile     = {0}, updateFile = {0};
 	update_err_t updateErr = UE_NONE;
 	install_state_t state  = INSTALL_READY;
 
@@ -735,6 +736,8 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		     !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
 		     !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
 		    ((!get_pkg_file_manifest(uacc->backup_manifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
+			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
+
 			state = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 
 			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
@@ -750,8 +753,8 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 				}
 			}
 
-			free(updateFile.version);
-			free(updateFile.file);
+			f_free(updateFile.version);
+			f_free(updateFile.file);
 		}
 
 		if (bck) {
@@ -926,11 +929,16 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 
 	if (!bck && uar->on_transfer_file) {
 		err = transfer_file_action(uacc, pkgInfo, pkgFile);
-		if (err != E_UA_OK)
-			return INSTALL_FAILED;
 	}
 
-	if (ua_intl.delta && is_delta_package(pkgFile->file)) {
+	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
+		if (strlen(pkgFile->delta_sha256b64) > 0)
+			err =  verify_file_hash_b64(pkgFile->file, pkgFile->delta_sha256b64);
+		else
+			err =  verify_file_hash_b64(pkgFile->file, pkgFile->sha256b64);
+	}
+
+	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file)) {
 		char* bname = f_basename(pkgFile->file);
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
@@ -948,11 +956,12 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 		updateFile->downloaded = 0;
 
 	} else {
-		updateFile->file       = f_strdup(pkgFile->file);
-		updateFile->downloaded = 1;
+		updateFile->file = f_strdup(pkgFile->file);
+		if (err == E_UA_OK)
+			updateFile->downloaded = 1;
 	}
 
-	if (state != INSTALL_FAILED) {
+	if (err == E_UA_OK) {
 		if (uar->on_prepare_install) {
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
 			if (S(newFile)) {
@@ -961,6 +970,8 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 			}
 		}
 
+	} else {
+		state = INSTALL_FAILED;
 	}
 
 	return state;
@@ -978,8 +989,7 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 		if (!ret && S(newFile)) {
 			pkgFile->file = newFile;
 		} else {
-			//TODO: send transfer failed
-			DBG("Error on_transfer_file");
+			DBG("UA returned error(%d) in callback on_transfer_file.", ret);
 		}
 	}
 
