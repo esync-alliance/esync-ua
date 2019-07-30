@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 	cfg.cache_dir                     = "/tmp/esync/";
 	cfg.backup_dir                    = "/data/sota/esync/";
 	cfg.reboot_support                = 0;
-	cfg.package_verification_disabled = 1;
+	cfg.package_verification_disabled = 0;
 
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:M:dDh")) != -1) {
 		switch (c) {
