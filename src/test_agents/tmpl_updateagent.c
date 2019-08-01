@@ -159,6 +159,12 @@ void set_test_installation_mode(update_mode_t mode, int reboot)
 	test_reboot      = reboot;
 }
 
+void set_rbConf_path(char * rbPath)
+{
+	strcpy(rbConfFile, rbPath);
+	//printf("rbConfPath: %s\n", rbConfFile);
+}
+
 
 
 void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName)
@@ -169,8 +175,7 @@ void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName)
 	char* buff             = malloc(buff_size);
 	int i                  =0;
 
-
-	if (access(rbConfFile, F_OK) != -1 ) {
+    if (access(rbConfFile, F_OK) != -1 ) {
 		fp = fopen(rbConfFile, "r");
 		if (fp == NULL) {
 			printf("Rollback config file open failed\n");
