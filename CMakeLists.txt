@@ -204,15 +204,17 @@ if(UNIT_TEST)
 
 endif()
 
-include(FindPythonInterp)
-find_package(PythonInterp)
-if (PYTHONINTERP_FOUND)
-    set(PY_LIBUA_DIR "${CMAKE_SOURCE_DIR}/pylibua")
-	set(SETUP_PY    "${CMAKE_SOURCE_DIR}/setup.py")
-	set(OUTPUT    "${PY_LIBUA_DIR}/_libuamodule.so")
-    add_custom_command(OUTPUT ${OUTPUT}
-                       COMMAND XL4BUS_DIR=${XL4BUS_DIR} ${PYTHON_EXECUTABLE}
-                       ARGS ${SETUP_PY} build_ext -b ${PY_LIBUA_DIR})
-    add_custom_target(target ALL DEPENDS ${OUTPUT})
-	install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install)")	
+if(BUILD_PY_LIBUA)
+	include(FindPythonInterp)
+	find_package(PythonInterp)
+	if (PYTHONINTERP_FOUND)
+		set(PY_LIBUA_DIR "${CMAKE_SOURCE_DIR}/pylibua")
+		set(SETUP_PY    "${CMAKE_SOURCE_DIR}/setup.py")
+		set(OUTPUT    "${PY_LIBUA_DIR}/_libuamodule.so")
+		add_custom_command(OUTPUT ${OUTPUT}
+						COMMAND XL4BUS_DIR=${XL4BUS_DIR} ${PYTHON_EXECUTABLE}
+						ARGS ${SETUP_PY} build_ext -b ${PY_LIBUA_DIR})
+		add_custom_target(target ALL DEPENDS ${OUTPUT})
+		install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install)")	
+	endif()
 endif()
