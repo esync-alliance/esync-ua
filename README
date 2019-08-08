@@ -20,6 +20,7 @@ $ ( rm -rf json-c-build && cp -fr json-c json-c-build && \
 *** updateagent ***
 
 If building updateagent binary for the first time, edit config.cmk file to change any make variables necessary. You most likely need to change XL4BUS_DIR.
+To build Python UA library, set BUILD_PY_LIBUA to true in config.cmk.
 
 After configuring make process, use cmake to compile the binaries. The
 recommended approach is for the first time build:
