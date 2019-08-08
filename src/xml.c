@@ -350,7 +350,7 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 					xmlFree(c);
 				}
 			}
-			if ((n = get_xml_child(node, XMLT "rollback-order"))) {
+			else if ((n = get_xml_child(node, XMLT "rollback-order"))) {
 				//Increment rollback-order for each version.
 				if ((c = xmlNodeGetContent(n))) {
 					int rc = snprintf(rb_order, sizeof(rb_order), "%d", atoi((const char*)c)+1);
