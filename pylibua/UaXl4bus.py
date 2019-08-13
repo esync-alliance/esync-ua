@@ -6,25 +6,8 @@ import os
 import json
 import shutil
 import time
-
-
-def toUtf8(input):
-    """ Convert all unicode strings in a JSON object string (input) to UTF-8 strings. 
-    Args:
-            input(str): JSON object string. 
-
-    Returns:
-            JSON object string coded in UTF-8. 
-    """
-    if isinstance(input, dict):
-        return {toUtf8(key): toUtf8(value) for key, value in input.iteritems()}
-    elif isinstance(input, list):
-        return [toUtf8(element) for element in input]
-    elif isinstance(input, unicode):
-        return input.encode('utf-8')
-    else:
-        return input
-
+import logging
+import sys
 
 class UaXl4bus:
     """Base class of update agent via Xl4bus """
@@ -39,9 +22,7 @@ class UaXl4bus:
                  host_port='tcp://localhost:9133',
                  version_dir='/data/sota/versions',
                  enable_delta=True,
-                 use_installation_thread=True,
-                 reconstruct_delta=True,
-                 force_demo_download=False):
+                 reconstruct_delta=True):
         """Class Constructor 
         Args:
                 cert_label(str): Label name of update agent certificate.
@@ -52,17 +33,12 @@ class UaXl4bus:
                         (Default is tcp://localhost:9133).
                 enable_delta(bool): True to enable, False to disable delta feature
                         (Default is True). 
-                use_installation_thread(bool): True to run do_install() in a 
-                        separate thread (Default is True).
                 reconstruct_delta(bool):: If True, this library reconstructs the
                         package with downloaded delta file, the reconstructed file path 
                         is passed in do_install() to UA. 
                         If False,  the path name of the downloaded delta file is passed
                         to UA. UA is responsible for reconstruction. 
-                        (Default is True)
-                force_demo_download(bool):: For demo purpose, set it to True to 
-                        force downloading package even it's available locally. 
-                        (Default is False)       
+                        (Default is True)      
 
         Returns:
                 None
@@ -72,23 +48,24 @@ class UaXl4bus:
         self.nodeType = ua_nodeType
         self.version_dir = version_dir
         self.__loadUaConf(conf_file)
-        self.to_send_diagnostics_message = False
         self.incremental_failed = False
         self.enable_delta = enable_delta
         self.host_port = host_port
-        self.use_installation_thread = use_installation_thread
         self.xl4bus_client_initialized = False
         self.reconstruct_delta = reconstruct_delta
-        self.force_demo_download = force_demo_download
         self.libua_debug = 0
+        self.ua_version = None
         cb = py_ua_cb_t()
         cb.ua_get_version = "do_get_version"
         cb.ua_set_version = "do_set_version"
         cb.ua_pre_install = "do_pre_install"
-        cb.ua_install = "do_post_install"
-        cb.ua_post_install = "do_confirm_download"
+        cb.ua_install = "do_install"
+        cb.ua_post_install = "do_post_install"
         cb.ua_prepare_install =  "do_prepare_install"
         cb.ua_prepare_download =  "do_confirm_download"      
+        cb.ua_transfer_file =  "do_transfer_file"      
+        cb.ua_dmc_presence =  "do_dmc_presence"      
+        cb.ua_on_message =  "do_message"      
         pua_set_callbacks(self, cb)
 
     def run_forever(self):
@@ -102,7 +79,7 @@ class UaXl4bus:
         uacfg.url = self.host_port
         uacfg.cert_dir = self.cert_dir
         uacfg.cache_dir = "/tmp/esync/"
-        uacfg.backup_dir = "/data/esync/backup/"
+        uacfg.backup_dir = "/data/sota/esync/"
         uacfg.delta = self.enable_delta
         uacfg.debug = self.libua_debug
         #uacfg.delta_config 
@@ -142,6 +119,8 @@ class UaXl4bus:
         Default is "INSTALL_IN_PROGRESS"
         Status will be sent in xl4.update-status to DMClient
         """
+        with open("Output.txt", "a") as text_file:
+            text_file.write("do_pre_install : \t%s \n" % downloadFileStr)
         return "INSTALL_IN_PROGRESS"
 
     def do_install(self, downloadFileStr):
@@ -152,20 +131,17 @@ class UaXl4bus:
 
         Default is "INSTALL_COMPLETED"
         Status will be sent in xl4.update-status to DMClient
-        """
+		"""
+        print("do_install for: \t%s\n" % downloadFileStr)
+        with open("Output.txt", "a") as text_file:
+            text_file.write("do_install : \t\t%s \n" % downloadFileStr)
         return "INSTALL_COMPLETED"
 
-    def do_post_install(self):
+    def do_post_install(self, packageName):
         """Interface to invoke additional action after do_install()"""
+        with open("Output.txt", "a") as text_file:
+            text_file.write("do_post_install : \t%s \n" % packageName)
         pass
-
-    def do_validate_installed_version(self):
-        """ Interface to check if the newly installed version is working properly 
-        after do_install()
-
-        Subclass shall return True if success and False is failure
-        """
-        return True
 
     def do_get_version(self, packageName):
         """Interface to retrieve current version of UA
@@ -174,19 +150,13 @@ class UaXl4bus:
         version_dir/packageName. If 'version' is not found, return None. 
 
         Subclass shall return a version string, e.g. "1.0", or None. 
-        """
-        fileName = self.version_dir + os.sep + packageName
-        if not os.path.exists(self.version_dir):
-            os.makedirs(self.version_dir)
-        try:
-            with open(fileName) as ver_file:
-                version_info = json.load(ver_file)
-                return version_info['version']
-        except IOError as e:
-            print str(e)
-        return None
+		"""
+        print("do_get_version for: %s\n" % (packageName))
+        with open("Output.txt", "a") as text_file:
+            text_file.write("do_get_version : \t%s : \t%s\n" % (packageName, self.ua_version))
+        return self.ua_version
 
-    def do_set_version(self, packageName, ver, sha256Rcvd, sha256Local, downloaded, packageFile):
+    def do_set_version(self, packageName, ver):
         """ Interface to set version information of UA after successful update. 
         Default is to write all information in json format to a local file
         'version_dir/packageName'. Generally, UA should not need to override
@@ -198,52 +168,20 @@ class UaXl4bus:
                 packageName(str): A string for component package name found in 
                         xl4.ready-update message.
                 ver(str): A version string found in xl4.ready-update message.
-                sha256Rcvd(str): A version string for 'sha-256' found in 
-                        xl4.ready-update message.
-                sha256Local(str): A version string for 'sha-256' calculated from 
-                        the local packageFile.
-                downloaded(bool): True if packageFile is in local filesystem, other False. 
-                packageFile(str): An absolute path name to the component package 
-                        file for installation. 
 
         Returns:
                 None. 
         """
-        fileName = self.version_dir + os.sep + packageName
-        backupDir = self.backup_dir
-        if(os.path.isdir(backupDir) is not True):
-            os.mkdir(backupDir)
-        backupFile = os.path.join(backupDir, os.path.basename(packageFile))
-        if packageFile != backupFile:
-            shutil.copyfile(packageFile, backupFile)
-        try:
-            with open(fileName, 'r+') as ver_file:
-                if self.force_demo_download is True:
-                    version_info = {}
-                    version_info['version'] = ver
-                    version_info['version-list'] = {
-                        ver: {'downloaded': downloaded, 'sha-256': sha256Rcvd, "file": backupFile}}
 
-                else:
-                    version_info = json.load(ver_file)
-                    version_info['version'] = ver
-                    version_info['version-list'][ver] = {
-                        'downloaded': downloaded, 'sha-256': sha256Rcvd, "file": backupFile}
+        self.ua_version = ver
+        with open("Output.txt", "a") as text_file:
+            text_file.write("do_set_version : \t%s : \t%s\n" % (packageName, self.ua_version))
+        return 0
 
-                ver_file.seek(0)
-                ver_file.truncate()
-                json.dump(version_info, ver_file)
-
-        except(IOError):
-            with open(fileName, 'w+') as ver_file:
-                version_info = {}
-                version_info['version'] = ver
-                version_info['version-list'] = {
-                    ver: {'downloaded': downloaded, 'sha-256': sha256Rcvd, "file": backupFile}}
-                json.dump(version_info, ver_file)
-
-    def do_prepare_install(self):
-        pass
+    def do_prepare_install(self, packageName, version, packageFile, newFile):
+        with open("Output.txt", "a") as text_file:
+            text_file.write("do_prepare_install : \t%s : \t%s\n" % (packageFile, version))
+        return "INSTALL_READY"
 
     def send_update_status(self, update_status, file_downloaded=False):
         """ Send xl4.update-status message to DMClient
@@ -280,9 +218,9 @@ class UaXl4bus:
 
         jsonDiagStr = json.dumps(diagMsg)
         now = time.strftime("[%m-%d:%H:%M:%S]", time.localtime())
-        print str(now), jsonDiagStr
+        print (str(now), jsonDiagStr)
         if(pua_send_message(jsonDiagStr) != 0):
-            print "Failed to send message"
+            print ("Failed to send message")
 
     def set_xl4bus_debug(self, enable=0):
         """Enable/Disable xl4bus debug messages. 
@@ -297,7 +235,7 @@ class UaXl4bus:
 
     def __loadUaConf(self, filename):
         with open(filename) as conf_file:
-            self.config = toUtf8(json.load(conf_file))
+            self.config = (json.load(conf_file))
             if('delta' in self.config and 'delta-cap' in self.config['delta']):
                 self.delta = self.config['delta']
                 self.delta_cap = self.config['delta']['delta-cap']
