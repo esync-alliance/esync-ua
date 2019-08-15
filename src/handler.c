@@ -814,6 +814,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}
 
 		if (update_sts == INSTALL_COMPLETED) {
+			if (uacc->backup_manifest == NULL)
+				uacc->backup_manifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG) : NULL;
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 
@@ -858,6 +860,8 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+		if (uacc->backup_manifest == NULL)
+			uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 		if (uacc->backup_manifest != NULL) {
 			if (!get_body_rollback_from_json(jsonObj, &rollback) && rollback && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
 				remove_old_backup(uacc->backup_manifest, pkgInfo.rollback_version);
@@ -866,9 +870,11 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 			uacc->state = UA_STATE_IDLE_INIT;
 			update_release_comp_context(uacc);
-		}
+		}else
+			DBG("backup_manifest in not set.");
 
-	}
+	} else
+		DBG("Could not parse info from confirm-update.");
 }
 
 
@@ -1386,11 +1392,14 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 
 			free(updateFile.file);
 			free(updateFile.version);
+		} else {
+			DBG("Could not parse info from update_manifest %s.", uacc->update_manifest);
 		}
 
 		remove(uacc->update_manifest);
 
-	}else {
+	} else {
+		DBG("update_manifest is not set.");
 		ret = E_UA_ERR;
 	}
 
