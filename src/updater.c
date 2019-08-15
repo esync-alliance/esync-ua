@@ -35,8 +35,8 @@ int update_set_pkg_info(json_object* jo_pkg, pkg_info_t* pkg)
 	int err = E_UA_OK;
 
 	if (jo_pkg && pkg) {
-		if (pkg->type)
-			err = json_get_property(jo_pkg, json_type_string, &pkg->type, "package", "type", NULL);
+
+		err = json_get_property(jo_pkg, json_type_string, &pkg->type, "package", "type", NULL);
 
 		if (err == E_UA_OK)
 			err = json_get_property(jo_pkg, json_type_string, &pkg->name, "package", "name", NULL);
@@ -390,6 +390,7 @@ char* update_record_get_type(json_object* jo_cc)
 	pkg_info_t update_pkg = {0};
 
 	if (E_UA_OK == update_set_pkg_info(jo_cc, &update_pkg)) {
+		DBG("Resume record for type %s.", update_pkg.type);
 		type = f_strdup(update_pkg.type);
 	}
 
