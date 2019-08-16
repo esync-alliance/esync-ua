@@ -166,7 +166,7 @@ int run_cmd(char* cmd, char* argv[])
 	int rc     = E_UA_OK;
 	int status = 0;
 
-	if (cmd && argv) {
+	if (cmd && is_cmd_runnable(cmd) && argv) {
 		pid_t pid=fork();
 
 		if ( pid == -1) {
