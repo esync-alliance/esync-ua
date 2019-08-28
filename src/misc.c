@@ -165,8 +165,7 @@ int run_cmd(char* cmd, char* argv[])
 {
 	int rc     = E_UA_OK;
 	int status = 0;
-
-	if (cmd && is_cmd_runnable(cmd) && argv) {
+	if (cmd && !is_cmd_runnable(cmd) && argv) {
 		pid_t pid=fork();
 
 		if ( pid == -1) {
@@ -279,7 +278,7 @@ int unzip(const char* archive, const char* path)
 
 			char cmd[]   = "unzip";
 			char* argv[] = {cmd, (char*)archive, "-d", (char*)path, NULL};
-			BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
+			BOLT_SYS(run_cmd(cmd, argv), "failed to unzip files");
 
 		} while (0);
 
@@ -676,7 +675,6 @@ int is_cmd_runnable(const char* cmd)
 {
 	int err    = E_UA_OK;
 	char* path = 0;
-
 	do {
 		if (strchr(cmd, '/')) {
 			err = access(cmd, X_OK);
@@ -684,7 +682,6 @@ int is_cmd_runnable(const char* cmd)
 		}
 
 		BOLT_IF(!(path = f_strdup(getenv("PATH"))), E_UA_ERR, "PATH env empty");
-
 		char* pch = strtok(path, ":");
 		while (pch != NULL) {
 			char* p = JOIN(pch, cmd);
@@ -696,7 +693,6 @@ int is_cmd_runnable(const char* cmd)
 			pch = strtok(NULL, ":");
 		}
 	} while (0);
-
 	if (path) free(path);
 	return err;
 }
