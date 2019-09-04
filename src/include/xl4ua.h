@@ -216,6 +216,8 @@ XL4_PUB int ua_send_transfer_progress(const char* pkgName, const char* version, 
 
 XL4_PUB int ua_backup_package(char* pkgName, char* version);
 
+XL4_PUB int ua_send_message_string(char* message);
+
 #ifdef _json_h_
 
 XL4_PUB int ua_send_message(json_object* message);

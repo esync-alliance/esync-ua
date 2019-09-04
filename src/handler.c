@@ -230,6 +230,12 @@ int ua_send_message(json_object* jsonObj)
 
 }
 
+int ua_send_message_string(char* message)
+{
+	DBG("Sending to DMC : %s", message);
+	return xl4bus_client_send_msg(message);
+}
+
 XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address)
 {
 	char* msg = (char*)json_object_to_json_string(jsonObj);
