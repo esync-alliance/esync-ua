@@ -481,8 +481,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			err = get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version);
 
 		if (err == E_UA_OK) {
-			if (uacc->update_manifest == NULL)
-				uacc->update_manifest = JOIN(cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+			uacc->update_manifest = JOIN(cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
 
 			get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
 

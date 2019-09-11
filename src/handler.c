@@ -652,12 +652,10 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 			if (S(ua_intl.backup_dir)) {
 				pkg_file_t* pf, * aux, * pkgFile = NULL;
+				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
-				if (uacc->backup_manifest == NULL)
-					uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
-
-				if (uacc->backup_manifest != NULL) {
-					if (!parse_pkg_manifest(uacc->backup_manifest, &pkgFile)) {
+				if (backup_manifest != NULL) {
+					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
 						json_object* verListObject = json_object_new_object();
 						json_object* rbVersArray   = json_object_new_array();
 
@@ -684,6 +682,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 					}
 
+					free(backup_manifest);
 				}
 
 			}
@@ -732,8 +731,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 		get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
 
-		if (uacc->backup_manifest == NULL)
-			uacc->backup_manifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
+		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 		pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
 		uacc->state     = UA_STATE_PREPARE_UPDATE_STARTED;
@@ -749,8 +747,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
 			if (state == INSTALL_READY) {
-				if (uacc->update_manifest == NULL)
-					uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
+				uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
 				if (uacc->update_manifest != NULL) {
 					if (!calc_sha256_x(updateFile.file, updateFile.sha256b64)) {
@@ -767,7 +764,14 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
-
+		if(uacc->backup_manifest) {
+			free(uacc->backup_manifest);
+			uacc->backup_manifest = NULL;
+		}
+		if(uacc->update_manifest) {
+			free(uacc->update_manifest);
+			uacc->update_manifest = NULL;
+		}
 		uacc->state = UA_STATE_PREPARE_UPDATE_DONE;
 	}
 }
@@ -820,13 +824,23 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}
 
 		if (update_sts == INSTALL_COMPLETED) {
-			if (uacc->backup_manifest == NULL)
-				uacc->backup_manifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG) : NULL;
+			uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 
 		json_object_put(jo);
 		uacc->state = UA_STATE_READY_UPDATE_DONE;
+
+		if(uacc->backup_manifest) {
+			free(uacc->backup_manifest);
+			uacc->backup_manifest = NULL;
+		}
+
+		if(uacc->update_manifest) {
+			free(uacc->update_manifest);
+			uacc->update_manifest = NULL;
+		}
+
 		log_data_t ld;
 		flashing_time = (double)(clock()-start_time) / CLOCKS_PER_SEC;
 		set_flashing_time_log_data(&ld, flashing_time, uacc->update_pkg.name, update_sts);
@@ -866,15 +880,15 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		if (uacc->backup_manifest == NULL)
-			uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
-		if (uacc->backup_manifest != NULL) {
+		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+		if (backup_manifest != NULL) {
 			if (!get_body_rollback_from_json(jsonObj, &rollback) && rollback && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
-				remove_old_backup(uacc->backup_manifest, pkgInfo.rollback_version);
+				remove_old_backup(backup_manifest, pkgInfo.rollback_version);
 			else
-				remove_old_backup(uacc->backup_manifest, pkgInfo.version);
+				remove_old_backup(backup_manifest, pkgInfo.version);
 
 			uacc->state = UA_STATE_IDLE_INIT;
+			free(backup_manifest);
 			update_release_comp_context(uacc);
 		}else
 			DBG("backup_manifest in not set.");
