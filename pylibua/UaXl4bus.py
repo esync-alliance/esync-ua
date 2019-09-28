@@ -1,13 +1,14 @@
 """
 
 """
-from libuamodule import *
+import libuamodule
 import os
 import json
 import shutil
 import time
 import logging
 import sys
+from collections import OrderedDict
 
 class UaXl4bus:
     """Base class of update agent via Xl4bus """
@@ -55,18 +56,28 @@ class UaXl4bus:
         self.reconstruct_delta = reconstruct_delta
         self.libua_debug = 0
         self.ua_version = None
-        cb = py_ua_cb_t()
+
+        cb = libuamodule.py_ua_cb_t()
+        if self.do_set_version.__code__ is not UaXl4bus.do_set_version.__code__:
+            cb.ua_set_version = "do_set_version"
+        if self.do_pre_install.__code__ is not UaXl4bus.do_pre_install.__code__:
+            cb.ua_pre_install = "do_pre_install"
+        if self.do_post_install.__code__ is not UaXl4bus.do_post_install.__code__:
+            cb.ua_post_install = "do_post_install"
+        if self.do_prepare_install.__code__ is not UaXl4bus.do_prepare_install.__code__:
+            cb.ua_prepare_install =  "do_prepare_install"
+        if self.do_transfer_file.__code__ is not UaXl4bus.do_transfer_file.__code__:
+            cb.ua_transfer_file =  "do_transfer_file"
+        if self.do_dmc_presence.__code__ is not UaXl4bus.do_dmc_presence.__code__:
+            cb.ua_dmc_presence =  "do_dmc_presence"
+        if self.do_message.__code__ is not UaXl4bus.do_message.__code__:
+            cb.ua_on_message =  "do_message"
+        
         cb.ua_get_version = "do_get_version"
-        cb.ua_set_version = "do_set_version"
-        cb.ua_pre_install = "do_pre_install"
-        cb.ua_install = "do_install"
-        cb.ua_post_install = "do_post_install"
-        cb.ua_prepare_install =  "do_prepare_install"
-        cb.ua_prepare_download =  "do_confirm_download"      
-        cb.ua_transfer_file =  "do_transfer_file"      
-        cb.ua_dmc_presence =  "do_dmc_presence"      
-        cb.ua_on_message =  "do_message"      
-        pua_set_callbacks(self, cb)
+        cb.ua_install = "do_install"        
+        cb.ua_prepare_download =  "do_confirm_download"       
+
+        libuamodule.pua_set_callbacks(self, cb)
 
     def run_forever(self):
         """ Start communication with DMClient via Xl4bus-broker. 
@@ -74,19 +85,19 @@ class UaXl4bus:
                 Start a thread to retrieve XL4bus messages from a Queue for further processing. 
         """
         print(self.cert_label, self.cert_dir, self.version_dir)
-        uacfg = ua_cfg_t()
-        
+        uacfg = libuamodule.ua_cfg_t()
+
         uacfg.url = self.host_port
         uacfg.cert_dir = self.cert_dir
         uacfg.cache_dir = "/tmp/esync/"
         uacfg.backup_dir = "/data/sota/esync/"
         uacfg.delta = self.enable_delta
         uacfg.debug = self.libua_debug
-        #uacfg.delta_config 
-        #uacfg.rw_buffer_size 
+        # uacfg.delta_config
+        # uacfg.rw_buffer_size
         uacfg.reboot_support = 0
         self.do_init()
-        if (self.xl4bus_client_initialized == False and pua_start(self.nodeType, uacfg) == 0):
+        if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, uacfg) == 0):
             self.xl4bus_client_initialized = True
 
     def do_init(self):
@@ -119,8 +130,6 @@ class UaXl4bus:
         Default is "INSTALL_IN_PROGRESS"
         Status will be sent in xl4.update-status to DMClient
         """
-        with open("Output.txt", "a") as text_file:
-            text_file.write("do_pre_install : \t%s \n" % downloadFileStr)
         return "INSTALL_IN_PROGRESS"
 
     def do_install(self, downloadFileStr):
@@ -131,16 +140,12 @@ class UaXl4bus:
 
         Default is "INSTALL_COMPLETED"
         Status will be sent in xl4.update-status to DMClient
-		"""
+                """
         print("do_install for: \t%s\n" % downloadFileStr)
-        with open("Output.txt", "a") as text_file:
-            text_file.write("do_install : \t\t%s \n" % downloadFileStr)
         return "INSTALL_COMPLETED"
 
     def do_post_install(self, packageName):
         """Interface to invoke additional action after do_install()"""
-        with open("Output.txt", "a") as text_file:
-            text_file.write("do_post_install : \t%s \n" % packageName)
         pass
 
     def do_get_version(self, packageName):
@@ -150,10 +155,8 @@ class UaXl4bus:
         version_dir/packageName. If 'version' is not found, return None. 
 
         Subclass shall return a version string, e.g. "1.0", or None. 
-		"""
+                """
         print("do_get_version for: %s\n" % (packageName))
-        with open("Output.txt", "a") as text_file:
-            text_file.write("do_get_version : \t%s : \t%s\n" % (packageName, self.ua_version))
         return self.ua_version
 
     def do_set_version(self, packageName, ver):
@@ -174,14 +177,19 @@ class UaXl4bus:
         """
 
         self.ua_version = ver
-        with open("Output.txt", "a") as text_file:
-            text_file.write("do_set_version : \t%s : \t%s\n" % (packageName, self.ua_version))
         return 0
 
     def do_prepare_install(self, packageName, version, packageFile, newFile):
-        with open("Output.txt", "a") as text_file:
-            text_file.write("do_prepare_install : \t%s : \t%s\n" % (packageFile, version))
         return "INSTALL_READY"
+
+    def do_transfer_file(self):
+        pass
+
+    def do_dmc_presence(self):
+        pass
+
+    def do_message(self):
+        pass
 
     def send_update_status(self, update_status, file_downloaded=False):
         """ Send xl4.update-status message to DMClient
@@ -218,9 +226,9 @@ class UaXl4bus:
 
         jsonDiagStr = json.dumps(diagMsg)
         now = time.strftime("[%m-%d:%H:%M:%S]", time.localtime())
-        print (str(now), jsonDiagStr)
-        if(pua_send_message(jsonDiagStr) != 0):
-            print ("Failed to send message")
+        print(str(now), jsonDiagStr)
+        if(libuamodule.pua_send_message(jsonDiagStr) != 0):
+            print("Failed to send message")
 
     def set_xl4bus_debug(self, enable=0):
         """Enable/Disable xl4bus debug messages. 
@@ -248,22 +256,6 @@ class UaXl4bus:
         if hasattr(self, 'backup_dir') is False:
             self.backup_dir = "/data/sota/backup"
 
-    def parse_manifest(self, downloadFileStr):
-        """ Extract manifest.xml from installation archive and parse xml file to Dictionary object.
-
-        Args:
-                downloadFileStr(str): Package path name containing manifest.xml. 
-
-        Returns:
-                A Dictionary object with (key, value) pairs from manifest.xml
-        """
-        dict = {}
-        with zipfile.ZipFile(downloadFileStr, "r").open('manifest.xml') as f:
-            xmlRoot = ET.parse(f).getroot()
-            for elem in xmlRoot:
-                dict[elem.tag] = elem.text
-        return dict
-
     def is_xl4bus_initialized(self):
         """ Return if xl4bus client has been initialzed, UA can start sending messages if so. 
 
@@ -282,7 +274,7 @@ class UaXl4bus:
         Returns:
                 True if initialzed, otherwise False.  
         """
-        if (self.xl4bus_client_initialized == False and pua_start(self.cert_label, self.cert_dir, self.host_port) == 0):
+        if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, self.cert_dir, self.host_port) == 0):
             self.xl4bus_client_initialized = True
 
         return self.xl4bus_client_initialized
