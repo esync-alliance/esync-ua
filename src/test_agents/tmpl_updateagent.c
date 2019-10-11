@@ -12,7 +12,7 @@
 #include <sys/types.h>
 
 #define MAX_SIZE 256
-const char backupDir[]         = "/data/sota/esync/backup/";
+char backupDir[256]         = "/data/sota/esync/backup/";
 char rbConfFile[256]           = "/data/sota/rbConf";
 update_mode_t test_update_mode = 0;
 int test_reboot                = 0;
@@ -21,6 +21,7 @@ char instVer[60] = "\0";
 char* bkpDir;
 FILE* fp1;
 
+// Read installed version from the version file
 int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
 	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
@@ -37,6 +38,7 @@ int get_tmpl_version(const char* type, const char* pkgName, char** version)
 	return E_UA_OK;
 }
 
+//write installed version to the version file
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
 	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
@@ -153,6 +155,7 @@ ua_routine_t* get_tmpl_routine(void)
 
 }
 
+//Set the installation mode as success, failure, rollback or alternate between fail and success
 void set_test_installation_mode(update_mode_t mode, int reboot)
 {
 	test_update_mode = mode;
@@ -165,8 +168,16 @@ void set_rbConf_path(char * rbPath)
 	//printf("rbConfPath: %s\n", rbConfFile);
 }
 
+//Set the backup directory to the user provided value
+//Adding "backup" at the end as the UA library will add this too
+void set_backup_dir(char * bkpDir)
+{
+	strcpy(backupDir, bkpDir);
+	strcat(backupDir, "/backup/");
+	//printf("backup Dir: %s\n", backupDir);
+}
 
-
+//get the rollback version from the rbConf file
 void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName)
 {
 	FILE* fp;
@@ -229,8 +240,7 @@ void getFileName(const char* pkgName)
 void getBackupDir(const char* pkgName)
 {
 	int ret_dir;
-
-	strcpy(bkpDir, backupDir);
+        strcpy(bkpDir, backupDir);
 	strcat(bkpDir, pkgName);
 	//printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
 	ret_dir = mkdir(bkpDir, 0755);
@@ -275,6 +285,7 @@ int setVerToFile(const char* pkgName, const char* version)
 {
 	bkpDir = (char*)malloc(MAX_SIZE * sizeof(char));
 	getBackupDir(pkgName);
+	//printf("setVerToFile: %s\n", bkpDir);
 	if (access(bkpDir, F_OK) != -1 ) {
 		if ((fp1 = fopen(instVerFile, "w")) == NULL)
 		{
