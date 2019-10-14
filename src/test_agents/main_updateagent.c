@@ -63,6 +63,7 @@ int main(int argc, char** argv)
 				break;
 			case 'b':
 				cfg.backup_dir = optarg;
+				set_backup_dir(optarg);
 				break;
 			case 'c':
 				cfg.cache_dir = optarg;

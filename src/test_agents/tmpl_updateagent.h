@@ -23,5 +23,6 @@ void getBackupDir(const char* pkgName);
 int getVerFromFile(const char* pkgName);
 int setVerToFile(const char* pkgName, const char* version);
 void set_rbConf_path(char * rbPath);
+void set_backup_dir(const char * bkpDir);
 
 #endif /* TMPL_UPDATEAGENT_H_ */
