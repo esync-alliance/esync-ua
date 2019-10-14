@@ -169,11 +169,22 @@ void set_rbConf_path(char * rbPath)
 }
 
 //Set the backup directory to the user provided value
-//Adding "backup" at the end as the UA library will add this too
-void set_backup_dir(char * bkpDir)
+//Adding "backup" to the path as the UA library will add this too
+void set_backup_dir(const char * bkpDir)
 {
+	int len;
+	char c;
+	if (bkpDir == NULL) {
+		printf("backup dir value provided is NULL\n");
+		return;
+	}
 	strcpy(backupDir, bkpDir);
-	strcat(backupDir, "/backup/");
+    len = strlen(bkpDir) -1;   //get the last character and compare if it is "/""
+    c = bkpDir[len];
+    if(c == '/') 
+    	strcat(backupDir, "backup/");
+    else
+		strcat(backupDir, "/backup/");
 	//printf("backup Dir: %s\n", backupDir);
 }
 
@@ -233,27 +244,33 @@ void getFileName(const char* pkgName)
 	strcpy(instVerFile, backupDir);
 	strcat(instVerFile, pkgName);
 	strcat(instVerFile, verFile);
-	//printf("getFileName: resulting file: %s\n", instVerFile);
+	printf("getFileName: resulting file: %s\n", instVerFile);
 	free(verFile);
 }
 
 void getBackupDir(const char* pkgName)
 {
 	int ret_dir;
-        strcpy(bkpDir, backupDir);
+    strcpy(bkpDir, backupDir);
 	strcat(bkpDir, pkgName);
 	//printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
-	ret_dir = mkdir(bkpDir, 0755);
-	if (ret_dir != 0) {
-		printf("Back up directory creation failed or already exists\n");
+	if (access(bkpDir, F_OK) != -1 ) {
+		ret_dir = mkdir(bkpDir, 0755);
+		if (ret_dir != 0) {
+			printf("Back up directory creation failed\n");
+		}
+		else {
+			printf("Back up directory created\n");
+		}
 	}
-	else {
-		printf("Back up directory created\n");
-	}
+	else
+		printf("Back up directory exists\n");
+
 }
 
 int getVerFromFile(const char* pkgName)
 {
+	printf("getVerFromFile: instVerFile - %s\n", instVerFile);
 	if (access(instVerFile, F_OK) != -1 ) {
 		if ((fp1 = fopen(instVerFile, "r")) != NULL) {
 			//printf("File open success\n ");
