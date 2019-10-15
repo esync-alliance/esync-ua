@@ -14,3 +14,4 @@ libua.so
 rules.ninja
 tmpl-updateagent
 ua_version.h
+build
