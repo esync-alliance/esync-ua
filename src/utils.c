@@ -3,11 +3,10 @@
  */
 
 #include "utils.h"
-
-
-static int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
-
-
+#include <string.h>
+#include <stdarg.h>
+#include "xl4ua.h"
+#include "debug.h"
 
 int get_type_from_json(json_object* jsonObj, char** value)
 {
@@ -97,13 +96,27 @@ int get_update_status_response_from_json(json_object* jsonObj, int* value)
 
 }
 
-
 int get_pkg_sha256_from_json(json_object* jsonObj, char* version, char value[SHA256_B64_LENGTH])
 {
 	int err      = E_UA_OK;
 	char* sha256 = 0;
 
 	if (!json_get_property(jsonObj, json_type_string, &sha256, "body", "package", "version-list", version, "sha-256", NULL) &&
+	    (strlen(sha256) == (SHA256_B64_LENGTH - 1))) {
+		strcpy(value, sha256);
+	} else {
+		err = E_UA_ERR;
+	}
+	return err;
+
+}
+
+int get_pkg_delta_sha256_from_json(json_object* jsonObj, char* version, char value[SHA256_B64_LENGTH])
+{
+	int err      = E_UA_OK;
+	char* sha256 = 0;
+
+	if (!json_get_property(jsonObj, json_type_string, &sha256, "body", "package", "version-list", version, "delta-sha-256", NULL) &&
 	    (strlen(sha256) == (SHA256_B64_LENGTH - 1))) {
 		strcpy(value, sha256);
 	} else {
@@ -153,7 +166,7 @@ int get_pkg_next_rollback_version(json_object* jsonArr, char* currentVer, char**
 
 
 
-static int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... )
+int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... )
 {
 	int err = E_UA_OK;
 	json_object* aux;

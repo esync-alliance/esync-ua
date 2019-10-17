@@ -3,6 +3,8 @@
  */
 
 #include "xml.h"
+#include "utlist.h"
+#include "debug.h"
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name);
 static diff_info_t* get_xml_diff_info(xmlNodePtr ptr);
@@ -348,7 +350,7 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 					xmlFree(c);
 				}
 			}
-			if ((n = get_xml_child(node, XMLT "rollback-order"))) {
+			else if ((n = get_xml_child(node, XMLT "rollback-order"))) {
 				//Increment rollback-order for each version.
 				if ((c = xmlNodeGetContent(n))) {
 					int rc = snprintf(rb_order, sizeof(rb_order), "%d", atoi((const char*)c)+1);
@@ -420,7 +422,10 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 	xmlNodePtr root = NULL;
 	pkg_file_t* pf  = NULL;
 
-	if (!xmlFile || !version || !pkgFile) return E_UA_ERR;
+	if (!xmlFile || !version || !pkgFile) {
+		DBG("Got null pointer(s) xmlFile(%p), version(%p), pkgFile(%p)", xmlFile, version, pkgFile);
+		return E_UA_ERR;
+	}
 
 	do {
 		BOLT_SYS(access(xmlFile, R_OK), "pkg manifest not available %s", xmlFile);

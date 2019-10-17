@@ -1,26 +1,9 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.4.3)
 project(libxl4ua)
-
-include(FindPkgConfig)
-include(FindLibXml2)
-include(FindOpenSSL)
-include(FindLibZip.cmake)
-include(CMakeForceCompiler)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
-
-# thanks to http://stackoverflow.com/questions/7172670
-function(join OUTPUT GLUE)
-    set(_TMP_RESULT "")
-    set(_GLUE "") # effective glue is empty at the beginning
-    foreach(arg ${ARGN})
-        set(_TMP_RESULT "${_TMP_RESULT}${_GLUE}${arg}")
-        set(_GLUE "${GLUE}")
-    endforeach()
-    set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
-endfunction(join)
 
 function(set_empty OUTPUT VAL)
     if ((NOT DEFINED ${OUTPUT}) OR "${${OUTPUT}}" STREQUAL "")
@@ -51,32 +34,34 @@ function(targets_link_libraries)
     message("end targets_link_libraries")
 endfunction(targets_link_libraries)
 
-function(influence_pkg_spec TGT PREFIX)
-    if (TARGET ${TGT})
-        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS})
-        target_compile_options(${TGT} PUBLIC ${${PREFIX}_CFLAGS_OTHER})
-
-        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS})
-        target_link_libraries(${TGT} ${${PREFIX}_LDFLAGS_OTHER})
-    endif()
-endfunction(influence_pkg_spec)
-
-function(influence_pkg PREFIX)
-    if (${PREFIX}_FOUND)
-        influence_pkg_spec(ua-shared ${PREFIX})
-        influence_pkg_spec(ua-static ${PREFIX}_STATIC)
-        influence_pkg_spec(updateagent ${PREFIX})
-    endif()
-endfunction(influence_pkg)
-
-set(BUILD_CONFIG $ENV{BUILD_CONFIG})
-if (NOT BUILD_CONFIG)
-    set(BUILD_CONFIG "config.cmk")
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "QNX")
+    set(TARGET "qnx_port")
+else()
+    set(TARGET "linux_port")
 endif()
 
-message(STATUS "Using configuration file ${BUILD_CONFIG}")
+get_filename_component(TARGET "${TARGET}" REALPATH BASE_DIR "${CMAKE_SOURCE_DIR}")
+get_filename_component(ROOT_DIR "" REALPATH BASE_DIR "${CMAKE_SOURCE_DIR}")
 
-include(${BUILD_CONFIG})
+set(LOAD_CFG ${TARGET}/config.cmk)
+if((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+    set(LOAD_CFG ${TARGET}/config.cmk.tmpl)
+    if ((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+        message(FATAL_ERROR "${TARGET} folder must contain config.cmk file")
+    endif()
+endif()
+
+include(${LOAD_CFG})
+
+set(LOAD_CFG ${TARGET}/deps.cmk)
+if((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+    set(LOAD_CFG ${TARGET}/deps.cmk.tmpl)
+    if ((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+        message(FATAL_ERROR "${TARGET} folder must contain deps.cmk file")
+    endif()
+endif()
+
+include(${LOAD_CFG})
 
 set_empty(BUILD_SHARED TRUE)
 set_empty(BUILD_STATIC TRUE)
@@ -96,20 +81,6 @@ set(BCH ${CMAKE_BINARY_DIR}/build_config.h)
 configure_file(${CMAKE_SOURCE_DIR}/build_config.h.in ${BCH})
 configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
 
-set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
-
-include_directories(SYSTEM ${XL4BUS_DIR})
-include_directories(SYSTEM ${XL4BUS_DIR}/include)
-include_directories(SYSTEM ${XL4BUS_DIR}/../src/include)
-include_directories(SYSTEM ${JSON_C})
-include_directories(SYSTEM ${LIBZIP_INCLUDE_DIR})
-include_directories(SYSTEM ${LIBXML2_INCLUDE_DIR})
-include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
-include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_BINARY_DIR})
-link_directories(${XL4BUS_DIR})
-
 add_custom_command(OUTPUT PHONY ${CMAKE_BINARY_DIR}/ua_version.h COMMAND ${CMAKE_SOURCE_DIR}/make_version.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set(LIB_SOURCE ${LIB_SOURCE}
@@ -123,6 +94,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/misc.c
     src/delta.c
     src/xml.c
+    src/updater.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
@@ -130,6 +102,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/misc.h
     src/delta.h
     src/xml.h
+    src/updater.h
     src/debug.h
     src/uthash.h
     src/utlist.h
@@ -137,30 +110,13 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/include/xl4ua.h
 )
 
-if (NOT LIBXML2_FOUND)
-    message(FATAL_ERROR "I sorta need libxml2 dev package")
-endif()
-
-if (NOT OPENSSL_FOUND)
-    message(FATAL_ERROR "Though OpenSSL has been hammered at a lot recently, I still need it")
-endif()
-
-if (NOT LIBZIP_FOUND STREQUAL "YES")
-    message(FATAL_ERROR "libzip library is required")
-endif()
-
-set(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a)
-if (NOT EXISTS ${JSON_C_LIB})
-    message(FATAL_ERROR "You must build json-c sources first!")
-endif()
-
 if (XL4_PROVIDE_THREADS)
     set(THREADS_PREFER_PTHREAD_FLAG TRUE)
     find_package(Threads MODULE REQUIRED)
 endif()
 
 if (DEBUG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
@@ -174,7 +130,7 @@ if (BUILD_SHARED)
         target_link_libraries(ua-shared Threads::Threads)
     endif()
     set(USE_LIB ua-shared)
-    target_link_libraries(ua-shared ${JSON_C_LIB})
+    target_link_libraries(ua-shared ${SHARED_DEPS})
     install(TARGETS ua-shared LIBRARY DESTINATION lib)
 endif()
 
@@ -196,12 +152,12 @@ if (BUILD_BINS)
     add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
 
     add_executable(tmpl-updateagent
-            src/test_agents/updateagent.c
+            src/test_agents/main_updateagent.c
             src/test_agents/tmpl_updateagent.c
             src/test_agents/tmpl_updateagent.h
     )
 
-    targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} -lxl4bus -lm ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
+    targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
 
     if (XL4_PROVIDE_THREADS)
         targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES Threads::Threads)
@@ -212,3 +168,35 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
+install(FILES src/include/xl4ua.h  DESTINATION include)
+
+if(UNIT_TEST)
+    find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
+    add_executable(	ual_test ${LIB_SOURCE}
+                    src/test_agents/tmpl_updateagent.c
+                    src/test_agents/tmpl_updateagent.h
+                    unit_tests/test_setup.c
+                    unit_tests/test_setup.h
+                    unit_tests/ual_test.c
+                    )
+    set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
+    target_compile_definitions(ual_test PRIVATE WITH_UNIT_TEST)
+    target_compile_options(ual_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
+    target_link_libraries(ual_test xl4bus pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${JSON_C_LIB} ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
+
+endif()
+
+if(BUILD_PY_LIBUA)
+	include(FindPythonInterp)
+	find_package(PythonInterp)
+	if (PYTHONINTERP_FOUND)
+		set(PY_LIBUA_DIR "${CMAKE_SOURCE_DIR}/pylibua")
+		set(SETUP_PY    "${CMAKE_SOURCE_DIR}/setup.py")
+		set(OUTPUT    "${PY_LIBUA_DIR}/_libuamodule.so")
+		add_custom_command(OUTPUT ${OUTPUT}
+						COMMAND XL4BUS_DIR=${XL4BUS_DIR} ${PYTHON_EXECUTABLE}
+						ARGS ${SETUP_PY} build_ext -b ${PY_LIBUA_DIR})
+		add_custom_target(target ALL DEPENDS ${OUTPUT})
+		install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install)")	
+	endif()
+endif()

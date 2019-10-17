@@ -5,8 +5,17 @@
 #include "misc.h"
 #include "delta.h"
 #include <sys/wait.h>
-#include <dirent.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <zip.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
+#include "utlist.h"
+#include "xl4ua.h"
+#include "debug.h"
 #if 0
 static int zip_archive_add_file(struct zip* za, const char* path, const char* base);
 static int zip_archive_add_dir(struct zip* za, const char* path, const char* base);
@@ -156,8 +165,7 @@ int run_cmd(char* cmd, char* argv[])
 {
 	int rc     = E_UA_OK;
 	int status = 0;
-
-	if (cmd && argv) {
+	if (cmd && !is_cmd_runnable(cmd) && argv) {
 		pid_t pid=fork();
 
 		if ( pid == -1) {
@@ -270,7 +278,7 @@ int unzip(const char* archive, const char* path)
 
 			char cmd[]   = "unzip";
 			char* argv[] = {cmd, (char*)archive, "-d", (char*)path, NULL};
-			BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
+			BOLT_SYS(run_cmd(cmd, argv), "failed to unzip files");
 
 		} while (0);
 
@@ -535,8 +543,6 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	struct zip* za;
 	struct zip_file* zf;
 	struct zip_stat sb;
-	BIO* b64;
-	BUF_MEM* bptr;
 	SHA256_CTX ctx;
 	struct sha256_list* sl         = 0;
 	struct sha256_list* aux        = 0;
@@ -586,16 +592,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 			}
 			SHA256_Final(hash, &ctx);
 
-			b64 = BIO_push(BIO_new(BIO_f_base64()), BIO_new(BIO_s_mem()));
-
-			BIO_write(b64, hash, SHA256_DIGEST_LENGTH);
-			BIO_flush(b64);
-			BIO_get_mem_ptr(b64, &bptr);
-
-			memcpy(obuff, bptr->data, SHA256_B64_LENGTH - 1);
-			obuff[SHA256_B64_LENGTH - 1] = 0;
-
-			BIO_free_all(b64);
+			err = base64_encode(hash, obuff);
 		}
 
 	} while (0);
@@ -615,6 +612,53 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	return err;
 }
 
+int base64_encode(unsigned char hash[SHA256_DIGEST_LENGTH], char b64buff[SHA256_B64_LENGTH])
+{
+	int err       = E_UA_ERR;
+	BIO* b64      = NULL;
+	BUF_MEM* bptr = NULL;
+
+	b64 = BIO_push(BIO_new(BIO_f_base64()), BIO_new(BIO_s_mem()));
+
+	if (b64 && BIO_write(b64, hash, SHA256_DIGEST_LENGTH) > 0) {
+		BIO_flush(b64);
+		BIO_get_mem_ptr(b64, &bptr);
+		memcpy(b64buff, bptr->data, SHA256_B64_LENGTH - 1);
+		b64buff[SHA256_B64_LENGTH - 1] = 0;
+		BIO_free_all(b64);
+		err = E_UA_OK;
+	}
+
+	return err;
+}
+
+int verify_file_hash_b64(const char* file, const char* sha256_b64)
+{
+	int err = E_UA_ERR;
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	char b64buff[SHA256_B64_LENGTH];
+
+	if (!(err = calc_sha256(file, hash))) {
+		if (base64_encode(hash, b64buff) == E_UA_OK) {
+			if (!strncmp(b64buff, sha256_b64, sizeof(b64buff) - 1)) {
+				DBG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+				err = E_UA_OK;
+
+			} else {
+				DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+				err = E_UA_ERR;
+			}
+
+		}
+
+	} else {
+		DBG("SHA256 Hash calculation failed : %s", file);
+	}
+
+	return err;
+
+}
+
 int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH])
 {
 	char b64_tmp[SHA256_B64_LENGTH];
@@ -631,7 +675,6 @@ int is_cmd_runnable(const char* cmd)
 {
 	int err    = E_UA_OK;
 	char* path = 0;
-
 	do {
 		if (strchr(cmd, '/')) {
 			err = access(cmd, X_OK);
@@ -639,7 +682,6 @@ int is_cmd_runnable(const char* cmd)
 		}
 
 		BOLT_IF(!(path = f_strdup(getenv("PATH"))), E_UA_ERR, "PATH env empty");
-
 		char* pch = strtok(path, ":");
 		while (pch != NULL) {
 			char* p = JOIN(pch, cmd);
@@ -651,11 +693,34 @@ int is_cmd_runnable(const char* cmd)
 			pch = strtok(NULL, ":");
 		}
 	} while (0);
-
 	if (path) free(path);
 	return err;
 }
 
+
+char* randstring(int length)
+{
+	char* string     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
+	size_t stringLen = strlen(string);
+	char* randomString;
+
+	randomString = malloc(sizeof(char) * (length +1));
+
+	if (randomString == NULL) {
+		return (char*)0;
+	}
+
+	unsigned int key = 0;
+
+	for (int n = 0; n < length; n++) {
+		key             = rand() % stringLen;
+		randomString[n] = string[key];
+	}
+
+	randomString[length] = '\0';
+
+	return randomString;
+}
 int remove_subdirs_except(char* parent_dir, char* subdir_to_keep)
 {
 	DIR* d;

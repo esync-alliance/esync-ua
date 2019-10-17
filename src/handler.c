@@ -3,45 +3,38 @@
  */
 
 #include "handler.h"
-
-#include <xl4ua.h>
 #include <pthread.h>
 #include "utils.h"
 #include "delta.h"
-#include "misc.h"
+#include "debug.h"
 #include "xml.h"
 #include "xl4busclient.h"
 #include "ua_version.h"
+#include "updater.h"
 
-static void process_message(ua_unit_t* ui, const char* msg, size_t len);
-static void process_run(ua_unit_t* ui, process_f func, json_object* jObj, int turnover);
-static void process_query_package(ua_routine_t* uar, json_object* jsonObj);
-static void process_ready_download(ua_routine_t* uar, json_object* jsonObj);
-static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj);
-static void process_ready_update(ua_routine_t* uar, json_object* jsonObj);
-static void process_confirm_update(ua_routine_t* uar, json_object* jsonObj);
-static void process_download_report(ua_routine_t* uar, json_object* jsonObj);
-static void process_sota_report(ua_routine_t* uar, json_object* jsonObj);
-static void process_log_report(ua_routine_t* uar, json_object* jsonObj);
-static void process_update_status(ua_routine_t* uar, json_object* jsonObj);
-static int transfer_file_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue);
-static download_state_t prepare_download_action(ua_routine_t* uar, pkg_info_t* pkgInfo);
-static install_state_t pre_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-static install_state_t update_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-static void post_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo);
-static void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
+static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
+static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
+static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_ready_download(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_prepare_update(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_confirm_update(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_download_report(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj);
+static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
+static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 static void send_download_status(pkg_info_t* pkgInfo, download_state_t state);
 static int send_update_report(const char* pkgName, const char* version, int indeterminate, int percent, update_stage_t us);
-static int send_current_report_version(pkg_info_t* pkgInfo, char* report_version);
-static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
+static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version);
+static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile);
 static char* install_state_string(install_state_t state);
 static char* download_state_string(download_state_t state);
 static char* update_stage_string(update_stage_t stage);
 static char* log_type_string(log_type_t log);
 void* runner_loop(void* arg);
-static void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
 
 int ua_debug          = 1;
 ua_internal_t ua_intl = {0};
@@ -75,16 +68,18 @@ int ua_init(ua_cfg_t* uaConfig)
 		BOLT_IF(uaConfig->delta && delta_init(uaConfig->cache_dir, uaConfig->delta_config), E_UA_ARG, "delta initialization error");
 
 		memset(&ua_intl, 0, sizeof(ua_internal_t));
-		ua_intl.delta         = uaConfig->delta;
-		ua_intl.backup_source = uaConfig->backup_source;
-		ua_intl.cache_dir     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
-		ua_intl.backup_dir    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
+		ua_intl.delta                         = uaConfig->delta;
+		ua_intl.reboot_support                = uaConfig->reboot_support;
+		ua_intl.cache_dir                     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
+		ua_intl.backup_dir                    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
+		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
+		ua_intl.backup_source                 = uaConfig->backup_source;
+		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
-
 		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "backup lock init");
 
-		ua_intl.state = UA_STATE_IDLE_INIT;
+		ua_intl.state = UAI_STATE_INITIALIZED;
 
 		if (uaConfig->rw_buffer_size) ua_rw_buff_size = uaConfig->rw_buffer_size * 1024;
 
@@ -98,12 +93,13 @@ int ua_init(ua_cfg_t* uaConfig)
 }
 
 
-int ua_stop()
+int ua_stop(void)
 {
 	if (ua_intl.cache_dir) { free(ua_intl.cache_dir); ua_intl.cache_dir = NULL; }
 	if (ua_intl.backup_dir) { free(ua_intl.backup_dir); ua_intl.backup_dir = NULL; }
+	if (ua_intl.record_file) { free(ua_intl.record_file); ua_intl.record_file = NULL; }
 	delta_stop();
-	if (ua_intl.state == UA_STATE_IDLE_INIT)
+	if (ua_intl.state >= UAI_STATE_INITIALIZED)
 		return xl4bus_client_stop();
 	pthread_mutex_destroy(&ua_intl.backup_lock);
 	return 0;
@@ -115,6 +111,9 @@ int ua_register(ua_handler_t* uah, int len)
 	int err           = E_UA_OK;
 	runner_info_t* ri = 0;
 
+	ua_intl.uah   = uah;
+	ua_intl.n_uah = len;
+
 	if (!ri_tree) {
 		ri_tree = f_malloc(sizeof(runner_info_hash_tree_t));
 		utarray_init(&ri_tree->items, &ut_ptr_icd);
@@ -122,16 +121,22 @@ int ua_register(ua_handler_t* uah, int len)
 
 	for (int i = 0; i < len; i++) {
 		do {
-			ri            = f_malloc(sizeof(runner_info_t));
-			ri->unit.type = f_strdup((uah + i)->type_handler);
-			ri->unit.uar  = (*(uah + i)->get_routine)();
-			ri->run       = 1;
-			BOLT_IF(!ri->unit.uar || !ri->unit.uar->on_get_version || !ri->unit.uar->on_install || !S(ri->unit.type), E_UA_ARG, "registration error");
+			ri                  = f_malloc(sizeof(runner_info_t));
+			ri->component.type  = f_strdup((uah + i)->type_handler);
+			ri->component.uar   = (*(uah + i)->get_routine)();
+			ri->component.state = UA_STATE_IDLE_INIT;
+			ri->run             = 1;
+			BOLT_IF(!ri->component.uar || !ri->component.uar->on_get_version || !ri->component.uar->on_install || !S(ri->component.type), E_UA_ARG, "registration error");
 			BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
 			BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
 			BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
-			query_hash_tree(ri_tree, ri, ri->unit.type, 0, 0, 0);
-			DBG("Registered: %s", ri->unit.type);
+			query_hash_tree(ri_tree, ri, ri->component.type, 0, 0, 0);
+
+			BOLT_SYS(pthread_mutex_init(&ri->component.update_status_info.lock, NULL), "update status lock init");
+			BOLT_SYS(pthread_cond_init(&ri->component.update_status_info.cond, 0), "update status cond init");
+			ri->component.update_status_info.reply_id = NULL;
+			ri->component.record_file                 = ua_intl.record_file;
+			DBG("Registered: %s", ri->component.type);
 		} while (0);
 
 		if (err) {
@@ -141,12 +146,6 @@ int ua_register(ua_handler_t* uah, int len)
 			break;
 		}
 	}
-
-	do {
-		BOLT_SYS(pthread_mutex_init(&ua_intl.update_status_info.lock, NULL), "update status lock init");
-		BOLT_SYS(pthread_cond_init(&ua_intl.update_status_info.cond, 0), "update status cond init");
-		ua_intl.update_status_info.reply_id = NULL;
-	} while (0);
 
 	return err;
 }
@@ -169,17 +168,26 @@ int ua_unregister(ua_handler_t* uah, int len)
 			int err = E_UA_OK;
 			do {
 				runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
-				if (ri->unit.uar == uar) {
+				if (ri->component.uar == uar) {
 					query_hash_tree(ri_tree, ri, type, 1, 0, 0);
 					ri->run = 0;
 					BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
 					BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
 					BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
 					BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
-					free(ri->unit.type);
-					free(ri);
+					ri->component.record_file = NULL;
+					f_free(ri->component.update_manifest);
+					f_free(ri->component.backup_manifest);
+					f_free(ri->component.type);
+					f_free(ri);
 					DBG("Unregistered: %s", type);
 				}
+
+				if (ri->component.update_status_info.reply_id) {
+					free(ri->component.update_status_info.reply_id);
+					ri->component.update_status_info.reply_id = NULL;
+				}
+
 			} while (0);
 
 			if (err) {
@@ -191,10 +199,6 @@ int ua_unregister(ua_handler_t* uah, int len)
 		utarray_done(&ri_list);
 	}
 
-	if (ua_intl.update_status_info.reply_id) {
-		free(ua_intl.update_status_info.reply_id);
-		ua_intl.update_status_info.reply_id = NULL;
-	}
 
 	if (ri_tree) {
 		free(ri_tree);
@@ -203,14 +207,42 @@ int ua_unregister(ua_handler_t* uah, int len)
 	return ret;
 }
 
+void* ua_handle_dmc_presence(void* arg)
+{
+	if (ua_intl.uah) {
+		for (int i = 0; i < ua_intl.n_uah; i++) {
+			ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
+			if (uar && uar->on_dmc_presence)
+				(*uar->on_dmc_presence)(NULL);
+
+		}
+	}
+
+	return NULL;
+}
 
 int ua_send_message(json_object* jsonObj)
 {
-	DBG("Sending : %s", json_object_to_json_string(jsonObj));
-	return xl4bus_client_send_msg(json_object_to_json_string(jsonObj));
+	char* msg = (char*)json_object_to_json_string(jsonObj);
+
+	DBG("Sending to DMC : %s", msg);
+	return xl4bus_client_send_msg(msg);
 
 }
 
+int ua_send_message_string(char* message)
+{
+	DBG("Sending to DMC : %s", message);
+	return xl4bus_client_send_msg(message);
+}
+
+XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address)
+{
+	char* msg = (char*)json_object_to_json_string(jsonObj);
+
+	DBG("Sending with bus addr: %s", msg);
+	return xl4bus_client_send_msg_to_addr(msg, xl4_address);
+}
 
 int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent)
 {
@@ -268,11 +300,18 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 	return err;
 }
 
-
 void handle_status(int status)
 {
-	DBG("Status : %d", status);
+	char* sts_str[] = {
+		"RUNNING",
+		"RESOLUTION_FAILED",
+		"CONNECTION_FAILED",
+		"REGISTRATION_FAILED",
+		"CONNECTION_BROKE",
+	};
 
+	DBG("eSync Bus Status (%d): %s", status, status < sizeof(sts_str)/sizeof(sts_str[0]) ? sts_str[status] : NULL);
+	ua_intl.esync_bus_conn_status = status;
 }
 
 
@@ -286,16 +325,39 @@ void handle_delivered(const char* msg, int ok)
 		if (jObj) {
 			get_pkg_type_from_json(jObj, &pkg_type);
 			get_type_from_json(jObj, &msg_type);
-			DBG("Message delivered %s : %s for %s", ok ? "OK" : "NOT OK", NULL_STR(msg_type), NULL_STR(pkg_type));
+			if (!ok)
+				DBG("Message delivered %s : %s for %s", ok ? "OK" : "NOT OK", NULL_STR(msg_type), NULL_STR(pkg_type));
 			json_object_put(jObj);
 		}
 	}
 }
 
 
-void handle_presence(int connected, int disconnected)
+void handle_presence(int connected, int disconnected, esync_bus_conn_state_t connection_state)
 {
 	DBG("Connected : %d,  Disconnected : %d", connected, disconnected);
+	switch (connection_state)
+	{
+		case BUS_CONN_BROKER_NOT_CONNECTED:
+			break;
+		case BUS_CONN_BROKER_CONNECTED:
+			break;
+		case BUS_CONN_DMC_NOT_CONNECTED:
+			break;
+		case BUS_CONN_DMC_CONNECTED:
+			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
+				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
+
+			pthread_t thread_dmc_presence;
+			if (pthread_create(&thread_dmc_presence, 0, ua_handle_dmc_presence, NULL)) {
+				DBG("Failed to spawn thread_dmc_presence.");
+
+			}
+			break;
+		default:
+			break;
+
+	}
 
 }
 
@@ -311,12 +373,12 @@ void handle_message(const char* type, const char* msg, size_t len)
 	query_hash_tree(ri_tree, 0, type, 0, &ri_list, 0);
 
 	int l = utarray_len(&ri_list);
-
+#if 0
 	if (l)
 		DBG("Registered handlers found for %s : %d", type, l);
 	else
 		DBG("Incoming message for non-registered handler %s : %s", type, msg);
-
+#endif
 	for (int j = 0; j < l; j++) {
 		runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
 		BOLT_SYS(pthread_mutex_lock(&ri->lock), "lock failed");
@@ -336,7 +398,6 @@ void handle_message(const char* type, const char* msg, size_t len)
 
 }
 
-
 static int void_cmp(void const* a, void const* b)
 {
 	void* const* ls = a;
@@ -346,7 +407,7 @@ static int void_cmp(void const* a, void const* b)
 }
 
 
-static void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip)
+void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip)
 {
 	if (!current || (!ri && !gather)) { return; }
 
@@ -434,7 +495,7 @@ void* runner_loop(void* arg)
 			uint64_t tout = im->msg_ts + MSG_TIMEOUT * 1000;
 
 			if (tnow < tout)
-				process_message(&info->unit, im->msg, im->msg_len);
+				process_message(&info->component, im->msg, im->msg_len);
 			else
 				DBG("message timed out: %s", im->msg);
 
@@ -446,8 +507,7 @@ void* runner_loop(void* arg)
 	return NULL;
 }
 
-
-static int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer)
+int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer)
 {
 	int err                  = E_UA_OK;
 	pkg_file_t* pf           = NULL, * aux = NULL, * pkgFile = NULL;
@@ -474,7 +534,8 @@ static int get_local_next_rollback_version(char* manifest, char* currentVer, cha
 }
 
 
-static void process_message(ua_unit_t* ui, const char* msg, size_t len)
+
+static void process_message(ua_component_context_t* uacc, const char* msg, size_t len)
 {
 	char* type;
 	enum json_tokener_error jErr;
@@ -483,25 +544,25 @@ static void process_message(ua_unit_t* ui, const char* msg, size_t len)
 
 	if (jErr == json_tokener_success) {
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
-			if (!ui->uar->on_message || !(*ui->uar->on_message)(type, jObj)) {
+			if (!uacc->uar->on_message || !(*uacc->uar->on_message)(type, jObj)) {
 				if (!strcmp(type, QUERY_PACKAGE)) {
-					process_run(ui, process_query_package, jObj, 0);
+					process_run(uacc, process_query_package, jObj, 0);
 				} else if (!strcmp(type, READY_DOWNLOAD)) {
-					process_run(ui, process_ready_download, jObj, 0);
+					process_run(uacc, process_ready_download, jObj, 0);
 				} else if (!strcmp(type, READY_UPDATE)) {
-					process_run(ui, process_ready_update, jObj, 1);
+					process_run(uacc, process_ready_update, jObj, 1);
 				} else if (!strcmp(type, PREPARE_UPDATE)) {
-					process_run(ui, process_prepare_update, jObj, 1);
+					process_run(uacc, process_prepare_update, jObj, 1);
 				} else if (!strcmp(type, CONFIRM_UPDATE)) {
-					process_run(ui, process_confirm_update, jObj, 0);
+					process_run(uacc, process_confirm_update, jObj, 0);
 				} else if (!strcmp(type, DOWNLOAD_REPORT)) {
-					process_run(ui, process_download_report, jObj, 0);
+					process_run(uacc, process_download_report, jObj, 0);
 				} else if (!strcmp(type, SOTA_REPORT)) {
-					process_run(ui, process_sota_report, jObj, 0);
+					process_run(uacc, process_sota_report, jObj, 0);
 				} else if (!strcmp(type, LOG_REPORT)) {
-					process_run(ui, process_log_report, jObj, 0);
+					process_run(uacc, process_log_report, jObj, 0);
 				} else if (!strcmp(type, UPDATE_STATUS)) {
-					process_run(ui, process_update_status, jObj, 0);
+					process_run(uacc, process_update_status, jObj, 0);
 				} else {
 					DBG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
 				}
@@ -519,43 +580,44 @@ static void process_message(ua_unit_t* ui, const char* msg, size_t len)
 
 static void* worker_action(void* arg)
 {
-	ua_unit_t* ui = arg;
+	ua_component_context_t* uacc = arg;
 
-	ui->worker.worker_func(ui->uar, ui->worker.worker_jobj);
+	uacc->worker.worker_func(uacc, uacc->worker.worker_jobj);
 
-	json_object_put(ui->worker.worker_jobj);
+	json_object_put(uacc->worker.worker_jobj);
 
-	ui->worker.worker_running = 0;
+	uacc->worker.worker_running = 0;
 
 	return NULL;
 }
 
-
-static void process_run(ua_unit_t* ui, process_f func, json_object* jObj, int turnover)
+static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover)
 {
 	if (!turnover) {
-		func(ui->uar, jObj);
+		func(uacc, jObj);
 
 	} else {
-		if (!ui->worker.worker_running) {
-			ui->worker.worker_running = 1;
-			ui->worker.worker_func    = func;
-			ui->worker.worker_jobj    = json_object_get(jObj);
+		if (!uacc->worker.worker_running) {
+			uacc->worker.worker_running = 1;
+			uacc->worker.worker_func    = func;
+			uacc->worker.worker_jobj    = json_object_get(jObj);
 
-			if (pthread_create(&ui->worker.worker_thread, 0, worker_action, ui)) {
+			if (pthread_create(&uacc->worker.worker_thread, 0, worker_action, uacc)) {
 				DBG_SYS("pthread create");
-				json_object_put(ui->worker.worker_jobj);
-				ui->worker.worker_running = 0;
+				json_object_put(uacc->worker.worker_jobj);
+				uacc->worker.worker_running = 0;
 			}
 
 		} else {
-			DBG("error! Worker busy");
+			DBG("UA worker busy, discarding this message.");
 		}
 	}
 }
 
-static void process_query_package(ua_routine_t* uar, json_object* jsonObj)
+
+static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj)
 {
+	ua_routine_t* uar  = (uacc != NULL) ? uacc->uar : NULL;
 	pkg_info_t pkgInfo = {0};
 	char* installedVer = NULL;
 	char* replyId      = NULL;
@@ -567,7 +629,7 @@ static void process_query_package(ua_routine_t* uar, json_object* jsonObj)
 		json_object* bodyObject = json_object_new_object();
 		json_object* pkgObject  = json_object_new_object();
 
-		if (ua_intl.state == UA_STATE_UPDATE_STARTED) {
+		if (uacc->state == UA_STATE_READY_UPDATE_STARTED) {
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
 		}else {
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
@@ -590,10 +652,10 @@ static void process_query_package(ua_routine_t* uar, json_object* jsonObj)
 
 			if (S(ua_intl.backup_dir)) {
 				pkg_file_t* pf, * aux, * pkgFile = NULL;
-				char* pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
-				if (pkgManifest != NULL) {
-					if (!parse_pkg_manifest(pkgManifest, &pkgFile)) {
+				if (backup_manifest != NULL) {
+					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
 						json_object* verListObject = json_object_new_object();
 						json_object* rbVersArray   = json_object_new_array();
 
@@ -620,7 +682,7 @@ static void process_query_package(ua_routine_t* uar, json_object* jsonObj)
 						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 					}
 
-					free (pkgManifest);
+					free(backup_manifest);
 				}
 
 			}
@@ -642,66 +704,55 @@ static void process_query_package(ua_routine_t* uar, json_object* jsonObj)
 }
 
 
-static void process_ready_download(ua_routine_t* uar, json_object* jsonObj)
+static void process_ready_download(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	pkg_info_t pkgInfo = {0};
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		prepare_download_action(uar, &pkgInfo);
+		prepare_download_action(uacc, &pkgInfo);
 
 	}
 }
 
 
-static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj)
+static void process_prepare_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	int bck            = 0;
-	pkg_info_t pkgInfo = {0};
-	pkg_file_t pkgFile, updateFile = {0};
+	int bck                = 0;
+	pkg_info_t pkgInfo     = {0};
+	pkg_file_t pkgFile     = {0}, updateFile = {0};
 	update_err_t updateErr = UE_NONE;
 	install_state_t state  = INSTALL_READY;
 
-	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
+	if (uacc->state != UA_STATE_PREPARE_UPDATE_STARTED &&
+	    !get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 		get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
 
-		char* pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
+		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+
 		pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
+		uacc->state     = UA_STATE_PREPARE_UPDATE_STARTED;
 
 		if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
 		     !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
 		     !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
-		    ((pkgManifest != NULL && !get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
-			if (!ua_intl.prepare_version || strcmp(ua_intl.prepare_version, pkgInfo.version)) {
-				if (ua_intl.prepare_version) {
-					free(ua_intl.prepare_version);
-					ua_intl.prepare_version = 0;
-				}
-				ua_intl.prepare_version = f_strdup(pkgInfo.version);
+		    ((!get_pkg_file_manifest(uacc->backup_manifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
+			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
 
-				state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
-
-				if (state == INSTALL_FAILED) {
-					free(ua_intl.prepare_version);
-					ua_intl.prepare_version = 0;
-				}
-
-			}
+			state = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 
 			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
 			if (state == INSTALL_READY) {
-				char* prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
+				uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
-				if (prePkgManifest != NULL) {
+				if (uacc->update_manifest != NULL) {
 					if (!calc_sha256_x(updateFile.file, updateFile.sha256b64)) {
-						add_pkg_file_manifest(prePkgManifest, &updateFile);
+						add_pkg_file_manifest(uacc->update_manifest, &updateFile);
 					}
-
-					free(prePkgManifest);
 				}
 			}
 
@@ -709,15 +760,19 @@ static void process_prepare_update(ua_routine_t* uar, json_object* jsonObj)
 			f_free(updateFile.file);
 		}
 
-		if (pkgManifest != NULL) {
-			free(pkgManifest);
-			pkgManifest = NULL;
-		}
-
 		if (bck) {
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
+		if(uacc->backup_manifest) {
+			free(uacc->backup_manifest);
+			uacc->backup_manifest = NULL;
+		}
+		if(uacc->update_manifest) {
+			free(uacc->update_manifest);
+			uacc->update_manifest = NULL;
+		}
+		uacc->state = UA_STATE_PREPARE_UPDATE_DONE;
 	}
 }
 
@@ -744,136 +799,60 @@ static void set_flashing_time_log_data(log_data_t* ld, double time, char* pkg_na
 
 }
 
-static void process_ready_update(ua_routine_t* uar, json_object* jsonObj)
+static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	pkg_info_t pkgInfo = {0};
-	pkg_file_t pkgFile, updateFile = {0};
-	update_err_t updateErr = UE_NONE;
-	install_state_t state;
-	int bck = 0, uae = 0, local_rollback = 0;
+	install_state_t update_sts = INSTALL_READY;
+	json_object* jo            = json_object_get(jsonObj);
 	clock_t start_time;
 	double flashing_time;
 
-	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
-	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		start_time = clock();
-		if (ua_intl.prepare_version && !strcmp(ua_intl.prepare_version, pkgInfo.version)) {
-			free(ua_intl.prepare_version);
-			ua_intl.prepare_version = 0;
+	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir) == E_UA_OK) {
+		uacc->state = UA_STATE_READY_UPDATE_STARTED;
+		start_time  = clock();
+		update_set_rollback_info(uacc);
+
+		if (uacc->rb_type == URB_DMC_INITIATED) {
+			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version, ua_intl.reboot_support);
+
+		}else {
+			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
+			    uacc->rb_type >= URB_UA_INITIATED) {
+				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
+				update_sts =  update_start_rollback_operations(uacc, rb_version, ua_intl.reboot_support);
+
+			}
 		}
 
-		get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
-		get_pkg_rollback_versions_from_json(jsonObj, &pkgInfo.rollback_versions);
-
-		char* pkgManifest    = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG) : NULL;
-		char* prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-		char* curUpdateVer   = NULL, * installedVer = NULL;
-
-
-		do {
-			pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
-
-			if (curUpdateVer) free(curUpdateVer);
-
-			if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
-			     !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
-			     !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
-			    ((pkgManifest != NULL && !get_pkg_file_manifest(pkgManifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
-				/* FAP-514: Don't handle ready-update if the taget version is same as installed version
-				            and it's not rollback initiated by DMClient.
-				 */
-				uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
-
-				if (S(pkgInfo.rollback_version)) {
-					send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 1}, UE_NONE);
-
-					if (uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.rollback_version, installedVer)) {
-						send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
-						if (local_rollback)
-							f_free(pkgInfo.rollback_version);
-						f_free(pkgManifest);
-						f_free(prePkgManifest);
-						ua_intl.state = UA_STATE_UPDATE_DONE;
-						return;
-					}
-
-				}else {
-					if (uae == E_UA_OK && S(installedVer) && !strcmp(pkgInfo.version, installedVer)) {
-						send_install_status(&pkgInfo, INSTALL_COMPLETED, 0, 0);
-						f_free(pkgManifest);
-						f_free(prePkgManifest);
-						ua_intl.state = UA_STATE_UPDATE_DONE;
-						return;
-					}
-				}
-
-				if ((prePkgManifest != NULL && !get_pkg_file_manifest(prePkgManifest, pkgFile.version, &updateFile)) ||
-				    (state = prepare_install_action(uar, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr)) == INSTALL_READY) {
-					if ((state = pre_update_action(uar, &pkgInfo, &updateFile)) == INSTALL_IN_PROGRESS) {
-						ua_intl.state = UA_STATE_UPDATE_STARTED;
-
-						state = update_action(uar, &pkgInfo, &updateFile);
-
-						post_update_action(uar, &pkgInfo);
-
-						curUpdateVer = f_strdup(updateFile.version);
-					}
-
-					f_free(updateFile.file);
-					if (state != INSTALL_COMPLETED)
-						free(updateFile.version);
-					if (local_rollback) {
-						f_free(pkgInfo.rollback_version);
-						pkgInfo.rollback_version = NULL;
-					}
-
-				} else if ((state == INSTALL_FAILED) && (updateErr != UE_NONE)) break;
-
-				if (bck) {
-					bck = 0;
-					f_free(pkgFile.version);
-					f_free(pkgFile.file);
-				}
-
-			} else {
-				if (S(pkgInfo.rollback_version)) {
-					send_install_status(&pkgInfo, state = INSTALL_ROLLBACK, &(pkg_file_t){.version = pkgInfo.rollback_version, .downloaded = 0}, UE_NONE);
-					break;
-				}
-			}
-
-		} while ((state == INSTALL_FAILED) &&
-		         ((!get_pkg_next_rollback_version(pkgInfo.rollback_versions, curUpdateVer, &pkgInfo.rollback_version) ||
-		           (!get_local_next_rollback_version(pkgManifest, curUpdateVer, &pkgInfo.rollback_version) && (local_rollback = 1)))
-		          && S(pkgInfo.rollback_version)));
-
-		if ((state == INSTALL_FAILED) && ((updateErr != UE_NONE) ||
-		                                  (curUpdateVer != NULL && pkgInfo.rollback_versions && (updateErr = UE_TERMINAL_FAILURE)))) {
-			if (updateErr == UE_TERMINAL_FAILURE) {
-				if (json_object_array_length(pkgInfo.rollback_versions) > 0)
-					pkgInfo.rollback_version = (char*) json_object_get_string(json_object_array_get_idx(pkgInfo.rollback_versions, 0));
-			}
-			send_install_status(&pkgInfo, INSTALL_FAILED, &updateFile, updateErr);
+		if (update_sts == INSTALL_COMPLETED) {
+			uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
+			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 
-		if (state == INSTALL_COMPLETED) {
-			ua_backup_package(pkgInfo.name, updateFile.version);
-			free(updateFile.version);
+		json_object_put(jo);
+		uacc->state = UA_STATE_READY_UPDATE_DONE;
+
+		if(uacc->backup_manifest) {
+			free(uacc->backup_manifest);
+			uacc->backup_manifest = NULL;
+		}
+
+		if(uacc->update_manifest) {
+			free(uacc->update_manifest);
+			uacc->update_manifest = NULL;
 		}
 
 		log_data_t ld;
 		flashing_time = (double)(clock()-start_time) / CLOCKS_PER_SEC;
-		set_flashing_time_log_data(&ld, flashing_time, pkgInfo.name, state);
-		ua_send_log_report(pkgInfo.type, LOG_INFO, &ld);
-		ua_intl.state = UA_STATE_UPDATE_DONE;
+		set_flashing_time_log_data(&ld, flashing_time, uacc->update_pkg.name, update_sts);
+		ua_send_log_report(uacc->update_pkg.type, LOG_INFO, &ld);
 
-		f_free(curUpdateVer);
-		f_free(pkgManifest);
-		f_free(prePkgManifest);
+	}else {
+		if (uacc == NULL || jsonObj == NULL)
+			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
+		else
+			DBG("Error: parsing ready-update.");
 	}
 }
-
 
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
@@ -893,7 +872,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 }
 
 
-static void process_confirm_update(ua_routine_t* uar, json_object* jsonObj)
+static void process_confirm_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	pkg_info_t pkgInfo = {0};
 	int rollback       = 0;
@@ -901,24 +880,25 @@ static void process_confirm_update(ua_routine_t* uar, json_object* jsonObj)
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		char* pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
-
-		if (pkgManifest != NULL) {
+		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+		if (backup_manifest != NULL) {
 			if (!get_body_rollback_from_json(jsonObj, &rollback) && rollback && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
-				remove_old_backup(pkgManifest, pkgInfo.rollback_version);
+				remove_old_backup(backup_manifest, pkgInfo.rollback_version);
 			else
-				remove_old_backup(pkgManifest, pkgInfo.version);
+				remove_old_backup(backup_manifest, pkgInfo.version);
 
-			ua_intl.state = UA_STATE_IDLE_INIT;
+			uacc->state = UA_STATE_IDLE_INIT;
+			free(backup_manifest);
+			update_release_comp_context(uacc);
+		}else
+			DBG("backup_manifest in not set.");
 
-			free(pkgManifest);
-		}
-
-	}
+	} else
+		DBG("Could not parse info from confirm-update.");
 }
 
 
-static void process_download_report(ua_routine_t* uar, json_object* jsonObj)
+static void process_download_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	pkg_info_t pkgInfo = {0};
 	int64_t downloadedBytes, totalBytes;
@@ -933,39 +913,39 @@ static void process_download_report(ua_routine_t* uar, json_object* jsonObj)
 }
 
 
-static void process_sota_report(ua_routine_t* uar, json_object* jsonObj)
+static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
 }
 
-
-static void process_log_report(ua_routine_t* uar, json_object* jsonObj)
+static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
 }
 
-static void process_update_status(ua_routine_t* uar, json_object* jsonObj)
+static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	char* replyTo;
 
 	if (!get_replyto_from_json(jsonObj, &replyTo) &&
-	    ua_intl.update_status_info.reply_id &&
-	    !strcmp(replyTo, ua_intl.update_status_info.reply_id)) {
-		free(ua_intl.update_status_info.reply_id);
-		ua_intl.update_status_info.reply_id = NULL;
+	    uacc->update_status_info.reply_id &&
+	    !strcmp(replyTo, uacc->update_status_info.reply_id)) {
+		free(uacc->update_status_info.reply_id);
+		uacc->update_status_info.reply_id = NULL;
 
-		if (pthread_mutex_lock(&ua_intl.update_status_info.lock)) {
+		if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
 			DBG_SYS("lock failed");
 		}
 
-		get_update_status_response_from_json(jsonObj, &ua_intl.update_status_info.successful);
+		get_update_status_response_from_json(jsonObj, &uacc->update_status_info.successful);
 
-		pthread_cond_signal(&ua_intl.update_status_info.cond);
-		pthread_mutex_unlock(&ua_intl.update_status_info.lock);
+		pthread_cond_signal(&uacc->update_status_info.cond);
+		pthread_mutex_unlock(&uacc->update_status_info.lock);
 	}
 
 }
 
-static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue)
+install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue)
 {
+	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = INSTALL_READY;
 	char* newFile         = 0;
 	char* installedVer    = 0;
@@ -974,12 +954,18 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 	updateFile->version = f_strdup(pkgFile->version);
 
 	if (!bck && uar->on_transfer_file) {
-		err = transfer_file_action(uar, pkgInfo, pkgFile);
+		err = transfer_file_action(uacc, pkgInfo, pkgFile);
+	}
+
+	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
+		if (strlen(pkgFile->delta_sha256b64) > 0)
+			err =  verify_file_hash_b64(pkgFile->file, pkgFile->delta_sha256b64);
+		else
+			err =  verify_file_hash_b64(pkgFile->file, pkgFile->sha256b64);
 	}
 
 	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file)) {
-		char* pkgManifest = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG) : NULL;
-		char* bname       = f_basename(pkgFile->file);
+		char* bname = f_basename(pkgFile->file);
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
 
@@ -987,13 +973,12 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 			DBG("get version for %s failed!", pkgInfo->name);
 		}
 
-		if (pkgManifest == NULL || (err = patch_delta(pkgManifest, installedVer, pkgFile->file, updateFile->file)) == E_UA_ERR) {
+		if (uacc->backup_manifest == NULL || (err = patch_delta(uacc->backup_manifest, installedVer, pkgFile->file, updateFile->file)) == E_UA_ERR) {
 			if (err == E_UA_ERR)
 				*ue = UE_INCREMENTAL_FAILED;
 			state = INSTALL_FAILED;
 		}
 
-		f_free(pkgManifest);
 		updateFile->downloaded = 0;
 
 	} else {
@@ -1020,18 +1005,18 @@ static install_state_t prepare_install_action(ua_routine_t* uar, pkg_info_t* pkg
 }
 
 
-static int transfer_file_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
+static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 {
-	int ret       = E_UA_OK;
-	char* newFile = 0;
+	ua_routine_t* uar = (uacc != NULL) ? uacc->uar : NULL;
+	int ret           = E_UA_OK;
+	char* newFile     = 0;
 
 	if (uar->on_transfer_file) {
 		ret = (*uar->on_transfer_file)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
 		if (!ret && S(newFile)) {
 			pkgFile->file = newFile;
 		} else {
-			//TODO: send transfer failed
-			DBG("Error on_transfer_file");
+			DBG("UA returned error(%d) in callback on_transfer_file.", ret);
 		}
 	}
 
@@ -1039,8 +1024,9 @@ static int transfer_file_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file
 }
 
 
-static download_state_t prepare_download_action(ua_routine_t* uar, pkg_info_t* pkgInfo)
+static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo)
 {
+	ua_routine_t* uar      = (uacc != NULL) ? uacc->uar : NULL;
 	download_state_t state = DOWNLOAD_CONSENT;
 
 	if (uar->on_prepare_download) {
@@ -1051,8 +1037,9 @@ static download_state_t prepare_download_action(ua_routine_t* uar, pkg_info_t* p
 	return state;
 }
 
-static install_state_t pre_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
+install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 {
+	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = INSTALL_IN_PROGRESS;
 
 	if (uar->on_pre_install) {
@@ -1061,9 +1048,9 @@ static install_state_t pre_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo,
 
 	if (state == INSTALL_IN_PROGRESS) {
 		//Send update-status with reply-id
-		if (send_current_report_version(pkgInfo, NULL) == E_UA_OK) {
+		if (send_current_report_version(uacc, pkgInfo, NULL) == E_UA_OK) {
 			//Wait for response of update-status.
-			if (pthread_mutex_lock(&ua_intl.update_status_info.lock)) {
+			if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
 				DBG_SYS("lock failed");
 			}
 
@@ -1071,23 +1058,23 @@ static install_state_t pre_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo,
 			struct timespec ts;
 			clock_gettime(CLOCK_REALTIME, &ts);
 			ts.tv_sec += 300;
-			rc         = pthread_cond_timedwait(&ua_intl.update_status_info.cond, &ua_intl.update_status_info.lock, &ts);
+			rc         = pthread_cond_timedwait(&uacc->update_status_info.cond, &uacc->update_status_info.lock, &ts);
 
 			if (rc == ETIMEDOUT) {
 				DBG("Timed out waiting for update status response");
-				if (ua_intl.update_status_info.reply_id) {
-					free(ua_intl.update_status_info.reply_id);
-					ua_intl.update_status_info.reply_id = NULL;
+				if (uacc->update_status_info.reply_id) {
+					free(uacc->update_status_info.reply_id);
+					uacc->update_status_info.reply_id = NULL;
 				}
 			}
 
 			//Check if update-status reponse was set to successful.
-			if (!ua_intl.update_status_info.successful)
+			if (!uacc->update_status_info.successful)
 				state = INSTALL_FAILED;
 			else
-				ua_intl.update_status_info.successful = 0;
+				uacc->update_status_info.successful = 0;
 
-			pthread_mutex_unlock(&ua_intl.update_status_info.lock);
+			pthread_mutex_unlock(&uacc->update_status_info.lock);
 		}
 
 	}
@@ -1098,8 +1085,9 @@ static install_state_t pre_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo,
 }
 
 
-static install_state_t update_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
+install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 {
+	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 
 	if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
@@ -1115,8 +1103,10 @@ static install_state_t update_action(ua_routine_t* uar, pkg_info_t* pkgInfo, pkg
 }
 
 
-static void post_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo)
+void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo)
 {
+	ua_routine_t* uar = (uacc != NULL) ? uacc->uar : NULL;
+
 	if (uar->on_post_install) {
 		(*uar->on_post_install)(pkgInfo->type, pkgInfo->name);
 	}
@@ -1124,7 +1114,7 @@ static void post_update_action(ua_routine_t* uar, pkg_info_t* pkgInfo)
 }
 
 
-static void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue)
+void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue)
 {
 	json_object* pkgObject = json_object_new_object();
 
@@ -1195,33 +1185,7 @@ static void send_download_status(pkg_info_t* pkgInfo, download_state_t state)
 	json_object_put(jObject);
 }
 
-#define REPLY_ID_STR_LEN 24
-static char* randstring(int length)
-{
-	char* string     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
-	size_t stringLen = 26*2+10+7;
-	char* randomString;
-
-	randomString = malloc(sizeof(char) * (length +1));
-
-	if (randomString == NULL) {
-		return (char*)0;
-	}
-
-	unsigned int key = 0;
-
-	for (int n = 0; n < length; n++) {
-		key             = rand() % stringLen;
-		randomString[n] = string[key];
-	}
-
-	randomString[length] = '\0';
-
-	return randomString;
-}
-
-
-static int send_current_report_version(pkg_info_t* pkgInfo, char* report_version)
+static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version)
 {
 	int err = E_UA_OK;
 
@@ -1238,14 +1202,14 @@ static int send_current_report_version(pkg_info_t* pkgInfo, char* report_version
 	json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
-	if (ua_intl.update_status_info.reply_id) {
-		free(ua_intl.update_status_info.reply_id);
-		ua_intl.update_status_info.reply_id = NULL;
+	if (uacc->update_status_info.reply_id) {
+		free(uacc->update_status_info.reply_id);
+		uacc->update_status_info.reply_id = NULL;
 	}
 
-	ua_intl.update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
-	if (ua_intl.update_status_info.reply_id)
-		json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.update_status_info.reply_id ));
+	uacc->update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
+	if (uacc->update_status_info.reply_id)
+		json_object_object_add(jObject, "reply-id", json_object_new_string(uacc->update_status_info.reply_id ));
 
 	err = ua_send_message(jObject);
 
@@ -1284,16 +1248,14 @@ static int send_update_report(const char* pkgName, const char* version, int inde
 	return err;
 }
 
-
-static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
+static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 {
 	int err                = E_UA_OK;
 	pkg_file_t* backupFile = f_malloc(sizeof(pkg_file_t));
 
-	char* bname       = f_basename(pkgFile->file);
-	char* pkgManifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, MANIFEST_PKG);
+	char* bname = f_basename(pkgFile->file);
 
-	if (backupFile != NULL && bname != NULL && pkgManifest != NULL) {
+	if (backupFile != NULL && bname != NULL && uacc->backup_manifest != NULL) {
 		backupFile->file       = JOIN(ua_intl.backup_dir, "backup", pkgInfo->name, pkgFile->version, bname);
 		backupFile->version    = f_strdup(pkgFile->version);
 		backupFile->downloaded = 1;
@@ -1327,7 +1289,7 @@ static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 				if (make_file_hard_link(src_file, backupFile->file) != E_UA_OK)
 					err = copy_file(src_file, backupFile->file);
 				if (err == E_UA_OK)
-					add_pkg_file_manifest(pkgManifest, backupFile);
+					add_pkg_file_manifest(uacc->backup_manifest, backupFile);
 				else
 					DBG("Backing up failed: %s", backupFile->file);
 
@@ -1343,7 +1305,6 @@ static int backup_package(pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 		}
 
 		free(bname);
-		free(pkgManifest);
 		free_pkg_file(backupFile);
 
 	}else {
@@ -1434,7 +1395,7 @@ const char* ua_get_xl4bus_version()
 
 }
 
-int ua_backup_package(char* pkgName, char* version)
+int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* version)
 {
 	int ret               = E_UA_OK;
 	pkg_info_t pkgInfo    = {0};
@@ -1446,24 +1407,54 @@ int ua_backup_package(char* pkgName, char* version)
 	//No error check, try to proceed with backup if failed to lock.
 	pthread_mutex_lock(&ua_intl.backup_lock);
 
-	char* prePkgManifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-
-	if (prePkgManifest != NULL) {
-		if (!get_pkg_file_manifest(prePkgManifest,  pkgInfo.version, &updateFile)) {
-			backup_package(&pkgInfo, &updateFile);
+	if (uacc->update_manifest != NULL) {
+		if (!get_pkg_file_manifest(uacc->update_manifest,  pkgInfo.version, &updateFile)) {
+			backup_package(uacc, &pkgInfo, &updateFile);
 
 			free(updateFile.file);
 			free(updateFile.version);
+		} else {
+			DBG("Could not parse info from update_manifest %s.", uacc->update_manifest);
 		}
 
-		remove(prePkgManifest);
-		free(prePkgManifest);
+		remove(uacc->update_manifest);
 
-	}else {
+	} else {
+		DBG("update_manifest is not set.");
 		ret = E_UA_ERR;
 	}
 
 	pthread_mutex_unlock(&ua_intl.backup_lock);
 	return ret;
 
+}
+
+int ua_backup_package(char* pkgName, char* version)
+{
+	UT_array ri_list;
+
+	for (int i = 0; i < ua_intl.n_uah; i++) {
+		const char* type = (ua_intl.uah + i)->type_handler;
+
+		utarray_init(&ri_list, &ut_ptr_icd);
+		query_hash_tree(ri_tree, 0, type, 0, &ri_list, 1);
+
+		int l = utarray_len(&ri_list);
+		for (int j = 0; j < l; j++) {
+			runner_info_t* ri          = *(runner_info_t**) utarray_eltptr(&ri_list, j);
+			ua_component_context_t* cc = &ri->component;
+			if (!strcmp(cc->update_pkg.name, pkgName)) {
+				return handler_backup_actions(cc, pkgName, version);
+
+			}
+		}
+	}
+
+	return E_UA_ERR;
+
+}
+
+void handler_set_internal_state(ua_internal_state_t st)
+{
+	ua_intl.state = st;
 }

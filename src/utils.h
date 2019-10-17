@@ -2,11 +2,12 @@
  * utils.h
  */
 
-#ifndef _UA_UTILS_H_
-#define _UA_UTILS_H_
+#ifndef UA_UTILS_H_
+#define UA_UTILS_H_
 
-#include "common.h"
-
+#include "json-c-rename.h"
+#include <json.h>
+#include "misc.h"
 
 int get_type_from_json(json_object* jsonObj, char** value);
 
@@ -42,4 +43,8 @@ int get_pkg_next_rollback_version(json_object* jsonArr, char* currentVer, char**
 
 int get_pkg_sha256_from_json(json_object * jsonObj, char* version, char value[SHA256_B64_LENGTH]);
 
-#endif /* _UA_UTILS_H_ */
+int get_pkg_delta_sha256_from_json(json_object* jsonObj, char* version, char value[SHA256_B64_LENGTH]);
+
+int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
+
+#endif /* UA_UTILS_H_ */

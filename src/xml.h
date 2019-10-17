@@ -2,10 +2,9 @@
  * xml.h
  */
 
-#ifndef _UA_XML_H_
-#define _UA_XML_H_
+#ifndef UA_XML_H_
+#define UA_XML_H_
 
-#include "common.h"
 #include <libxml/tree.h>
 #include <libxml/parser.h>
 #include "delta.h"
@@ -19,4 +18,4 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile);
 int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile);
 int remove_old_backup(char* xmlFile, char* version);
 
-#endif /* _UA_XML_H_ */
+#endif /* UA_XML_H_ */

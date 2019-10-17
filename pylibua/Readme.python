@@ -1,0 +1,81 @@
+[Scope]
+
+The description in the Readme.python file provides instructions on how to build the python update agent library. 
+
+[Pre-requisites]
+
+1. Download and build DMClient 
+
+2. Download and build libxl4bus 
+
+3. Download and build updateagent-c (i.e. This project, which includes both c & python libraries)
+
+4. Install swig package
+	sudo apt install swig
+
+[Build Instructions]
+
+- Python library build is integrated with c library (libua) build tool cmake. please refer to ../README. 
+- Please make sure "XL4BUS_DIR" is set to build direcotry of eSync bus (libxl4bus) in ../config.cmk
+- All Python build output files are located in pylibua sub-directory.
+
+[Usage of xl4bus Python Library]
+
+1. eSync Bus Python Library Files:
+	_libuamodule.so - wrapper C library used by Python UA library.
+	UaXl4bus.py - Base class implementation to communicate with DMClient.  
+   	MyUaXl4bus.py - Subclass of UaXl4bus.py, shows a simple implementation of an update agent (UA). 
+
+2. Modify server url in dm_tree to point to a compatible server. Currently, please use the following url with xl4bus
+	cd <dmtree>
+	echo -n "https://snapstorev2-qa.excelfore.com:8003/snapv4/oma" >  DMAcc/Excelfore/AppAddr/appshack/Addr/value
+
+3. Start DMclient and xl4broker:
+	DMClient/build/dmclient -t dm_tree
+	libxl4bus/build/xl4broker 
+
+4. Deploy a campaign, the sample MyUaXl4bus uses node_type='/ECU/Xl4bus/Bolero/Radio' when generating certificate
+   for update agent. If a different type is used, please use your appropriate node type/name when making client 
+   certificate for update agent. 
+
+5. Run 'python MyUaXl4bus.py'. This sample UA performs the following tasks:
+	- Reply to xl4.query-packge from DMClient with version string in the reponse. 
+	- Respond to xl4.ready-download with INSTALL_PENDING in xl4.update-status to instruct DMClient to start downloading. 
+	- Respond to xl4.ready-update with INSTALL_INPROGRESS in xl4.update-status to indicate update has started. 
+	- Sends INSTALL_COMPLETED in UPDATE_STATUS to indicate update has completed. 
+
+As a result, the corresponding package file should be downloaded to the default location (/data/sota/tmp/)
+
+[Development Guides]
+
+1. In order to develop an update agent specific to a device, a subclass of UaXl4bus should be implemented like MyUaXl4bus:
+
+	from UaXl4bus import UaXl4bus
+
+	class MyUaXl4bus(UaXl4bus):
+		def do_install(self, downloadFileStr):
+			print 'Installing ' + downloadFileStr
+			return "INSTALL_COMPLETED";
+2. Implement one or more of the following interfaces:
+	do_init()
+	do_get_version()
+	do_set_version()
+	do_confirm_download()
+	do_prepare_install()
+	do_pre_install()
+	do_install()
+	do_pos_install()
+The code in step 1 overwrites do_install(). For details of the above interface, please refer MyUaXl4bus.py. 
+
+3. Create an instance of the subclass and call run_forever() function to invoke the new update agent. 
+	if __name__ == "__main__":
+	my_ua = MyUaXl4bus('')
+	my_ua.run_forever()
+
+Alternatively, class instantiation can be done:
+	my_ua = MyUaXl4bus('cert_lable')
+	my_ua = MyUaXl4bus('cert_lable', cert_dir='cert_dir')
+    where cert_lable is the certificate lable for update agent, cert_dir is the top directory containing 
+    both ca and update agent certificate. 
+
+4. That's it! You can run the new update agent based on the behavior defined in your customized interfaces. 

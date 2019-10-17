@@ -2,8 +2,10 @@
  * xl4ua.h
  */
 
-#ifndef _XL4UA_H_
-#define _XL4UA_H_
+#ifndef XL4UA_H_
+#define XL4UA_H_
+
+#include <libxl4bus/types.h>
 
 typedef enum install_state {
 	INSTALL_READY,
@@ -27,7 +29,23 @@ typedef enum download_state {
 #define E_UA_ARG    (-3)
 #define E_UA_SYS    (-4)
 
+typedef struct dmc_presence {
+	int size; /* reserved for future use */
 
+}dmc_presence_t;
+
+/**
+ * callback function for UA to return installed version string.
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, UA shall return current installed version of UA,
+ *        libary does not change/release memory pointed by version.
+ *
+ * @return When UA returns E_UA_OK, library sends the version string to eSync
+ *         client. If version is NULL, json null is used in version reporting.
+ *         When UA returns E_UA_ERR, library sends "update-incapable"
+ *         to eSync Client.
+ */
 typedef int (*ua_on_get_version)(const char* type, const char* pkgName, char** version);
 
 typedef int (*ua_on_set_version)(const char* type, const char* pkgName, const char* version);
@@ -43,6 +61,14 @@ typedef int (*ua_on_transfer_file)(const char* type, const char* pkgName, const 
 typedef install_state_t (*ua_on_prepare_install)(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile);
 
 typedef download_state_t (*ua_on_prepare_download)(const char* type, const char* pkgName, const char* version);
+
+/**
+ * callback function when eSync Client is connected to bus.
+ * @param dp, pointer to dmc_presence_t structure, reserved for future use.
+ *
+ * @return UA returns E_UA_OK, or E_UA_ERR.
+ */
+typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
 
 #ifdef _json_h_
 
@@ -81,6 +107,9 @@ typedef struct ua_routine {
 
 	// (optional) called on xl4bus messages
 	ua_on_message on_message;
+
+	// (optional) called when dmc is connnected to xl4bus.
+	ua_on_dmc_presence on_dmc_presence;
 
 } ua_routine_t;
 
@@ -128,12 +157,22 @@ typedef struct ua_cfg {
 	// specifies the buffer size for read/write, in kilobytes
 	long rw_buffer_size;
 
+	//indicate whether to use library reboot feature.
+	//0 = default, ua implements its own reboot/resume support.
+	//1 = ua uses libary's reboot/resume support.
+	int reboot_support;
+	
 	// specifies which source package file used for backup,
 	// when  delta reconstruction is triggered.
 	// 0 = Use the actual full path used installation, this is default. 
 	// 1 = Use the full path resulted from delta reconstruction. 
 	// Both may or may not be the same full path. 
 	int backup_source;
+
+	//Indicate whether to disable sha verification of downloaded package. 
+	//0 = default, verify downloaded package against sha256
+	//1 = disable, do not verify downloaded package against sha256
+	int package_verification_disabled;
 
 } ua_cfg_t;
 
@@ -165,7 +204,7 @@ XL4_PUB int ua_register(ua_handler_t* uah, int len);
 
 XL4_PUB int ua_unregister(ua_handler_t* uah, int len);
 
-XL4_PUB int ua_stop();
+XL4_PUB int ua_stop(void);
 
 XL4_PUB const char* ua_get_updateagent_version(void);
 
@@ -177,9 +216,13 @@ XL4_PUB int ua_send_transfer_progress(const char* pkgName, const char* version, 
 
 XL4_PUB int ua_backup_package(char* pkgName, char* version);
 
+XL4_PUB int ua_send_message_string(char* message);
+
 #ifdef _json_h_
 
 XL4_PUB int ua_send_message(json_object* message);
+
+XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address);
 
 
 typedef enum log_type {
@@ -199,6 +242,8 @@ typedef struct log_data {
 
 XL4_PUB int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata);
 
+#endif /* _json_h_ */
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,
@@ -210,8 +255,7 @@ typedef enum ua_log_type {
 
 typedef void (*ua_log_handler_f)(ua_log_type_t type, const char* log);
 XL4_PUB void ua_install_log_handler(ua_log_handler_f handler);
-#endif
+#endif /* HAVE_INSTALL_LOG_HANDLER */
 
-#endif /* _json_h_ */
 
-#endif /* _XL4UA_H_ */
+#endif /* XL4UA_H_ */

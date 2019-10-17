@@ -3,7 +3,12 @@
  */
 
 #include "common.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <libgen.h>
+#include <stdarg.h>
+#include <string.h>
+#include "debug.h"
 
 char* f_asprintf(char* fmt, ...)
 {
@@ -74,6 +79,7 @@ void f_free(void* p)
 	if (p) {
 		free(p);
 	}
+	p = NULL;
 }
 
 
