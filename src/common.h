@@ -8,6 +8,7 @@
 #define _GNU_SOURCE
 
 #include <stddef.h>
+#include "porting.h"
 
 char* f_asprintf(char* fmt, ...);
 char* f_strdup(const char*);
