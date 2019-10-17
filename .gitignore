@@ -15,3 +15,7 @@ rules.ninja
 tmpl-updateagent
 ua_version.h
 build
+linux_port/*.cmk
+
+
+

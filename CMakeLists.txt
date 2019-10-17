@@ -1,12 +1,6 @@
 cmake_minimum_required(VERSION 3.4.3)
 project(libxl4ua)
 
-include(FindPkgConfig)
-include(FindLibXml2)
-include(FindOpenSSL)
-include(FindLibZip.cmake)
-include(CMakeForceCompiler)
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -40,14 +34,34 @@ function(targets_link_libraries)
     message("end targets_link_libraries")
 endfunction(targets_link_libraries)
 
-set(BUILD_CONFIG $ENV{BUILD_CONFIG})
-if (NOT BUILD_CONFIG)
-    set(BUILD_CONFIG "config.cmk")
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "QNX")
+    set(TARGET "qnx_port")
+else()
+    set(TARGET "linux_port")
 endif()
 
-message(STATUS "Using configuration file ${BUILD_CONFIG}")
+get_filename_component(TARGET "${TARGET}" REALPATH BASE_DIR "${CMAKE_SOURCE_DIR}")
+get_filename_component(ROOT_DIR "" REALPATH BASE_DIR "${CMAKE_SOURCE_DIR}")
 
-include(${BUILD_CONFIG})
+set(LOAD_CFG ${TARGET}/config.cmk)
+if((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+    set(LOAD_CFG ${TARGET}/config.cmk.tmpl)
+    if ((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+        message(FATAL_ERROR "${TARGET} folder must contain config.cmk file")
+    endif()
+endif()
+
+include(${LOAD_CFG})
+
+set(LOAD_CFG ${TARGET}/deps.cmk)
+if((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+    set(LOAD_CFG ${TARGET}/deps.cmk.tmpl)
+    if ((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
+        message(FATAL_ERROR "${TARGET} folder must contain deps.cmk file")
+    endif()
+endif()
+
+include(${LOAD_CFG})
 
 set_empty(BUILD_SHARED TRUE)
 set_empty(BUILD_STATIC TRUE)
@@ -66,20 +80,6 @@ set(BCH ${CMAKE_BINARY_DIR}/build_config.h)
 
 configure_file(${CMAKE_SOURCE_DIR}/build_config.h.in ${BCH})
 configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
-
-set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
-
-include_directories(SYSTEM ${XL4BUS_DIR})
-include_directories(SYSTEM ${XL4BUS_DIR}/include)
-include_directories(SYSTEM ${XL4BUS_DIR}/../src/include)
-include_directories(SYSTEM ${JSON_C})
-include_directories(SYSTEM ${LIBZIP_INCLUDE_DIR})
-include_directories(SYSTEM ${LIBXML2_INCLUDE_DIR})
-include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
-include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_BINARY_DIR})
-link_directories(${XL4BUS_DIR})
 
 add_custom_command(OUTPUT PHONY ${CMAKE_BINARY_DIR}/ua_version.h COMMAND ${CMAKE_SOURCE_DIR}/make_version.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -110,23 +110,6 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/include/xl4ua.h
 )
 
-if (NOT LIBXML2_FOUND)
-    message(FATAL_ERROR "I sorta need libxml2 dev package")
-endif()
-
-if (NOT OPENSSL_FOUND)
-    message(FATAL_ERROR "Though OpenSSL has been hammered at a lot recently, I still need it")
-endif()
-
-if (NOT LIBZIP_FOUND STREQUAL "YES")
-    message(FATAL_ERROR "libzip library is required")
-endif()
-
-set(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a)
-if (NOT EXISTS ${JSON_C_LIB})
-    message(FATAL_ERROR "You must build json-c sources first!")
-endif()
-
 if (XL4_PROVIDE_THREADS)
     set(THREADS_PREFER_PTHREAD_FLAG TRUE)
     find_package(Threads MODULE REQUIRED)
@@ -147,7 +130,7 @@ if (BUILD_SHARED)
         target_link_libraries(ua-shared Threads::Threads)
     endif()
     set(USE_LIB ua-shared)
-    target_link_libraries(ua-shared ${JSON_C_LIB})
+    target_link_libraries(ua-shared ${SHARED_DEPS})
     install(TARGETS ua-shared LIBRARY DESTINATION lib)
 endif()
 
@@ -165,7 +148,6 @@ if (BUILD_STATIC)
     install(TARGETS ua-static ARCHIVE DESTINATION lib)
 endif()
 
-
 if (BUILD_BINS)
     add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
 
@@ -175,7 +157,7 @@ if (BUILD_BINS)
             src/test_agents/tmpl_updateagent.h
     )
 
-    targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} -lxl4bus -lm ${LIBZIP_LIBRARY} ${LIBXML2_LIBRARIES} ${OPENSSL_LIBRARIES})
+    targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
 
     if (XL4_PROVIDE_THREADS)
         targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES Threads::Threads)
