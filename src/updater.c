@@ -35,7 +35,6 @@ int update_set_pkg_info(json_object* jo_pkg, pkg_info_t* pkg)
 	int err = E_UA_OK;
 
 	if (jo_pkg && pkg) {
-
 		err = json_get_property(jo_pkg, json_type_string, &pkg->type, "package", "type", NULL);
 
 		if (err == E_UA_OK)
@@ -266,16 +265,41 @@ char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_v
 	return rb_version;
 }
 
-int update_package_available(pkg_file_t* updat_file, char* version)
+static int update_package_available(pkg_file_t* update_file, char* version)
 {
 	int avail = 0;
 
-	if (updat_file && version) {
-		avail = (!strcmp(updat_file->version, version) &&
-		         updat_file->downloaded == 1 &&
-		         !access(updat_file->file, F_OK));
+	if (update_file && version) {
+		avail = (!strcmp(update_file->version, version) &&
+		         !access(update_file->file, F_OK));
 	}
 	return avail;
+}
+
+static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t* rb_file_info, char* rb_version)
+{
+	int rc = E_UA_ERR;
+
+	if (uacc->rb_type == URB_NONE) {
+		DBG("Error: rollback type is none, why asked for rollback package!");
+		rc = E_UA_ERR;
+	}else if (uacc->rb_type == URB_DMC_INITIATED) {
+		if (rb_file_info) {
+			memcpy(rb_file_info, &uacc->update_file_info, sizeof(pkg_file_t));
+			if (update_package_available(rb_file_info, rb_version))
+				rc = E_UA_OK;
+			else
+				DBG("eSync client says rb file is %s, but I could not find it.", rb_file_info->file);
+		} else
+			DBG("rb_file_info is NIL pointer");
+
+	}else {
+		if (!get_pkg_file_manifest(uacc->backup_manifest, rb_file_info->version, rb_file_info)
+		    && update_package_available(rb_file_info, rb_version))
+			rc = E_UA_OK;
+	}
+
+	return rc;
 }
 
 install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version, int reboot_support)
@@ -297,9 +321,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 
 		}else{
 			tmp_rb_file_info.version = next_rb_version;
-
-			if (!get_pkg_file_manifest(uacc->backup_manifest, tmp_rb_file_info.version, &tmp_rb_file_info)
-			    && update_package_available(&tmp_rb_file_info, next_rb_version)) {
+			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
 				DBG("Rollback package found, rollback installation starts now.");
 				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 
