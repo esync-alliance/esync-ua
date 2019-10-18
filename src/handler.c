@@ -764,11 +764,11 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
-		if(uacc->backup_manifest) {
+		if (uacc->backup_manifest) {
 			free(uacc->backup_manifest);
 			uacc->backup_manifest = NULL;
 		}
-		if(uacc->update_manifest) {
+		if (uacc->update_manifest) {
 			free(uacc->update_manifest);
 			uacc->update_manifest = NULL;
 		}
@@ -831,12 +831,12 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		json_object_put(jo);
 		uacc->state = UA_STATE_READY_UPDATE_DONE;
 
-		if(uacc->backup_manifest) {
+		if (uacc->backup_manifest) {
 			free(uacc->backup_manifest);
 			uacc->backup_manifest = NULL;
 		}
 
-		if(uacc->update_manifest) {
+		if (uacc->update_manifest) {
 			free(uacc->update_manifest);
 			uacc->update_manifest = NULL;
 		}
@@ -1429,28 +1429,58 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 
 }
 
-int ua_backup_package(char* pkgName, char* version)
+int ua_backup_package(char* type, char* pkgName, char* version)
 {
+	int ret;
+	int free_update = 0;
+	int free_backup = 0;
+
 	UT_array ri_list;
+	ua_component_context_t* uacc = NULL;
 
 	for (int i = 0; i < ua_intl.n_uah; i++) {
 		const char* type = (ua_intl.uah + i)->type_handler;
-
 		utarray_init(&ri_list, &ut_ptr_icd);
 		query_hash_tree(ri_tree, 0, type, 0, &ri_list, 1);
-
 		int l = utarray_len(&ri_list);
 		for (int j = 0; j < l; j++) {
 			runner_info_t* ri          = *(runner_info_t**) utarray_eltptr(&ri_list, j);
 			ua_component_context_t* cc = &ri->component;
-			if (!strcmp(cc->update_pkg.name, pkgName)) {
-				return handler_backup_actions(cc, pkgName, version);
-
+			if (!strcmp(cc->type, type)) {
+				uacc = cc;
+				break;
 			}
 		}
 	}
 
-	return E_UA_ERR;
+	if (!uacc) {
+		DBG("Couldn't find ua component with type %s", type);
+		return E_UA_ERR;
+	}
+
+	if (!uacc->update_manifest && S(ua_intl.cache_dir)) {
+		uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgName, MANIFEST_PKG);
+		free_update           = 1;
+	}
+
+	if (!uacc->backup_manifest && S(ua_intl.backup_dir)) {
+		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgName, MANIFEST_PKG);
+		free_backup           = 1;
+	}
+
+	ret = handler_backup_actions(uacc, pkgName, version);
+
+	if (uacc->update_manifest && free_update) {
+		free(uacc->update_manifest);
+		uacc->update_manifest = NULL;
+	}
+
+	if (uacc->backup_manifest && free_backup) {
+		free(uacc->backup_manifest);
+		uacc->backup_manifest = NULL;
+	}
+
+	return ret;
 
 }
 

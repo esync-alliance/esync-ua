@@ -1374,7 +1374,7 @@ type	src/delta.h	/^	diff_type_t type;$/;"	m	struct:diff_info
 type	src/handler.h	/^	char* type;$/;"	m	struct:pkg_info
 type	src/handler.h	/^	char* type;$/;"	m	struct:ua_component_context
 type_handler	src/include/xl4ua.h	/^	char* type_handler;$/;"	m	struct:ua_handler
-ua_backup_package	src/handler.c	/^int ua_backup_package(char* pkgName, char* version)$/;"	f
+ua_backup_package	src/handler.c	/^int ua_backup_package(char* type, char* pkgName, char* version)$/;"	f
 ua_cfg	src/include/xl4ua.h	/^typedef struct ua_cfg {$/;"	s
 ua_cfg_t	src/include/xl4ua.h	/^} ua_cfg_t;$/;"	t	typeref:struct:ua_cfg
 ua_component_context	src/handler.h	/^typedef struct ua_component_context {$/;"	s

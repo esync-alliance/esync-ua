@@ -1,6 +1,6 @@
 
 
-** Building **
+** Building for Linux **
 
 *** json-c ***
 
@@ -38,6 +38,12 @@ $ rm -rf build && mkdir build && ( cd build && cmake .. && make )
 (Use "cmake -DCMAKE_BUILD_TYPE=Debug .." for debug config)
 
 #######################################################################
+
+** Building for QNX **
+Following instruction at qnx_port/README.txt
+
+#######################################################################
+
 ESYNC-4017 
 
 The template update agent provides command line options to trigger different update modes like: update_success, updaet_failure, update_rollback and update_toggle. 

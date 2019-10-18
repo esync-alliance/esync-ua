@@ -214,7 +214,7 @@ XL4_PUB int ua_send_install_progress(const char* pkgName, const char* version, i
 
 XL4_PUB int ua_send_transfer_progress(const char* pkgName, const char* version, int indeterminate, int percent);
 
-XL4_PUB int ua_backup_package(char* pkgName, char* version);
+XL4_PUB int ua_backup_package(char* type, char* pkgName, char* version);
 
 XL4_PUB int ua_send_message_string(char* message);
 

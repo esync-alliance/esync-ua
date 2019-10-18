@@ -35,7 +35,6 @@ int update_set_pkg_info(json_object* jo_pkg, pkg_info_t* pkg)
 	int err = E_UA_OK;
 
 	if (jo_pkg && pkg) {
-
 		err = json_get_property(jo_pkg, json_type_string, &pkg->type, "package", "type", NULL);
 
 		if (err == E_UA_OK)
