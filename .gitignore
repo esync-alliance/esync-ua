@@ -16,6 +16,9 @@ tmpl-updateagent
 ua_version.h
 build
 linux_port/*.cmk
+qnx_port/*.cmk
+libxml2-build
+libzip-build
 
 
 
