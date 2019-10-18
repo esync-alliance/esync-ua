@@ -1,0 +1,40 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index deceb65..c8ce8d3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -93,14 +93,20 @@ CHECK_TYPE_SIZE("ssize_t" SSIZE_T_LIBZIP)
+ 
+ TEST_BIG_ENDIAN(WORDS_BIGENDIAN)
+ 
+-FIND_PACKAGE(ZLIB REQUIRED)
++set(ZLIB_INCLUDE_DIR $ENV{QNX_TARGET}/usr/include)
++set(ZLIB_VERSION_STRING "1.1.4")
++set(ZLIB_LIBRARY "-lz")
++
+ INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
+ set(CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIR})
+ IF(ZLIB_VERSION_STRING VERSION_LESS "1.1.2")
+   MESSAGE(FATAL_ERROR "-- ZLIB version too old, please install at least v1.1.2")
+ ENDIF(ZLIB_VERSION_STRING VERSION_LESS "1.1.2")
+ 
+-FIND_PACKAGE(BZip2)
++set(BZIP2_FOUND 1)
++set(BZIP2_INCLUDE_DIR $ENV{QNX_TARGET}/usr/include)
++set(BZIP2_LIBRARY "-lbz2")
++
+ IF(BZIP2_FOUND)
+   SET (HAVE_LIBBZ2 1)
+ 
+diff --git a/cmake-config.h.in b/cmake-config.h.in
+index 0d1839c..1f6f934 100644
+--- a/cmake-config.h.in
++++ b/cmake-config.h.in
+@@ -62,6 +62,8 @@
+ #define PACKAGE "@PACKAGE@"
+ #define VERSION "@VERSION@"
+ 
++#define LIBZIP_VERSION "@VERSION@"
++
+ #ifndef HAVE_SSIZE_T_LIBZIP
+ #  if SIZE_T_LIBZIP == INT_LIBZIP
+ typedef int ssize_t;

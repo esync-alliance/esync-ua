@@ -1,0 +1,28 @@
+# set to true to produce debug build
+# no optimization, and -g compiler flags
+set(DEBUG false)
+
+# set to the location of the XL4BUS
+# library build directory
+set(XL4BUS_DIR /home/rkh/libxl4bus/build)
+
+# If true, -R (-rpath) will be set to XL4BUS library location
+set(XL4BUS_RPATH true)
+
+# If true, Python ua lib will be built.
+set(BUILD_PY_LIBUA false)
+
+# Set library build type
+set(BUILD_STATIC false)
+
+# Build unit test
+set(UNIT_TEST false)
+
+# Porting code for some required APIs
+set(LIB_SOURCE
+    qnx_port/source/utility.c)
+
+# Allow to use custom log handler
+add_definitions(-DHAVE_INSTALL_LOG_HANDLER)
+
+

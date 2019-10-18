@@ -2,3 +2,9 @@
 	path = json-c
 	url = https://github.com/json-c/json-c.git
 	branch = json-c-0.12
+[submodule "libzip"]
+	path = libzip
+	url = https://github.com/nih-at/libzip.git
+[submodule "libxml2"]
+	path = libxml2
+	url = https://github.com/GNOME/libxml2.git

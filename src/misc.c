@@ -103,10 +103,19 @@ int rmdirp(const char* path)
 	do {
 		BOLT_SYS(!(dir = opendir(path)), "failed to open directory %s", path);
 
+		// $TODO: this whole QNX business doesn't belong here, and must be moved
+		// out to the porting layer, giving some API for how to traverse
+		// directories
+
 		while ((entry = readdir(dir)) != NULL) {
 			filepath = JOIN(path, entry->d_name);
-
+		#ifdef __QNX__
+			struct stat stat_buf;
+			stat(filepath, &stat_buf);
+			if (!S_ISDIR(stat_buf.st_mode)) {
+		#else
 			if (entry->d_type != DT_DIR) {
+		#endif
 				if (remove(filepath) < 0) {
 					err = E_UA_SYS;
 					DBG_SYS("error removing file: %s", filepath);
@@ -165,6 +174,7 @@ int run_cmd(char* cmd, char* argv[])
 {
 	int rc     = E_UA_OK;
 	int status = 0;
+
 	if (cmd && !is_cmd_runnable(cmd) && argv) {
 		pid_t pid=fork();
 
@@ -675,6 +685,7 @@ int is_cmd_runnable(const char* cmd)
 {
 	int err    = E_UA_OK;
 	char* path = 0;
+
 	do {
 		if (strchr(cmd, '/')) {
 			err = access(cmd, X_OK);
