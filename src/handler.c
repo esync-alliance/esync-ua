@@ -667,7 +667,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 							json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
 							if (ua_intl.delta) {
-								json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha256b64));
+								json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
 							}
 
 							json_object_object_add(verListObject, pf->version, versionObject);
@@ -744,17 +744,17 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 			state = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 
-			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
-
 			if (state == INSTALL_READY) {
 				uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 
 				if (uacc->update_manifest != NULL) {
-					if (!calc_sha256_x(updateFile.file, updateFile.sha256b64)) {
+					if (!calc_sha256_x(updateFile.file, updateFile.sha_of_sha)) {
 						add_pkg_file_manifest(uacc->update_manifest, &updateFile);
 					}
 				}
 			}
+
+			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
 			f_free(updateFile.version);
 			f_free(updateFile.file);
@@ -887,9 +887,9 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 			else
 				remove_old_backup(backup_manifest, pkgInfo.version);
 
-			uacc->state = UA_STATE_IDLE_INIT;
 			free(backup_manifest);
 			update_release_comp_context(uacc);
+			uacc->state = UA_STATE_IDLE_INIT;
 		}else
 			DBG("backup_manifest in not set.");
 
@@ -978,11 +978,14 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 				*ue = UE_INCREMENTAL_FAILED;
 			state = INSTALL_FAILED;
 		}
-
+		if(err == E_UA_OK)
+			calculate_sha256_b64(updateFile->file, updateFile->sha256b64);
 		updateFile->downloaded = 0;
 
 	} else {
+
 		updateFile->file = f_strdup(pkgFile->file);
+		memcpy(updateFile->sha256b64, pkgFile->sha256b64, sizeof(updateFile->sha256b64));
 		if (err == E_UA_OK)
 			updateFile->downloaded = 1;
 	}
@@ -991,6 +994,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 		if (uar->on_prepare_install) {
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
 			if (S(newFile)) {
+				DBG("UA indicated to update using this new file: %s", newFile);
 				free(updateFile->file);
 				updateFile->file = f_strdup(newFile);
 			}
@@ -1088,17 +1092,21 @@ install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgI
 install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 {
 	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
-	install_state_t state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
+	install_state_t state = INSTALL_FAILED;
 
-	if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
-		if ((*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version))
-			DBG("set version for %s failed!", pkgInfo->name);
+	if(uar) {
+		DBG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
+		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
+
+		if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
+			if ((*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version))
+				DBG("set version for %s failed!", pkgInfo->name);
+		}
+
+		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+			send_install_status(pkgInfo, state, 0, 0);
+		}
 	}
-
-	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-		send_install_status(pkgInfo, state, 0, 0);
-	}
-
 	return state;
 }
 
@@ -1262,6 +1270,7 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 
 		if (backupFile->file && backupFile->version) {
 			strcpy(backupFile->sha256b64, pkgFile->sha256b64);
+			strcpy(backupFile->sha_of_sha, pkgFile->sha_of_sha);
 
 			if (!strcmp(pkgFile->file, backupFile->file) ||
 			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {
@@ -1294,13 +1303,11 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 					DBG("Backing up failed: %s", backupFile->file);
 
 				if (src_file != pkgFile->file) {
+					DBG("Removing installation file after backup: %s", src_file);
 					unlink(src_file);
 					f_free(src_file);
 
-				} else {
-					unlink(pkgFile->file);
 				}
-
 			}
 		}
 
@@ -1400,7 +1407,6 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 	int ret               = E_UA_OK;
 	pkg_info_t pkgInfo    = {0};
 	pkg_file_t updateFile = {0};
-
 	pkgInfo.name    = pkgName;
 	pkgInfo.version = version;
 
@@ -1417,7 +1423,10 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 			DBG("Could not parse info from update_manifest %s.", uacc->update_manifest);
 		}
 
-		remove(uacc->update_manifest);
+		if(!access(uacc->update_manifest, F_OK)) {
+			DBG("Removing update_manifest %s", uacc->update_manifest);
+			remove(uacc->update_manifest);
+		}
 
 	} else {
 		DBG("update_manifest is not set.");
