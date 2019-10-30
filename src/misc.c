@@ -488,8 +488,9 @@ int make_file_hard_link(const char* from, const char* to)
 	int err = E_UA_OK;
 
 	do {
+		DBG("Making hardlink from %s to %s", from, to);
 		BOLT_SYS(chkdirp(to), "Error making directory path for %s", to);
-		BOLT_SYS(link(from, to), "Error creating hard link from % to %s", from, to);
+		BOLT_SYS(link(from, to), "Error creating hard link from %s to %s", from, to);
 	} while (0);
 
 	return err;
@@ -642,7 +643,45 @@ int base64_encode(unsigned char hash[SHA256_DIGEST_LENGTH], char b64buff[SHA256_
 	return err;
 }
 
+int calculate_sha256_b64(const char* file, char b64buff[SHA256_B64_LENGTH])
+{
+	int err = E_UA_ERR;
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+
+	if (!(err = calc_sha256(file, hash))) {
+		if(b64buff)
+			err = base64_encode(hash, b64buff);
+
+	} else {
+		DBG("SHA256 Hash calculation failed : %s", file);
+	}
+
+	return err;
+
+}
+
 int verify_file_hash_b64(const char* file, const char* sha256_b64)
+{
+	int err = E_UA_ERR;
+	char b64buff[SHA256_B64_LENGTH];
+
+	if (file && sha256_b64 && !(err = calculate_sha256_b64(file, b64buff))) {
+		if (!strncmp(b64buff, sha256_b64, sizeof(b64buff) - 1)) {
+			DBG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+			err = E_UA_OK;
+
+		} else {
+			DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+			err = E_UA_ERR;
+		}
+
+	}
+	
+	return err;
+
+}
+
+int NGverify_file_hash_b64(const char* file, const char* sha256_b64)
 {
 	int err = E_UA_ERR;
 	unsigned char hash[SHA256_DIGEST_LENGTH];

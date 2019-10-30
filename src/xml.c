@@ -175,6 +175,14 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 				xmlFree(c);
 			}
 
+		} else if (xmlStrEqual(n->name, XMLT "sha-of-sha")) {
+			if ((c = xmlNodeGetContent(n))) {
+				if (strlen((const char*)c) == (SHA256_B64_LENGTH - 1)) {
+					strcpy(pkgFile->sha_of_sha, (const char*)c);
+				}
+				xmlFree(c);
+			}
+
 		} else if (xmlStrEqual(n->name, XMLT "version")) {
 			if ((c = xmlNodeGetContent(n))) {
 				if (!pkgFile->version) {
@@ -363,12 +371,13 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 			}
 		}
 
-		if (!sha256xcmp(pkgFile->file, pkgFile->sha256b64)) {
+		if (!sha256xcmp(pkgFile->file, pkgFile->sha_of_sha)) {
 			DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
 
 			node = xmlNewChild(root, NULL, XMLT "package", NULL);
 			xmlNewChild(node, NULL, XMLT "version", XMLT pkgFile->version);
 			xmlNewChild(node, NULL, XMLT "sha256", XMLT pkgFile->sha256b64);
+			xmlNewChild(node, NULL, XMLT "sha-of-sha", XMLT pkgFile->sha_of_sha);
 			xmlNewChild(node, NULL, XMLT "file", XMLT pkgFile->file);
 			xmlNewChild(node, NULL, XMLT "downloaded", XMLT (pkgFile->downloaded ? "1" : "0"));
 			xmlNewChild(node, NULL, XMLT "rollback-order", XMLT "0");

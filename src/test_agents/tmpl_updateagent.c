@@ -254,7 +254,7 @@ void getBackupDir(const char* pkgName)
     strcpy(bkpDir, backupDir);
 	strcat(bkpDir, pkgName);
 	//printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
-	if (access(bkpDir, F_OK) != -1 ) {
+	if (access(bkpDir, F_OK) == -1 ) {
 		ret_dir = mkdir(bkpDir, 0755);
 		if (ret_dir != 0) {
 			printf("Back up directory creation failed\n");
@@ -264,7 +264,7 @@ void getBackupDir(const char* pkgName)
 		}
 	}
 	else
-		printf("Back up directory exists\n");
+		printf("Back up directory exists, %s\n", bkpDir);
 
 }
 
