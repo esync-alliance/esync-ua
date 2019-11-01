@@ -12,7 +12,7 @@
 #include <xl4ua.h>
 #include <unistd.h>
 
-
+#define VERSION_SIZE_MAX 256
 #define _ltime_ \
         char __now[24]; \
         struct tm __tmnow; \

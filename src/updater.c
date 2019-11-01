@@ -518,12 +518,16 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			uacc->update_file_info.version = S(uacc->update_pkg.rollback_version) ?
 			                                 uacc->update_pkg.rollback_version : uacc->update_pkg.version;
 
-			if (E_UA_OK != get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info))
+			if ((err = get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info)))
 			{
+				/* TODO: determine if is necessary to get information from ready-update json if 
+
 				DBG("Could not load temp update manifest, getting info from json package object instead.");
 				get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.file);
 				get_pkg_sha256_from_json(jsonObj, uacc->update_file_info.version, uacc->update_file_info.sha256b64);
 				get_pkg_downloaded_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.downloaded);
+				*/
+				DBG("Could not load temp update manifest!");
 
 			}
 		}
