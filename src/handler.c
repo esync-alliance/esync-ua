@@ -750,6 +750,9 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 				if (uacc->update_manifest != NULL) {
 					if (!calc_sha256_x(updateFile.file, updateFile.sha_of_sha)) {
 						add_pkg_file_manifest(uacc->update_manifest, &updateFile);
+					} else {
+					/* TODO: stop installation/clean up resource.*/
+						state = INSTALL_FAILED;
 					}
 				}
 			}
@@ -849,8 +852,10 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	}else {
 		if (uacc == NULL || jsonObj == NULL)
 			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
-		else
-			DBG("Error: parsing ready-update.");
+		else {
+			DBG("Error: parsing ready-update, or getting info form temp manifest.");
+			send_install_status(&uacc->update_pkg, INSTALL_FAILED, 0, 0);
+		}
 	}
 }
 
@@ -1018,6 +1023,7 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 	if (uar->on_transfer_file) {
 		ret = (*uar->on_transfer_file)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
 		if (!ret && S(newFile)) {
+			DBG("UA transfered file %s to new path %s", pkgFile->file, newFile);
 			pkgFile->file = newFile;
 		} else {
 			DBG("UA returned error(%d) in callback on_transfer_file.", ret);

@@ -7,19 +7,20 @@
 
 #include "pua.h"
 
-static PyObject* py_class_instance   = NULL;
-static char* py_get_version      = NULL;
-static char* py_set_version      = NULL;
-static char* py_pre_install      = NULL;
-static char* py_install          = NULL;
-static char* py_post_install     = NULL;
-static char* py_prepare_install  = NULL;
-static char* py_prepare_download = NULL;
-static char* py_transfer_file    = NULL;
-static char* py_dmc_presence     = NULL;
-static char* py_on_message       = NULL;
+static PyObject* py_class_instance = NULL;
+static char* py_get_version        = NULL;
+static char* py_set_version        = NULL;
+static char* py_pre_install        = NULL;
+static char* py_install            = NULL;
+static char* py_post_install       = NULL;
+static char* py_prepare_install    = NULL;
+static char* py_prepare_download   = NULL;
+static char* py_transfer_file      = NULL;
+static char* py_dmc_presence       = NULL;
+static char* py_on_message         = NULL;
 
-ua_routine_t pua_rtns ;
+static char pua_version[VERSION_SIZE_MAX] = {0};
+static ua_routine_t pua_rtns;
 
 #if PY_MAJOR_VERSION >= 3
 
@@ -75,9 +76,34 @@ void pua_end(void)
 	ua_stop();
 }
 
-static install_state_t pua_get_py_obj_state(PyObject* py_obj)
+static int pua_get_int_from_pylist_ob(PyObject* ob, int pos)
 {
-	char* s               = PyString_AsString(py_obj);
+	PyObject* string_ob = NULL;
+	int ret             = 0;
+
+	if (PyList_Size(ob) > pos && (string_ob = PyList_GetItem(ob, pos)))
+		ret = (int)PyLong_AsLong(string_ob);
+	else
+		PY_DBG("Could not get integer from PyList object at position %d.", pos);
+
+	return ret;
+}
+
+static char* pua_get_string_from_pylist_ob(PyObject* ob, int pos)
+{
+	PyObject* string_ob = NULL;
+	char* ret           = NULL;
+
+	if (PyList_Size(ob) > pos && (string_ob = PyList_GetItem(ob, pos)))
+		ret = PyString_AsString(string_ob);
+	else
+		PY_DBG("Could not get string from PyList object at position %d.", pos);
+
+	return ret;
+}
+
+static install_state_t pua_get_state_from_string(char* s)
+{
 	install_state_t state = INSTALL_FAILED;
 
 	if (s) {
@@ -99,20 +125,31 @@ static install_state_t pua_get_py_obj_state(PyObject* py_obj)
 	}
 
 	return state;
+}
 
+static install_state_t pua_get_py_obj_state(PyObject* py_obj)
+{
+	return pua_get_state_from_string(PyString_AsString(py_obj));
 }
 
 static int pua_get_version(const char* type, const char* pkgName, char** version)
 {
-	PyObject* result = 0;
+	PyObject* result = NULL;
+	char* tmp_ver    = NULL;
 	int rc           = E_UA_ERR;
+
+	memset(pua_version, 0, sizeof(pua_version));
 	if ((py_class_instance) && (py_get_version))
 	{
 		result = PyObject_CallMethod(py_class_instance, py_get_version, "s", pkgName);
 		if (result) {
-			*version = PyString_AsString(result);
-			PY_DBG("pua reported version: %s", *version );
-			rc = E_UA_OK;
+			if ((tmp_ver = pua_get_string_from_pylist_ob(result, 1))) {
+				PY_DBG("PUA reported version: %s", tmp_ver );
+				strncpy(pua_version, tmp_ver, sizeof(pua_version));
+			}
+
+			rc =  pua_get_int_from_pylist_ob(result, 0);
+			PY_DBG("PUA get_version returned status: %d", rc);
 		}else
 			PY_DBG("Error PyObject_CallFunction py_get_version");
 	}else
@@ -170,7 +207,7 @@ static install_state_t pua_install(const char* type, const char* pkgName, const 
 {
 	PyObject* result      = 0;
 	install_state_t state = INSTALL_FAILED;
-
+	PY_DBG("pua_install for %s(%s) with file %s", pkgName, version, pkgFile);
 	if ((py_class_instance) && (py_install))
 	{
 		result = PyObject_CallMethod(py_class_instance, py_install, "(s)",pkgFile);
@@ -184,6 +221,7 @@ static install_state_t pua_install(const char* type, const char* pkgName, const 
 
 	Py_XDECREF(result);
 
+	memset(pua_version, 0, sizeof(pua_version));
 	return state;
 
 }
@@ -211,13 +249,22 @@ static install_state_t pua_prepare_install(const char* type, const char* pkgName
 {
 	PyObject* result      = 0;
 	install_state_t state = INSTALL_FAILED;
+	char* state_string;
+	char* ret_path;
 
 	if ((py_class_instance) && (py_prepare_install))
 	{
-		result = PyObject_CallMethod(py_class_instance, py_prepare_install, "(ssss)", pkgName, version, pkgFile, newFile);
+		result = PyObject_CallMethod(py_class_instance, py_prepare_install, "(sss)", pkgName, version, pkgFile);
 		if (result) {
-			state = pua_get_py_obj_state(result);
-			PY_DBG("pua_prepare_install returning state = %d", state);
+			if ((state_string = pua_get_string_from_pylist_ob(result, 0))) {
+				PY_DBG("PUA prepare_install returned install status: %s", state_string);
+				state = pua_get_state_from_string(state_string);
+			}
+
+			if ((ret_path = pua_get_string_from_pylist_ob(result, 1))) {
+				PY_DBG("PUA prepare_install returned new update file path: %s", ret_path);
+				*newFile = ret_path;
+			}
 
 		}else
 			PY_DBG("Error PyObject_CallFunction py_prepare_install");
@@ -260,7 +307,27 @@ static int pua_dmc_presence(dmc_presence_t* dp)
 
 static int pua_transfer_file(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile)
 {
-	return E_UA_OK;
+	PyObject* result = 0;
+	char* ret_path;
+	int rc = E_UA_ERR;
+
+	if ((py_class_instance) && (py_transfer_file))
+	{
+		result = PyObject_CallMethod(py_class_instance, py_transfer_file, "(sss)", pkgName, version, pkgFile);
+		if (result) {
+			rc = pua_get_int_from_pylist_ob(result, 0);
+
+			if ((ret_path = pua_get_string_from_pylist_ob(result, 1)))
+				PY_DBG("PUA do_transfer_file returned new update file path: %s", ret_path);
+
+		}else
+			PY_DBG("Error PyObject_CallFunction py_transfer_file");
+	}else
+		PY_DBG("Invalid class instance!");
+
+	Py_XDECREF(result);
+
+	return rc;
 }
 
 static int pua_on_message(const char* msgType, void* message)
@@ -275,7 +342,6 @@ void pua_set_callbacks(PyObject* class_instance, py_ua_cb_t* cb)
 	py_class_instance = class_instance;
 
 	if (cb->ua_get_version) {
-		printf("Setting py_get_version\n");
 		py_get_version          = cb->ua_get_version;
 		pua_rtns.on_get_version = pua_get_version;
 	}
@@ -292,7 +358,6 @@ void pua_set_callbacks(PyObject* class_instance, py_ua_cb_t* cb)
 		pua_rtns.on_pre_install = pua_pre_install;
 	}
 	if (cb->ua_install) {
-		printf("Setting py_install\n");
 		py_install          = cb->ua_install;
 		pua_rtns.on_install = pua_install;
 	}
@@ -301,8 +366,8 @@ void pua_set_callbacks(PyObject* class_instance, py_ua_cb_t* cb)
 		pua_rtns.on_post_install = pua_post_install;
 	}
 	if (cb->ua_prepare_install) {
-		py_prepare_install           = cb->ua_prepare_install;
-		pua_rtns.on_prepare_install  = pua_prepare_install;
+		py_prepare_install          = cb->ua_prepare_install;
+		pua_rtns.on_prepare_install = pua_prepare_install;
 	}
 	if (cb->ua_transfer_file) {
 		py_transfer_file          = cb->ua_transfer_file;

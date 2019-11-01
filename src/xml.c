@@ -437,7 +437,7 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 	}
 
 	do {
-		BOLT_SYS(access(xmlFile, R_OK), "pkg manifest not available %s", xmlFile);
+		BOLT_SYS(access(xmlFile, R_OK), "pkg manifest (%s)", xmlFile);
 		BOLT_IF(!(doc = xmlReadFile(xmlFile, NULL, 0)), E_UA_ERR, "Could not read xml file %s", xmlFile);
 
 		root = xmlDocGetRootElement(doc);

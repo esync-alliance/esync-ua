@@ -4,11 +4,11 @@
 import libuamodule
 import os
 import json
-import shutil
 import time
 import logging
 import sys
 from collections import OrderedDict
+
 
 class UaXl4bus:
     """Base class of update agent via Xl4bus """
@@ -17,17 +17,14 @@ class UaXl4bus:
                            'INSTALL_COMPLETED', 'INSTALL_ABORTED',
                            'INSTALL_ROLLBACK', 'INSTALL_FAILED')
 
-    __signalHandler = {}
-
-    def __init__(self, cert_label, cert_dir, conf_file, ua_nodeType,
+    def __init__(self, cert_dir, conf_file, ua_nodeType,
                  host_port='tcp://localhost:9133',
                  version_dir='/data/sota/versions',
                  enable_delta=True,
                  reconstruct_delta=True):
         """Class Constructor 
         Args:
-                cert_label(str): Label name of update agent certificate.
-                cert_dir(str): Top directory of certificates(ca, broker, and ua).
+                cert_dir(str): Top directory of UA certificates.
                 version_dir(str): Location of version file for do_set_version() 
                         (default is /data/sota/versions).  
                 host_port(str): Host url and port number
@@ -44,12 +41,10 @@ class UaXl4bus:
         Returns:
                 None
         """
-        self.cert_label = cert_label
         self.cert_dir = cert_dir
         self.nodeType = ua_nodeType
         self.version_dir = version_dir
         self.__loadUaConf(conf_file)
-        self.incremental_failed = False
         self.enable_delta = enable_delta
         self.host_port = host_port
         self.xl4bus_client_initialized = False
@@ -58,25 +53,23 @@ class UaXl4bus:
         self.ua_version = None
 
         cb = libuamodule.py_ua_cb_t()
-        if self.do_set_version.__code__ is not UaXl4bus.do_set_version.__code__:
-            cb.ua_set_version = "do_set_version"
         if self.do_pre_install.__code__ is not UaXl4bus.do_pre_install.__code__:
             cb.ua_pre_install = "do_pre_install"
         if self.do_post_install.__code__ is not UaXl4bus.do_post_install.__code__:
             cb.ua_post_install = "do_post_install"
         if self.do_prepare_install.__code__ is not UaXl4bus.do_prepare_install.__code__:
-            cb.ua_prepare_install =  "do_prepare_install"
+            cb.ua_prepare_install = "do_prepare_install"
         if self.do_transfer_file.__code__ is not UaXl4bus.do_transfer_file.__code__:
-            cb.ua_transfer_file =  "do_transfer_file"
+            cb.ua_transfer_file = "do_transfer_file"
         if self.do_dmc_presence.__code__ is not UaXl4bus.do_dmc_presence.__code__:
-            cb.ua_dmc_presence =  "do_dmc_presence"
+            cb.ua_dmc_presence = "do_dmc_presence"
         if self.do_message.__code__ is not UaXl4bus.do_message.__code__:
-            cb.ua_on_message =  "do_message"
-        
-        cb.ua_get_version = "do_get_version"
-        cb.ua_install = "do_install"        
-        cb.ua_prepare_download =  "do_confirm_download"       
+            cb.ua_on_message = "do_message"
 
+        cb.ua_get_version = "do_get_version"
+        cb.ua_set_version = "do_set_version"
+        cb.ua_install = "do_install"
+        cb.ua_prepare_download = "do_confirm_download"
         libuamodule.pua_set_callbacks(self, cb)
 
     def run_forever(self):
@@ -84,7 +77,7 @@ class UaXl4bus:
                 Initialize Xl4bus Client if it hasn't been done yet.
                 Start a thread to retrieve XL4bus messages from a Queue for further processing. 
         """
-        print(self.cert_label, self.cert_dir, self.version_dir)
+        print(self.cert_dir, self.version_dir)
         uacfg = libuamodule.ua_cfg_t()
 
         uacfg.url = self.host_port
@@ -93,15 +86,15 @@ class UaXl4bus:
         uacfg.backup_dir = "/data/sota/esync/"
         uacfg.delta = self.enable_delta
         uacfg.debug = self.libua_debug
-        # uacfg.delta_config
-        # uacfg.rw_buffer_size
         uacfg.reboot_support = 0
         self.do_init()
         if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, uacfg) == 0):
             self.xl4bus_client_initialized = True
 
     def do_init(self):
-        """Interface to allow device specific initialization    
+        """
+        [Optional] Interface to allow device specific initialization, this is
+        called before initializing xl4bus.
 
         Subclass shall overwrite this function to customize device 
         initialization before starting the update agent. 
@@ -109,97 +102,142 @@ class UaXl4bus:
         pass
 
     def do_confirm_download(self, pkgName, version):
-        """Interface to confirm/deny download after UA receives
-        xl4.ready-download message
+        """
+        [Optional] Interface to confirm/deny download after UA receives
+        xl4.ready-download message        
 
-        Subclass shall return one of the status strings
-        ("DOWNLOAD_POSTPONED", "DOWNLOAD_CONSENT", "DOWNLOAD_DENIED", "DOWNLOAD_CONSENT") 
+        Args:
+            pkgName: Component package name.
+            version: version string.
 
-        Status will be sent in xl4.update-status to DMClient
-        Default is "DOWNLOAD_CONSENT"
+        Returns:
+            Subclass shall return one of the status strings
+            ("DOWNLOAD_POSTPONED", "DOWNLOAD_DENIED", "DOWNLOAD_CONSENT")
+            Default is "DOWNLOAD_CONSENT"
         """
         return "DOWNLOAD_CONSENT"
 
     def do_pre_install(self, downloadFileStr):
-        """Interface to prepare for updating after UA receives 
+        """
+        [Optional] Interface to prepare for updating after UA receives 
         xl4.ready-update message
 
-        Subclass shall return one of the status strings
-         ("INSTALL_COMPLETED", "INSTALL_ABORTED", "INSTALL_ROLLBACK", "INSTALL_FAILED")
+        Args:
+            pkgName: Component package name.
+            version: version string.
 
-        Default is "INSTALL_IN_PROGRESS"
-        Status will be sent in xl4.update-status to DMClient
+        Returns:
+            Subclass shall return one of the status strings
+            ("INSTALL_IN_PROGRESS", "INSTALL_FAILED")
+            Default is "INSTALL_IN_PROGRESS"
         """
         return "INSTALL_IN_PROGRESS"
 
     def do_install(self, downloadFileStr):
-        """Interface to start updating after do_pre_install()   
+        """
+        [Required] Interface to start updating after do_pre_install() upon
+        receiving xl4.ready-update message.  
 
-        Subclass shall return one of the status strings 
-        ("INSTALL_COMPLETED", "INSTALL_ABORTED", "INSTALL_ROLLBACK", "INSTALL_FAILED")
+        Args:
+            downloadFileStr: Full pathname of the installation package file.
 
-        Default is "INSTALL_COMPLETED"
-        Status will be sent in xl4.update-status to DMClient
-                """
-        print("do_install for: \t%s\n" % downloadFileStr)
+        Returns:
+            Subclass shall return one of the status strings 
+            ("INSTALL_COMPLETED", "INSTALL_FAILED")
+            Default is "INSTALL_COMPLETED"
+        """
         return "INSTALL_COMPLETED"
 
     def do_post_install(self, packageName):
-        """Interface to invoke additional action after do_install()"""
+        """
+        [Optional] Interface to invoke additional action after do_install()
+        Args:
+            packageName: component package name.
+
+        Returns:
+            None
+        """
         pass
 
     def do_get_version(self, packageName):
-        """Interface to retrieve current version of UA
-
-        Default is to return a string if 'version' is found in file
-        version_dir/packageName. If 'version' is not found, return None. 
-
-        Subclass shall return a version string, e.g. "1.0", or None. 
-                """
-        print("do_get_version for: %s\n" % (packageName))
-        return self.ua_version
-
-    def do_set_version(self, packageName, ver):
-        """ Interface to set version information of UA after successful update. 
-        Default is to write all information in json format to a local file
-        'version_dir/packageName'. Generally, UA should not need to override
-        this function. It's strongly advised to also invoke the baseclass 
-        implementation of this function (UaXl4bus.do_set_version()) in the 
-        subclass overridden function. 
+        """
+        [Optional]  Interface to retrieve current version of UA
 
         Args:
-                packageName(str): A string for component package name found in 
-                        xl4.ready-update message.
-                ver(str): A version string found in xl4.ready-update message.
+            packageName: component package name.
 
         Returns:
-                None. 
-        """
+            list of two items [status, "version"]
+            status(int): 0 for success, 1 for error.
+            version(str): Version string.
 
+
+            Subclass shall a list in the for [0, "v1.0"]. 
+        """
+        return [0, self.ua_version]
+
+    def do_set_version(self, packageName, ver):
+        """ 
+        [Optional] Interface to set version of UA after successful update.
+
+        Args:
+            packageName(str): A string for component package name found in 
+                              xl4.ready-update message.
+            ver(str): A version string found in xl4.ready-update message.
+
+        Returns:
+                int: 0 for success, 1 for error.
+        """
         self.ua_version = ver
         return 0
 
-    def do_prepare_install(self, packageName, version, packageFile, newFile):
-        return "INSTALL_READY"
+    def do_prepare_install(self, packageName, version, packageFile):
+        """ 
+        [Optional] Interface to allow UA to manage 'packageFile' after
+        receiving xl4.prepare-update. e.g. A system might need to copy
+        'packageFile' to a specific directory. In such case, UA shall
+        return the new pathname, which will be passed to do_install.
 
-    def do_transfer_file(self):
-        pass
+        Args:
+            packageName(str): Component package name.
+            version(str): Version string.
+            packageFile(str): Full file path of downloaded package file.
+
+        Returns:
+            A list of one or two strings ["status", "newPath"].
+            status(str): required, one of ("INSTALL_READY", "INSTALL_FAILED")
+            newPath(str): optional, only return newPath to inform the new file
+                pathname should be used for installation in do_install.
+        """
+        return ["INSTALL_READY"]
+
+    def do_transfer_file(self, packageName, version, packageFile):
+        """ 
+        [Optional] Interface to allow UA to transfer 'packageFile' from
+        a remote system to the local filesystem for installation, after
+        receiving . UA shall return the new local pathname,
+        which will be used for further processing. Note that this inteface is
+        invoked after receiving xl4.prepare-update, before calling
+        do_prepare_install
+
+        Args:
+            packageName(str): Component package name.
+            version(str): Version string.
+            packageFile(str): Full file path of downloaded package file.
+
+        Returns:
+            A list of one or two strings [status, "newPath"].
+            status(int): required, 0 for success, 1 for error.
+            newPath(str): optional, only return newPath to inform the new file
+                pathname should be used for further processing.
+        """
+        return [0]
 
     def do_dmc_presence(self):
         pass
 
     def do_message(self):
         pass
-
-    def send_update_status(self, update_status, file_downloaded=False):
-        """ Send xl4.update-status message to DMClient
-        Args:
-                update_status(str): one of the status string defined in STATUS. 
-                file_downloaded(bool): True to indicate UA has the installation 
-                        file, otherwise False.
-        Returns:
-                None
-        """
 
     def send_diag_data(self, message, level='INFO', timestamp=None, compoundable=True, nodeType=None):
         """ Send diagnostic message (xl4.log-report) to DMClient
@@ -234,10 +272,10 @@ class UaXl4bus:
         """Enable/Disable xl4bus debug messages. 
 
         Args:
-                enable(int): 0 to disable, 1 to enable xl4bus debug messages
+            enable(int): 0 to disable, 1 to enable xl4bus debug messages
 
         Returns:
-                None. 
+            None. 
         """
         self.libua_debug = enable
 
@@ -260,9 +298,9 @@ class UaXl4bus:
         """ Return if xl4bus client has been initialzed, UA can start sending messages if so. 
 
         Args:
-                None
+            None
         Returns:
-                True if initialzed, otherwise False.  
+            True if initialzed, otherwise False.  
         """
         return self.xl4bus_client_initialized
 
@@ -270,9 +308,9 @@ class UaXl4bus:
         """ Initialize xl4bus client only without starting message processing loop.
 
         Args:
-                None
+            None
         Returns:
-                True if initialzed, otherwise False.  
+            True if initialzed, otherwise False.  
         """
         if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, self.cert_dir, self.host_port) == 0):
             self.xl4bus_client_initialized = True
