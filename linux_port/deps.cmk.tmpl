@@ -11,7 +11,11 @@ include_directories(SYSTEM ${LIBXML2_INCLUDE_DIR})
 include(FindLibZip.cmake)
 
 # Checking json-c
-set(JSON_C_LIB ${CMAKE_SOURCE_DIR}/json-c-build/.libs/libjson-c.a)
+if(NOT JSON_C)
+    set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
+endif()
+
+set(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a)
 if (NOT EXISTS ${JSON_C_LIB})
     message(FATAL_ERROR "You must build json-c sources first!")
 endif()
@@ -29,12 +33,12 @@ set(XL4BUS_LIB -lxl4bus)
 endif()
 
 # Set include path
-include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/json-c-build)
+include_directories(SYSTEM ${JSON_C})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR})
 
 # Set linker flags
-set(COMMON_DEPS ${XL4BUS_LIB} -Wl,-Bdynamic -lzip -lxml2 -lssl -lcrypto -lm -lz)
+set(COMMON_DEPS ${XL4BUS_LIB} -Wl,-Bdynamic ${LIBZIP_LIBRARY} -lxml2 -lssl -lcrypto -lm -lz)
 set(SHARED_DEPS ${JSON_C_LIB} ${COMMON_DEPS})
 set(APP_DEPS ${JSON_C_LIB} ${COMMON_DEPS})
