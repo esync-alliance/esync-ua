@@ -10,8 +10,8 @@ import sys
 from collections import OrderedDict
 
 
-class UaXl4bus:
-    """Base class of update agent via Xl4bus """
+class eSyncUA:
+    """Base class of eSync Update Agent interfacing libua """
 
     __XL4BUS_OTA_STATUS = ('INSTALL_PENDING', 'INSTALL_IN_PROGRESS',
                            'INSTALL_COMPLETED', 'INSTALL_ABORTED',
@@ -26,19 +26,13 @@ class UaXl4bus:
                  debug=False):
         """Class Constructor 
         Args:
-                cert_dir(str): Top directory of UA certificates.
-                version_dir(str): Location of version file for do_set_version() 
-                        (default is /data/sota/versions).  
-                host_port(str): Host url and port number
-                        (Default is tcp://localhost:9133).
-                enable_delta(bool): True to enable, False to disable delta feature
-                        (Default is True). 
-                reconstruct_delta(bool):: If True, this library reconstructs the
-                        package with downloaded delta file, the reconstructed file path 
-                        is passed in do_install() to UA. 
-                        If False,  the path name of the downloaded delta file is passed
-                        to UA. UA is responsible for reconstruction. 
-                        (Default is True)      
+            cert_dir(str): Top directory of UA certificates.
+            version_dir(str): Location of version file for do_set_version() 
+                (default is /data/sota/versions).  
+            host_port(str): Host url and port number
+                (Default is tcp://localhost:9133).
+            enable_delta(bool): True to enable, False to disable esync
+                delta feature (Default is True). 
 
         Returns:
             None
@@ -68,17 +62,17 @@ class UaXl4bus:
         self.delta_conf.delta_cap = delta_cap
 
         cb = libuamodule.py_ua_cb_t()
-        if self.do_pre_install.__code__ is not UaXl4bus.do_pre_install.__code__:
+        if self.do_pre_install.__code__ is not eSyncUA.do_pre_install.__code__:
             cb.ua_pre_install = "do_pre_install"
-        if self.do_post_install.__code__ is not UaXl4bus.do_post_install.__code__:
+        if self.do_post_install.__code__ is not eSyncUA.do_post_install.__code__:
             cb.ua_post_install = "do_post_install"
-        if self.do_prepare_install.__code__ is not UaXl4bus.do_prepare_install.__code__:
+        if self.do_prepare_install.__code__ is not eSyncUA.do_prepare_install.__code__:
             cb.ua_prepare_install = "do_prepare_install"
-        if self.do_transfer_file.__code__ is not UaXl4bus.do_transfer_file.__code__:
+        if self.do_transfer_file.__code__ is not eSyncUA.do_transfer_file.__code__:
             cb.ua_transfer_file = "do_transfer_file"
-        if self.do_dmc_presence.__code__ is not UaXl4bus.do_dmc_presence.__code__:
+        if self.do_dmc_presence.__code__ is not eSyncUA.do_dmc_presence.__code__:
             cb.ua_dmc_presence = "do_dmc_presence"
-        if self.do_message.__code__ is not UaXl4bus.do_message.__code__:
+        if self.do_message.__code__ is not eSyncUA.do_message.__code__:
             cb.ua_on_message = "do_message"
 
         cb.ua_get_version = "do_get_version"
@@ -250,9 +244,24 @@ class UaXl4bus:
         return [0]
 
     def do_dmc_presence(self):
+        """
+        [Optional] This is called when UA library detects that DMClient is
+        connnected to eSync Bus.
+
+        Args:
+            None.
+        
+        Retruns
+            0 for Success, 1 for Failure.
+        """
         return 0
 
-    def do_message(self):
+    def do_message(self, message):
+        """
+        [NOT SUPPORTED YET] This is intended to give UA a chance to overwrite
+        message handling in UA library. If implemented by UA, the corresponding
+        message handling function will not invoked.
+        """
         pass
 
     def send_diag_data(self, message, level='INFO', timestamp=None, compoundable=True, nodeType=None):
