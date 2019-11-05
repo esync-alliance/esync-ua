@@ -3,14 +3,14 @@ import os
 import subprocess
 import shutil
 from optparse import OptionParser
-from UaXl4bus import UaXl4bus
+from esyncua import eSyncUA
 
 
-class MyUaXl4bus(UaXl4bus):
-    """Simple update agent """
+class SampleUA(eSyncUA):
+    """Sample Update Agent """
 
     def do_get_version(self, packageName):
-        return UaXl4bus.do_get_version(self, packageName)
+        return eSyncUA.do_get_version(self, packageName)
 
     def do_prepare_install(self, packageName, version, packageFile):
         print("UA:do_prepare_install %s:%s:%s" %
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     host_p = 'tcp://' + options.host + ':' + str(options.port)
-    my_ua = MyUaXl4bus(cert_dir=options.cert_dir,
+    sample_ua = SampleUA(cert_dir=options.cert_dir,
                        conf_file='/data/sota/ua/ua.conf',
                        ua_nodeType=options.node_type,
                        host_port=host_p,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                        enable_delta=(options.disable_delta is False),
                        debug=options.debug)
 
-    my_ua.ssh_host = options.host
-    my_ua.ssh_user = options.ssh_user
-    my_ua.ssh_pw = options.ssh_pw
-    my_ua.run_forever()
+    sample_ua.ssh_host = options.host
+    sample_ua.ssh_user = options.ssh_user
+    sample_ua.ssh_pw = options.ssh_pw
+    sample_ua.run_forever()

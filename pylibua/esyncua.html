@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module esyncua</title>
+<meta charset="utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>esyncua</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/vincent/gitlab/updateagent-c/pylibua/esyncua.py">/home/vincent/gitlab/updateagent-c/pylibua/esyncua.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="json.html">json</a><br>
+<a href="libuamodule.html">libuamodule</a><br>
+</td><td width="25%" valign=top><a href="logging.html">logging</a><br>
+<a href="os.html">os</a><br>
+</td><td width="25%" valign=top><a href="sys.html">sys</a><br>
+<a href="time.html">time</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="esyncua.html#eSyncUA">eSyncUA</a>
+</font></dt></dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="eSyncUA">class <strong>eSyncUA</strong></a></font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Base&nbsp;class&nbsp;of&nbsp;eSync&nbsp;Update&nbsp;Agent&nbsp;interfacing&nbsp;libua<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="eSyncUA-__init__"><strong>__init__</strong></a>(self, cert_dir, conf_file, ua_nodeType, host_port<font color="#909090">='tcp://localhost:9133'</font>, version_dir<font color="#909090">='/data/sota/versions'</font>, delta_cap<font color="#909090">='A:3;B:3;C100'</font>, enable_delta<font color="#909090">=True</font>, reboot_support<font color="#909090">=False</font>, debug<font color="#909090">=False</font>)</dt><dd><tt>Class&nbsp;Constructor&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;cert_dir(str):&nbsp;Top&nbsp;directory&nbsp;of&nbsp;UA&nbsp;certificates.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;version_dir(str):&nbsp;Location&nbsp;of&nbsp;version&nbsp;file&nbsp;for&nbsp;<a href="#eSyncUA-do_set_version">do_set_version</a>()&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(default&nbsp;is&nbsp;/data/sota/versions).&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;host_port(str):&nbsp;Host&nbsp;url&nbsp;and&nbsp;port&nbsp;number<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Default&nbsp;is&nbsp;tcp://localhost:9133).<br>
+&nbsp;&nbsp;&nbsp;&nbsp;enable_delta(bool):&nbsp;True&nbsp;to&nbsp;enable,&nbsp;False&nbsp;to&nbsp;disable&nbsp;esync<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;delta&nbsp;feature&nbsp;(Default&nbsp;is&nbsp;True).&nbsp;<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_confirm_download"><strong>do_confirm_download</strong></a>(self, pkgName, version)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;confirm/deny&nbsp;download&nbsp;after&nbsp;UA&nbsp;receives<br>
+xl4.ready-download&nbsp;message&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;pkgName:&nbsp;Component&nbsp;package&nbsp;name.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;version:&nbsp;version&nbsp;string.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Subclass&nbsp;shall&nbsp;return&nbsp;one&nbsp;of&nbsp;the&nbsp;status&nbsp;strings<br>
+&nbsp;&nbsp;&nbsp;&nbsp;("DOWNLOAD_POSTPONED",&nbsp;"DOWNLOAD_DENIED",&nbsp;"DOWNLOAD_CONSENT")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Default&nbsp;is&nbsp;"DOWNLOAD_CONSENT"</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_dmc_presence"><strong>do_dmc_presence</strong></a>(self)</dt><dd><tt>[Optional]&nbsp;This&nbsp;is&nbsp;called&nbsp;when&nbsp;UA&nbsp;library&nbsp;detects&nbsp;that&nbsp;DMClient&nbsp;is<br>
+connnected&nbsp;to&nbsp;eSync&nbsp;Bus.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;None.<br>
+&nbsp;<br>
+Retruns<br>
+&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;for&nbsp;Success,&nbsp;1&nbsp;for&nbsp;Failure.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_get_version"><strong>do_get_version</strong></a>(self, packageName)</dt><dd><tt>[Optional]&nbsp;&nbsp;Interface&nbsp;to&nbsp;retrieve&nbsp;current&nbsp;version&nbsp;of&nbsp;UA<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageName:&nbsp;component&nbsp;package&nbsp;name.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;list&nbsp;of&nbsp;two&nbsp;items&nbsp;[status,&nbsp;"version"]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;status(int):&nbsp;0&nbsp;for&nbsp;success,&nbsp;1&nbsp;for&nbsp;error.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;version(str):&nbsp;Version&nbsp;string.<br>
+&nbsp;<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Subclass&nbsp;shall&nbsp;a&nbsp;list&nbsp;in&nbsp;the&nbsp;for&nbsp;[0,&nbsp;"v1.0"].</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_init"><strong>do_init</strong></a>(self)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;allow&nbsp;device&nbsp;specific&nbsp;initialization,&nbsp;this&nbsp;is<br>
+called&nbsp;before&nbsp;initializing&nbsp;xl4bus.<br>
+&nbsp;<br>
+Subclass&nbsp;shall&nbsp;overwrite&nbsp;this&nbsp;function&nbsp;to&nbsp;customize&nbsp;device&nbsp;<br>
+initialization&nbsp;before&nbsp;starting&nbsp;the&nbsp;update&nbsp;agent.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_install"><strong>do_install</strong></a>(self, downloadFileStr)</dt><dd><tt>[Required]&nbsp;Interface&nbsp;to&nbsp;start&nbsp;updating&nbsp;after&nbsp;<a href="#eSyncUA-do_pre_install">do_pre_install</a>()&nbsp;upon<br>
+receiving&nbsp;xl4.ready-update&nbsp;message.&nbsp;&nbsp;<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;downloadFileStr:&nbsp;Full&nbsp;pathname&nbsp;of&nbsp;the&nbsp;installation&nbsp;package&nbsp;file.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Subclass&nbsp;shall&nbsp;return&nbsp;one&nbsp;of&nbsp;the&nbsp;status&nbsp;strings&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;("INSTALL_COMPLETED",&nbsp;"INSTALL_FAILED")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Default&nbsp;is&nbsp;"INSTALL_COMPLETED"</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_message"><strong>do_message</strong></a>(self, message)</dt><dd><tt>[NOT&nbsp;SUPPORTED&nbsp;YET]&nbsp;This&nbsp;is&nbsp;intended&nbsp;to&nbsp;give&nbsp;UA&nbsp;a&nbsp;chance&nbsp;to&nbsp;overwrite<br>
+message&nbsp;handling&nbsp;in&nbsp;UA&nbsp;library.&nbsp;If&nbsp;implemented&nbsp;by&nbsp;UA,&nbsp;the&nbsp;corresponding<br>
+message&nbsp;handling&nbsp;function&nbsp;will&nbsp;not&nbsp;invoked.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_post_install"><strong>do_post_install</strong></a>(self, packageName)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;invoke&nbsp;additional&nbsp;action&nbsp;after&nbsp;<a href="#eSyncUA-do_install">do_install</a>()<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageName:&nbsp;component&nbsp;package&nbsp;name.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_pre_install"><strong>do_pre_install</strong></a>(self, downloadFileStr)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;prepare&nbsp;for&nbsp;updating&nbsp;after&nbsp;UA&nbsp;receives&nbsp;<br>
+xl4.ready-update&nbsp;message<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;pkgName:&nbsp;Component&nbsp;package&nbsp;name.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;version:&nbsp;version&nbsp;string.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Subclass&nbsp;shall&nbsp;return&nbsp;one&nbsp;of&nbsp;the&nbsp;status&nbsp;strings<br>
+&nbsp;&nbsp;&nbsp;&nbsp;("INSTALL_IN_PROGRESS",&nbsp;"INSTALL_FAILED")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Default&nbsp;is&nbsp;"INSTALL_IN_PROGRESS"</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_prepare_install"><strong>do_prepare_install</strong></a>(self, packageName, version, packageFile)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;allow&nbsp;UA&nbsp;to&nbsp;manage&nbsp;'packageFile'&nbsp;after<br>
+receiving&nbsp;xl4.prepare-update.&nbsp;e.g.&nbsp;A&nbsp;system&nbsp;might&nbsp;need&nbsp;to&nbsp;copy<br>
+'packageFile'&nbsp;to&nbsp;a&nbsp;specific&nbsp;directory.&nbsp;In&nbsp;such&nbsp;case,&nbsp;UA&nbsp;shall<br>
+return&nbsp;the&nbsp;new&nbsp;pathname,&nbsp;which&nbsp;will&nbsp;be&nbsp;passed&nbsp;to&nbsp;do_install.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageName(str):&nbsp;Component&nbsp;package&nbsp;name.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;version(str):&nbsp;Version&nbsp;string.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageFile(str):&nbsp;Full&nbsp;file&nbsp;path&nbsp;of&nbsp;downloaded&nbsp;package&nbsp;file.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;list&nbsp;of&nbsp;one&nbsp;or&nbsp;two&nbsp;strings&nbsp;["status",&nbsp;"newPath"].<br>
+&nbsp;&nbsp;&nbsp;&nbsp;status(str):&nbsp;required,&nbsp;one&nbsp;of&nbsp;("INSTALL_READY",&nbsp;"INSTALL_FAILED")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;newPath(str):&nbsp;optional,&nbsp;only&nbsp;return&nbsp;newPath&nbsp;to&nbsp;inform&nbsp;the&nbsp;new&nbsp;file<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pathname&nbsp;should&nbsp;be&nbsp;used&nbsp;for&nbsp;installation&nbsp;in&nbsp;do_install.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_set_version"><strong>do_set_version</strong></a>(self, packageName, ver)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;set&nbsp;version&nbsp;of&nbsp;UA&nbsp;after&nbsp;successful&nbsp;update.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageName(str):&nbsp;A&nbsp;string&nbsp;for&nbsp;component&nbsp;package&nbsp;name&nbsp;found&nbsp;in&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xl4.ready-update&nbsp;message.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ver(str):&nbsp;A&nbsp;version&nbsp;string&nbsp;found&nbsp;in&nbsp;xl4.ready-update&nbsp;message.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int:&nbsp;0&nbsp;for&nbsp;success,&nbsp;1&nbsp;for&nbsp;error.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-do_transfer_file"><strong>do_transfer_file</strong></a>(self, packageName, version, packageFile)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;allow&nbsp;UA&nbsp;to&nbsp;transfer&nbsp;'packageFile'&nbsp;from<br>
+a&nbsp;remote&nbsp;system&nbsp;to&nbsp;the&nbsp;local&nbsp;filesystem&nbsp;for&nbsp;installation,&nbsp;after<br>
+receiving&nbsp;.&nbsp;UA&nbsp;shall&nbsp;return&nbsp;the&nbsp;new&nbsp;local&nbsp;pathname,<br>
+which&nbsp;will&nbsp;be&nbsp;used&nbsp;for&nbsp;further&nbsp;processing.&nbsp;Note&nbsp;that&nbsp;this&nbsp;inteface&nbsp;is<br>
+invoked&nbsp;after&nbsp;receiving&nbsp;xl4.prepare-update,&nbsp;before&nbsp;calling<br>
+do_prepare_install<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageName(str):&nbsp;Component&nbsp;package&nbsp;name.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;version(str):&nbsp;Version&nbsp;string.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;packageFile(str):&nbsp;Full&nbsp;file&nbsp;path&nbsp;of&nbsp;downloaded&nbsp;package&nbsp;file.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;list&nbsp;of&nbsp;one&nbsp;or&nbsp;two&nbsp;strings&nbsp;[status,&nbsp;"newPath"].<br>
+&nbsp;&nbsp;&nbsp;&nbsp;status(int):&nbsp;required,&nbsp;0&nbsp;for&nbsp;success,&nbsp;1&nbsp;for&nbsp;error.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;newPath(str):&nbsp;optional,&nbsp;only&nbsp;return&nbsp;newPath&nbsp;to&nbsp;inform&nbsp;the&nbsp;new&nbsp;file<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pathname&nbsp;should&nbsp;be&nbsp;used&nbsp;for&nbsp;further&nbsp;processing.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-run_forever"><strong>run_forever</strong></a>(self)</dt><dd><tt>Start&nbsp;communication&nbsp;with&nbsp;DMClient&nbsp;via&nbsp;Xl4bus-broker.&nbsp;<br>
+Initialize&nbsp;Xl4bus&nbsp;Client&nbsp;if&nbsp;it&nbsp;hasn't&nbsp;been&nbsp;done&nbsp;yet.<br>
+Start&nbsp;a&nbsp;thread&nbsp;to&nbsp;retrieve&nbsp;XL4bus&nbsp;messages&nbsp;from&nbsp;a&nbsp;Queue&nbsp;for&nbsp;further&nbsp;processing.</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-send_diag_data"><strong>send_diag_data</strong></a>(self, message, level<font color="#909090">='INFO'</font>, timestamp<font color="#909090">=None</font>, compoundable<font color="#909090">=True</font>, nodeType<font color="#909090">=None</font>)</dt><dd><tt>Send&nbsp;diagnostic&nbsp;message&nbsp;(xl4.log-report)&nbsp;to&nbsp;DMClient<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message(str):&nbsp;message&nbsp;JSON&nbsp;object&nbsp;should&nbsp;be&nbsp;created&nbsp;by&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DiagnosticsMessage::getMessage()&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;level(str):&nbsp;level&nbsp;for&nbsp;this&nbsp;diagnostics&nbsp;message&nbsp;-&nbsp;EVENT|INFO|WARN|ERROR|SEVERE<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timestamp(float):&nbsp;epoch&nbsp;time&nbsp;(seconds)&nbsp;at&nbsp;which&nbsp;the&nbsp;diagnostic&nbsp;data&nbsp;was&nbsp;captured<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;no&nbsp;timestamp&nbsp;is&nbsp;given&nbsp;DMClient&nbsp;will&nbsp;attach&nbsp;a&nbsp;timestamp&nbsp;to&nbsp;it<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;compoundable(bool):&nbsp;True&nbsp;is&nbsp;compoundable,&nbsp;otherwiese&nbsp;False.&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nodeType(str):&nbsp;Package&nbsp;handler&nbsp;type,&nbsp;e.g.&nbsp;/ECU/Xl4/<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="eSyncUA-set_xl4bus_debug"><strong>set_xl4bus_debug</strong></a>(self, enable<font color="#909090">=0</font>)</dt><dd><tt>Enable/Disable&nbsp;xl4bus&nbsp;debug&nbsp;messages.&nbsp;<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;enable(int):&nbsp;0&nbsp;to&nbsp;disable,&nbsp;1&nbsp;to&nbsp;enable&nbsp;xl4bus&nbsp;debug&nbsp;messages<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;None.</tt></dd></dl>
+
+</td></tr></table></td></tr></table>
+</body></html>

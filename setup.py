@@ -39,5 +39,5 @@ setup (name = 'esync-libua-python',
        author_email='support@excelfore.com',
        url='',
        ext_modules  = [esyncua_module],
-       py_modules   = ['libuamodule', 'UaXl4bus'],
+       py_modules   = ['libuamodule', 'esyncua'],
        )
