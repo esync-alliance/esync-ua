@@ -8,6 +8,15 @@
 #include "pua.h"
 %}
 
+typedef struct delta_cfg {
+	char* delta_cap;
+	delta_tool_t* patch_tools;
+	int patch_tool_cnt;
+	delta_tool_t* decomp_tools;
+	int decomp_tool_cnt;
+
+} delta_cfg_t;
+
 typedef struct ua_cfg {
 	// specifies the URL of the broker
 	char* url;

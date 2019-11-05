@@ -244,6 +244,12 @@ XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t*
 	return xl4bus_client_send_msg_to_addr(msg, xl4_address);
 }
 
+int ua_send_message_string_with_address(char* message,  xl4bus_address_t* xl4_address)
+{
+	DBG("Sending with bus addr: %s", message);
+	return xl4bus_client_send_msg_to_addr(message, xl4_address);
+}
+
 int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent)
 {
 	return send_update_report(pkgName, version, indeterminate, percent, US_INSTALL);

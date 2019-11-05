@@ -66,9 +66,16 @@ int pua_start(char* node_type, ua_cfg_t* cfg)
 	return 0;
 }
 
-int pua_send_message(char* message)
+int pua_send_message(char* message, char* addr)
 {
-	return 0;
+	xl4bus_address_t* xl4_address;
+	if(addr) {
+		xl4bus_chain_address(&xl4_address, XL4BAT_UPDATE_AGENT, addr, 1);
+	}else {
+		xl4bus_chain_address(&xl4_address, XL4BAT_SPECIAL, XL4BAS_DM_CLIENT);
+	}
+	
+	return ua_send_message_string_with_address(message, xl4_address);
 }
 
 void pua_end(void)
@@ -303,7 +310,22 @@ static download_state_t pua_prepare_download(const char* type, const char* pkgNa
 
 static int pua_dmc_presence(dmc_presence_t* dp)
 {
-	return E_UA_OK;
+	PyObject* result = 0;
+	int rc = E_UA_ERR;
+	if ((py_class_instance) && (py_dmc_presence))
+	{
+		result = PyObject_CallMethod(py_class_instance, py_dmc_presence, NULL);
+		if (result) {
+
+
+		}else
+			PY_DBG("Error PyObject_CallMethodObjArgs py_dmc_presence");
+	}else
+		PY_DBG("Invalid class instance!");
+
+	Py_XDECREF(result);
+
+	return rc;
 }
 
 static int pua_transfer_file(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile)

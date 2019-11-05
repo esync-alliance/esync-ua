@@ -20,8 +20,10 @@ class UaXl4bus:
     def __init__(self, cert_dir, conf_file, ua_nodeType,
                  host_port='tcp://localhost:9133',
                  version_dir='/data/sota/versions',
+                 delta_cap='A:3;B:3;C100',
                  enable_delta=True,
-                 reconstruct_delta=True):
+                 reboot_support=False,
+                 debug=False):
         """Class Constructor 
         Args:
                 cert_dir(str): Top directory of UA certificates.
@@ -39,18 +41,31 @@ class UaXl4bus:
                         (Default is True)      
 
         Returns:
-                None
+            None
         """
         self.cert_dir = cert_dir
         self.nodeType = ua_nodeType
         self.version_dir = version_dir
         self.__loadUaConf(conf_file)
-        self.enable_delta = enable_delta
         self.host_port = host_port
         self.xl4bus_client_initialized = False
-        self.reconstruct_delta = reconstruct_delta
-        self.libua_debug = 0
+        if(debug):
+            self.libua_debug = 1
+        else :
+            self.libua_debug = 0
+        if(enable_delta):
+            self.enable_delta = 1
+        else:
+            self.enable_delta = 0
+        if(reboot_support):
+            self.reboot_support = 1
+        else:
+            self.reboot_support = 0
+
         self.ua_version = None
+
+        self.delta_conf = libuamodule.delta_cfg_t()
+        self.delta_conf.delta_cap = delta_cap
 
         cb = libuamodule.py_ua_cb_t()
         if self.do_pre_install.__code__ is not UaXl4bus.do_pre_install.__code__:
@@ -84,9 +99,10 @@ class UaXl4bus:
         uacfg.cert_dir = self.cert_dir
         uacfg.cache_dir = "/tmp/esync/"
         uacfg.backup_dir = "/data/sota/esync/"
+        uacfg.delta_config = self.delta_conf
         uacfg.delta = self.enable_delta
         uacfg.debug = self.libua_debug
-        uacfg.reboot_support = 0
+        uacfg.reboot_support = self.reboot_support
         self.do_init()
         if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, uacfg) == 0):
             self.xl4bus_client_initialized = True
@@ -234,7 +250,7 @@ class UaXl4bus:
         return [0]
 
     def do_dmc_presence(self):
-        pass
+        return 0
 
     def do_message(self):
         pass
@@ -265,7 +281,7 @@ class UaXl4bus:
         jsonDiagStr = json.dumps(diagMsg)
         now = time.strftime("[%m-%d:%H:%M:%S]", time.localtime())
         print(str(now), jsonDiagStr)
-        if(libuamodule.pua_send_message(jsonDiagStr) != 0):
+        if(libuamodule.pua_send_message(jsonDiagStr, None) != 0):
             print("Failed to send message")
 
     def set_xl4bus_debug(self, enable=0):
@@ -293,26 +309,3 @@ class UaXl4bus:
 
         if hasattr(self, 'backup_dir') is False:
             self.backup_dir = "/data/sota/backup"
-
-    def is_xl4bus_initialized(self):
-        """ Return if xl4bus client has been initialzed, UA can start sending messages if so. 
-
-        Args:
-            None
-        Returns:
-            True if initialzed, otherwise False.  
-        """
-        return self.xl4bus_client_initialized
-
-    def initialize_xl4bus_client(self):
-        """ Initialize xl4bus client only without starting message processing loop.
-
-        Args:
-            None
-        Returns:
-            True if initialzed, otherwise False.  
-        """
-        if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, self.cert_dir, self.host_port) == 0):
-            self.xl4bus_client_initialized = True
-
-        return self.xl4bus_client_initialized
