@@ -9,8 +9,9 @@
 #define PUA_H_
 
 #include <Python.h>
-#include <xl4ua.h>
 #include <unistd.h>
+#include "xl4ua.h"
+#include "libxl4bus/high_level.h"
 
 #define VERSION_SIZE_MAX 256
 #define _ltime_ \
@@ -43,7 +44,7 @@ typedef struct py_ua_cb {
 
 void pua_set_callbacks(PyObject* class_instance, py_ua_cb_t* cb);
 int pua_start(char* node_type, ua_cfg_t* cfg);
-int pua_send_message(char* message);
+int pua_send_message(char* message, char* addr);
 void pua_end(void);
 
 static inline const char* chop_path(const char* path)

@@ -218,6 +218,8 @@ XL4_PUB int ua_backup_package(char* type, char* pkgName, char* version);
 
 XL4_PUB int ua_send_message_string(char* message);
 
+XL4_PUB int ua_send_message_string_with_address(char* message,  xl4bus_address_t* xl4_address);
+
 #ifdef _json_h_
 
 XL4_PUB int ua_send_message(json_object* message);
