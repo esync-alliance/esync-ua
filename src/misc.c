@@ -632,7 +632,7 @@ int base64_encode(unsigned char hash[SHA256_DIGEST_LENGTH], char b64buff[SHA256_
 	b64 = BIO_push(BIO_new(BIO_f_base64()), BIO_new(BIO_s_mem()));
 
 	if (b64 && BIO_write(b64, hash, SHA256_DIGEST_LENGTH) > 0) {
-		BIO_flush(b64);
+		(void)BIO_flush(b64);
 		BIO_get_mem_ptr(b64, &bptr);
 		memcpy(b64buff, bptr->data, SHA256_B64_LENGTH - 1);
 		b64buff[SHA256_B64_LENGTH - 1] = 0;
