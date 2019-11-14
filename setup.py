@@ -10,8 +10,7 @@ libua_dir = os.path.dirname(os.path.realpath(__file__))
 libua_build = os.getenv("LIBUA_BUILD")
 if(libua_build is not None and len(libua_build) == 0):
     libua_build = None
-if(libua_build is None):
-	libua_build = os.path.join(libua_dir, 'build')
+
 xl4bus_build = os.getenv("XL4BUS_DIR")
 if(xl4bus_build is not None and len(xl4bus_build) == 0):
     xl4bus_build = None

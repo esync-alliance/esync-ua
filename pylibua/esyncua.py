@@ -17,7 +17,7 @@ class eSyncUA:
                            'INSTALL_COMPLETED', 'INSTALL_ABORTED',
                            'INSTALL_ROLLBACK', 'INSTALL_FAILED')
 
-    def __init__(self, cert_dir, conf_file, ua_nodeType,
+    def __init__(self, cert_dir, ua_nodeType,
                  host_port='tcp://localhost:9133',
                  version_dir='/data/sota/versions',
                  delta_cap='A:3;B:3;C100',
@@ -40,7 +40,6 @@ class eSyncUA:
         self.cert_dir = cert_dir
         self.nodeType = ua_nodeType
         self.version_dir = version_dir
-        self.__loadUaConf(conf_file)
         self.host_port = host_port
         self.xl4bus_client_initialized = False
         if(debug):
@@ -303,18 +302,3 @@ class eSyncUA:
             None. 
         """
         self.libua_debug = enable
-
-    def __loadUaConf(self, filename):
-        with open(filename) as conf_file:
-            self.config = (json.load(conf_file))
-            if('delta' in self.config and 'delta-cap' in self.config['delta']):
-                self.delta = self.config['delta']
-                self.delta_cap = self.config['delta']['delta-cap']
-            if('backup_dir' in self.config):
-                self.backup_dir = self.config['backup_dir']
-
-        if hasattr(self, 'delta_cap') is False:
-            self.delta_cap = "A:1;B:2;C:10"
-
-        if hasattr(self, 'backup_dir') is False:
-            self.backup_dir = "/data/sota/backup"
