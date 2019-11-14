@@ -1,43 +1,54 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 setup.py file for libuamodule
 """
 import os
-from subprocess import check_output
-import distutils.sysconfig
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
-src_dir =  os.path.dirname(os.path.realpath(__file__))
-libua_build = os.path.join(src_dir, 'build')
+libua_dir = os.path.dirname(os.path.realpath(__file__))
+libua_build = os.getenv("LIBUA_BUILD")
+if(libua_build is not None and len(libua_build) == 0):
+    libua_build = None
+if(libua_build is None):
+	libua_build = os.path.join(libua_dir, 'build')
 xl4bus_build = os.getenv("XL4BUS_DIR")
+if(xl4bus_build is not None and len(xl4bus_build) == 0):
+    xl4bus_build = None
+	
 if(xl4bus_build is not None):
-	pylib_inc = [os.path.join(libua_build, '../src/include'), 
-				libua_build,
-				os.path.join(xl4bus_build, '../src/include'),
-				os.path.join(xl4bus_build, 'include')]
+    pylib_inc = [os.path.join(libua_dir, 'src/include'),
+                 libua_build,
+                 os.path.join(xl4bus_build, '../src/include'),
+                 os.path.join(xl4bus_build, 'include')]
 else:
-	pylib_inc = [os.path.join(libua_build, '../src/include'),libua_build]
+    pylib_inc = [os.path.join(libua_dir, 'src/include'), libua_build]
 
 moduleconf = {
-			'name' : '_libuamodule',
-			'sources' : [ os.path.join(src_dir, 'pylibua/libuac.i'),
-							os.path.join(src_dir, 'pylibua/pua.c') ],
-			'libraries' : ['ua', 'xl4bus', 'xml2', 'zip'],
-			'include_dirs' : pylib_inc,
-			}
-
+    'name': '_libuamodule',
+    'sources': [os.path.join(libua_dir, 'pylibua/libuac.i'),
+                os.path.join(libua_dir, 'pylibua/pua.c')],
+    'libraries': ['ua', 'xl4bus', 'xml2', 'zip'],
+    'include_dirs': pylib_inc,
+}
+moduleconf['library_dirs'] = []
+moduleconf['runtime_library_dirs'] = []
 if(xl4bus_build is not None):
-	moduleconf['library_dirs'] = [xl4bus_build, libua_build]
-	moduleconf['runtime_library_dirs'] = [xl4bus_build, libua_build]
+    moduleconf['library_dirs'].append(xl4bus_build)
+    moduleconf['runtime_library_dirs'].append(xl4bus_build)
+
+if(libua_build is not None):
+    moduleconf['library_dirs'].append(libua_build)
+    moduleconf['runtime_library_dirs'].append(libua_build)
+
 esyncua_module = Extension(**moduleconf)
 
-setup (name = 'esync-libua-python',
-       version      = '2.0',
-       description  = """ eSync Python Update Agent Library Using libua.so """,
-       author='Excelfore',
-       author_email='support@excelfore.com',
-       url='https://excelfore.com/',
-       ext_modules  = [esyncua_module],
-       packages=['pylibua'],
-       )
+setup(name='esync-libua',
+      version='1.0',
+      description=""" eSync Python Update Agent Library Using libua.so """,
+      author='Excelfore',
+      author_email='support@excelfore.com',
+      url='https://excelfore.com/',
+      ext_modules=[esyncua_module],
+      packages=['pylibua']
+      )

@@ -19,6 +19,4 @@ linux_port/*.cmk
 qnx_port/*.cmk
 libxml2-build
 libzip-build
-
-
-
+setup.cfg

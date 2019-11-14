@@ -1,7 +1,7 @@
 """
 
 """
-import libuamodule
+from pylibua import libuamodule
 import os
 import json
 import time
