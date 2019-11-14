@@ -3,7 +3,7 @@ import os
 import subprocess
 import shutil
 from optparse import OptionParser
-from esyncua import eSyncUA
+from pylibua.esyncua import eSyncUA
 
 
 class SampleUA(eSyncUA):
@@ -74,7 +74,6 @@ if __name__ == "__main__":
 
     host_p = 'tcp://' + options.host + ':' + str(options.port)
     sample_ua = SampleUA(cert_dir=options.cert_dir,
-                       conf_file='/data/sota/ua/ua.conf',
                        ua_nodeType=options.node_type,
                        host_port=host_p,
                        delta_cap=options.cap,
