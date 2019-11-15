@@ -72,7 +72,7 @@ As a result, a corresponding package file should be downloaded to the default lo
 1. To write a new update agent, a subclass of eSyncUA should be implemented like SampleUA in tmpl_ua.py. The following code snippet prints the pathname of the downloaded package. Most UA extracts contents in this package for target installation.
 
     ```python
-    from esyncua import eSyncUA
+    from pylibua.esyncua import eSyncUA
 
     class SampleUA(eSyncUA):
         def do_install(self, downloadFileStr):
