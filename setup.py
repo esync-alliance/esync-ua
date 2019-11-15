@@ -49,5 +49,6 @@ setup(name='esync-libua',
       author_email='support@excelfore.com',
       url='https://excelfore.com/',
       ext_modules=[esyncua_module],
+      package_dir={'pylibua': os.path.join(libua_dir, 'pylibua')},
       packages=['pylibua']
       )
