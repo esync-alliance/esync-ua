@@ -11,10 +11,10 @@ from collections import OrderedDict
 
 
 class eSyncUA:
-    """Base class of eSync Update Agent interfacing libua """
+    """Base class of eSync Update Agent interfacing libua C library."""
 
-    __XL4BUS_OTA_STATUS = ('INSTALL_PENDING', 'INSTALL_IN_PROGRESS',
-                           'INSTALL_COMPLETED', 'INSTALL_ABORTED',
+    __XL4BUS_OTA_STATUS = ('DOWNLOAD_CONSENT', 'INSTALL_PENDING',
+                           'INSTALL_IN_PROGRESS', 'INSTALL_COMPLETED',
                            'INSTALL_ROLLBACK', 'INSTALL_FAILED')
 
     def __init__(self, cert_dir, ua_nodeType,
@@ -34,8 +34,7 @@ class eSyncUA:
             enable_delta(bool): True to enable, False to disable esync
                 delta feature (Default is True). 
 
-        Returns:
-            None
+        Returns: None
         """
         self.cert_dir = cert_dir
         self.nodeType = ua_nodeType
@@ -81,9 +80,13 @@ class eSyncUA:
         libuamodule.pua_set_callbacks(self, cb)
 
     def run_forever(self):
-        """ Start communication with DMClient via Xl4bus-broker. 
-                Initialize Xl4bus Client if it hasn't been done yet.
-                Start a thread to retrieve XL4bus messages from a Queue for further processing. 
+        """
+        Start endless loop to listen to eSync bus to process
+        messages intended for the registered UA
+
+        Args: None
+
+        Returns: None
         """
         print(self.cert_dir, self.version_dir)
         uacfg = libuamodule.ua_cfg_t()
@@ -107,6 +110,10 @@ class eSyncUA:
 
         Subclass shall overwrite this function to customize device 
         initialization before starting the update agent. 
+
+        Args: None
+
+        Returns: None
         """
         pass
 
@@ -160,11 +167,11 @@ class eSyncUA:
     def do_post_install(self, packageName):
         """
         [Optional] Interface to invoke additional action after do_install()
+
         Args:
             packageName: component package name.
 
-        Returns:
-            None
+        Returns: None
         """
         pass
 
@@ -247,8 +254,7 @@ class eSyncUA:
         [Optional] This is called when UA library detects that DMClient is
         connnected to eSync Bus.
 
-        Args:
-            None.
+        Args: None
         
         Retruns
             0 for Success, 1 for Failure.
@@ -259,12 +265,14 @@ class eSyncUA:
         """
         [NOT SUPPORTED YET] This is intended to give UA a chance to overwrite
         message handling in UA library. If implemented by UA, the corresponding
-        message handling function will not invoked.
+        default handling function will not be invoked.
         """
         pass
 
     def send_diag_data(self, message, level='INFO', timestamp=None, compoundable=True, nodeType=None):
-        """ Send diagnostic message (xl4.log-report) to DMClient
+        """ 
+        Send diagnostic message (xl4.log-report) to DMClient
+
         Args:
                 message(str): message JSON object should be created by 
                         DiagnosticsMessage::getMessage()           
@@ -274,8 +282,7 @@ class eSyncUA:
                 compoundable(bool): True is compoundable, otherwiese False. 
                 nodeType(str): Package handler type, e.g. /ECU/Xl4/
 
-        Returns:
-                None
+        Returns: None
         """
         if nodeType is None:
             nodeType = self.nodeType
@@ -298,7 +305,6 @@ class eSyncUA:
         Args:
             enable(int): 0 to disable, 1 to enable xl4bus debug messages
 
-        Returns:
-            None. 
+        Returns: None
         """
         self.libua_debug = enable

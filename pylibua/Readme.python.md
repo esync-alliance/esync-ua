@@ -23,7 +23,7 @@ This README describes the following:
     cd ..
 
     #Build everything.
-    python3 setup.py build_ext
+    XL4BUS_DIR=/your/path/to/libxl4bus/build python3 setup.py build_ext
 
     #Intsall to Python 3 system package directories.
     python3 setup.py install
