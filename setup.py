@@ -12,12 +12,14 @@ if(libua_build is not None and len(libua_build) == 0):
     libua_build = None
 
 xl4bus_build = os.getenv("XL4BUS_DIR")
+
 if(xl4bus_build is not None and len(xl4bus_build) == 0):
     xl4bus_build = None
 	
 if(xl4bus_build is not None):
+    if('~' in xl4bus_build):
+        xl4bus_build = os.path.expanduser(xl4bus_build)
     pylib_inc = [os.path.join(libua_dir, 'src/include'),
-                 libua_build,
                  os.path.join(xl4bus_build, '../src/include'),
                  os.path.join(xl4bus_build, 'include')]
 else:
@@ -37,6 +39,7 @@ if(xl4bus_build is not None):
     moduleconf['runtime_library_dirs'].append(xl4bus_build)
 
 if(libua_build is not None):
+    moduleconf['include_dirs'].append(libua_build)
     moduleconf['library_dirs'].append(libua_build)
     moduleconf['runtime_library_dirs'].append(libua_build)
 
