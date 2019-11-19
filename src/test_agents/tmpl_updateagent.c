@@ -45,7 +45,7 @@ static int set_tmpl_version(const char* type, const char* pkgName, const char* v
 	getFileName(pkgName);
 	if (setVerToFile(pkgName, version) != 0)
 	{
-		printf("Set version to file Failed\n");
+		printf("Set version to file: Failed\n");
 		free(instVerFile);
 		return E_UA_ERR;
 	}
@@ -185,7 +185,7 @@ void set_backup_dir(const char * bkpDir)
     	strcat(backupDir, "backup/");
     else
 		strcat(backupDir, "/backup/");
-	//printf("backup Dir: %s\n", backupDir);
+	//printf("set_backup_dir: backup Dir: %s\n", backupDir);
 }
 
 //get the rollback version from the rbConf file
@@ -251,26 +251,33 @@ void getFileName(const char* pkgName)
 void getBackupDir(const char* pkgName)
 {
 	int ret_dir;
-    strcpy(bkpDir, backupDir);
+	strcpy(bkpDir, backupDir);
 	strcat(bkpDir, pkgName);
 	//printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
-	if (access(bkpDir, F_OK) == -1 ) {
-		ret_dir = mkdir(bkpDir, 0755);
+	if (access(backupDir, F_OK) == -1 ) {
+			ret_dir = mkdir(backupDir, 0777);
 		if (ret_dir != 0) {
-			printf("Back up directory creation failed\n");
+			printf("getBackupDir: Back up directory creation failed\n");
+			perror("backupDir:mkdir");
 		}
 		else {
-			printf("Back up directory created\n");
+			if (access(bkpDir, F_OK) == -1 ) {
+				ret_dir = mkdir(bkpDir, 0777);
+				if (ret_dir != 0) {
+					printf("getBackupDir: Back up directory creation failed\n");
+					perror("pkgNameDir:mkdir");
+				}
+			}
 		}
 	}
 	else
-		printf("Back up directory exists, %s\n", bkpDir);
+		printf("getBackupDir: Back up directory exists, %s\n", bkpDir);
 
 }
 
 int getVerFromFile(const char* pkgName)
 {
-	printf("getVerFromFile: instVerFile - %s\n", instVerFile);
+	//printf("getVerFromFile: instVerFile - %s\n", instVerFile);
 	if (access(instVerFile, F_OK) != -1 ) {
 		if ((fp1 = fopen(instVerFile, "r")) != NULL) {
 			//printf("File open success\n ");
@@ -281,12 +288,14 @@ int getVerFromFile(const char* pkgName)
 			}
 			else {
 				printf("file read failed, may be empty file\n");
+				perror("file read");
 				fclose(fp1);
 				return E_UA_ERR;
 			}
 		}
 		else {
 			printf("File open failed\n");
+			perror("file open");
 			return E_UA_ERR;
 		}
 	}
