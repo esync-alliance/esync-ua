@@ -16,7 +16,7 @@ delta_stg_t delta_stg = {0};
 
 const delta_tool_t deflt_patch_tools[] = {
 	{"bsdiff", "bspatch", OFA " "NFA " "PFA, 1},
-	{"rfc3284", "xdelta3", "-d -s "OFA " "PFA " "NFA, 0},
+	{"rfc3284", "xdelta3", "-D -d -s "OFA " "PFA " "NFA, 0},
 	{"esdiff", "espatch", OFA " "NFA " "PFA, 1}
 };
 
