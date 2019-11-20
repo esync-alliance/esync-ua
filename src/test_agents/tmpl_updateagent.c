@@ -255,19 +255,17 @@ void getBackupDir(const char* pkgName)
 	strcat(bkpDir, pkgName);
 	//printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
 	if (access(backupDir, F_OK) == -1 ) {
-			ret_dir = mkdir(backupDir, 0777);
+		ret_dir = mkdir(backupDir, 0777);
 		if (ret_dir != 0) {
 			printf("getBackupDir: Back up directory creation failed\n");
 			perror("backupDir:mkdir");
 		}
-		else {
-			if (access(bkpDir, F_OK) == -1 ) {
-				ret_dir = mkdir(bkpDir, 0777);
-				if (ret_dir != 0) {
-					printf("getBackupDir: Back up directory creation failed\n");
-					perror("pkgNameDir:mkdir");
-				}
-			}
+	}
+	if (access(bkpDir, F_OK) == -1 ) {
+		ret_dir = mkdir(bkpDir, 0777);
+		if (ret_dir != 0) {
+			printf("getBackupDir: Back up directory creation failed\n");
+			perror("pkgNameDir:mkdir");
 		}
 	}
 	else
