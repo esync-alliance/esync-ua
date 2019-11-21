@@ -560,7 +560,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 				} else if (!strcmp(type, PREPARE_UPDATE)) {
 					process_run(uacc, process_prepare_update, jObj, 1);
 				} else if (!strcmp(type, CONFIRM_UPDATE)) {
-					process_run(uacc, process_confirm_update, jObj, 0);
+					process_run(uacc, process_confirm_update, jObj, 1);
 				} else if (!strcmp(type, DOWNLOAD_REPORT)) {
 					process_run(uacc, process_download_report, jObj, 0);
 				} else if (!strcmp(type, SOTA_REPORT)) {
