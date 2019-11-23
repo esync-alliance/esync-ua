@@ -549,6 +549,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 	json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
 
 	if (jErr == json_tokener_success) {
+		uacc->cur_msg = jObj;
+
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
 			if (!uacc->uar->on_message || !(*uacc->uar->on_message)(type, jObj)) {
 				if (!strcmp(type, QUERY_PACKAGE)) {
@@ -583,6 +585,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 		DBG("Failed to parse json (%s): %s", json_tokener_error_desc(jErr), msg);
 	}
 
+	uacc->cur_msg = NULL;
 	if (!jErr) json_object_put(jObj);
 }
 
@@ -614,6 +617,7 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 			if (pthread_create(&uacc->worker.worker_thread, 0, worker_action, uacc)) {
 				DBG_SYS("pthread create");
 				json_object_put(uacc->worker.worker_jobj);
+				uacc->cur_msg = NULL;
 				uacc->worker.worker_running = 0;
 			}
 
@@ -1174,7 +1178,13 @@ void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t*
 			json_object_object_add(pkgObject, "version-list", verListObject);
 		}
 	}
-
+#if 0
+	/*
+		TODO:
+		version-list has been reported by query-update, 
+		is this needed in update-status?
+		disable for now. 
+	*/
 	if ((state == INSTALL_ROLLBACK) && pkgFile) {
 		json_object* versionObject = json_object_new_object();
 		json_object* verListObject = json_object_new_object();
@@ -1182,7 +1192,7 @@ void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t*
 		json_object_object_add(verListObject, pkgFile->version, versionObject);
 		json_object_object_add(pkgObject, "version-list", verListObject);
 	}
-
+#endif 
 	json_object* bodyObject = json_object_new_object();
 	json_object_object_add(bodyObject, "package", pkgObject);
 

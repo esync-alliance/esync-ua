@@ -285,6 +285,11 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 		rc = E_UA_ERR;
 	}else if (uacc->rb_type == URB_DMC_INITIATED) {
 		if (rb_file_info) {
+			/*
+				TODO: 
+				uacc->update_file_info.file has changed
+				rb_file_info should be from another source.
+			*/
 			rb_file_info->file = f_strdup(uacc->update_file_info.file);
 			rb_file_info->version = f_strdup(uacc->update_file_info.version);
 			memcpy(rb_file_info->sha256b64, &uacc->update_file_info.sha256b64, sizeof(rb_file_info->sha256b64));
@@ -340,8 +345,13 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				}
 
 				if (update_sts != INSTALL_COMPLETED){
+					DBG("Rollback to version(%s) was not successful", next_rb_version);
 					tmp_cur_version = next_rb_version;
 					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
+					if(next_rb_version)
+						DBG("Rollback will try the next version(%s).", next_rb_version);
+					else
+						DBG("Rollback has exhausted all available versions, will send terminal failure.");
 				}
 				f_free(tmp_rb_file_info.version);
 				f_free(tmp_rb_file_info.file);
@@ -490,8 +500,25 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 			remove(rec_file);
 		handler_set_internal_state(UAI_STATE_RESUME_DONE);
 	}
+}
 
+int update_cc_set_update_file_info(ua_component_context_t* uacc, char* version, json_object* jsonObj)
+{
+	int err = E_UA_ERR;
 
+	if(uacc && version) {
+		uacc->update_file_info.version = version;
+		uacc->cur_msg = jsonObj;
+		char *update_file_name = NULL;
+		if( !get_pkg_file_from_json(uacc->cur_msg, uacc->update_file_info.version, &update_file_name) 
+			&& !get_pkg_sha256_from_json(uacc->cur_msg, uacc->update_file_info.version, uacc->update_file_info.sha256b64)
+			&& !get_pkg_downloaded_from_json(uacc->cur_msg, uacc->update_file_info.version, &uacc->update_file_info.downloaded))
+		{
+			uacc->update_file_info.file = update_file_name;
+			err = E_UA_OK;
+		}
+	}
+	return err;
 }
 
 int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir)
@@ -514,21 +541,28 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
 
 			get_pkg_rollback_versions_from_json(jsonObj, &uacc->update_pkg.rollback_versions);
-
+#if 1
 			uacc->update_file_info.version = S(uacc->update_pkg.rollback_version) ?
-			                                 uacc->update_pkg.rollback_version : uacc->update_pkg.version;
-
+			    f_strdup(uacc->update_pkg.rollback_version) : f_strdup(uacc->update_pkg.version);
+#else
+			char * version_to_update = S(uacc->update_pkg.rollback_version) ? 
+				uacc->update_pkg.rollback_version : uacc->update_pkg.version;
+#endif 
 			if ((err = get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info)))
 			{
-				/* TODO: determine if is necessary to get information from ready-update json if 
-
 				DBG("Could not load temp update manifest, getting info from json package object instead.");
-				get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.file);
-				get_pkg_sha256_from_json(jsonObj, uacc->update_file_info.version, uacc->update_file_info.sha256b64);
-				get_pkg_downloaded_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.downloaded);
-				*/
-				DBG("Could not load temp update manifest!");
-
+#if 0
+				err = update_cc_set_update_file_info(uacc, version_to_update, jsonObj);
+#else
+				char *update_file_name = NULL;
+				if( !get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &update_file_name) 
+					&& !get_pkg_sha256_from_json(jsonObj, uacc->update_file_info.version, uacc->update_file_info.sha256b64)
+					&& !get_pkg_downloaded_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.downloaded))
+					{
+						uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
+						err = E_UA_OK;
+					}
+#endif 
 			}
 		}
 	}
@@ -539,6 +573,11 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 void update_release_comp_context(ua_component_context_t* uacc)
 {
 	if (uacc->state > UA_STATE_IDLE_INIT) {
+#if 1
+	// TODO: 
+	// The goal is to not have to alloc/free memories for any of this. 
+	// Should be able to set their pointers to NULL. 
+	//
 		if (uacc->rb_type == URB_UA_LOCAL_BACKUP) {
 			if (uacc->update_pkg.rollback_versions)
 				json_object_put(uacc->update_pkg.rollback_versions);
@@ -552,6 +591,7 @@ void update_release_comp_context(ua_component_context_t* uacc)
 			uacc->processing_type = NULL;
 		}
 
+#endif
 		uacc->update_pkg.name                 = NULL;
 		uacc->update_pkg.version              = NULL;
 		uacc->update_pkg.type                 = NULL;
