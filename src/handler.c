@@ -560,7 +560,10 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 				} else if (!strcmp(type, PREPARE_UPDATE)) {
 					process_run(uacc, process_prepare_update, jObj, 1);
 				} else if (!strcmp(type, CONFIRM_UPDATE)) {
-					process_run(uacc, process_confirm_update, jObj, 1);
+					if (uacc->state != UA_STATE_READY_UPDATE_DONE) {
+						DBG("UA state is %d, no need to process confirm-update.", uacc->state);
+					}else
+						process_run(uacc, process_confirm_update, jObj, 1);
 				} else if (!strcmp(type, DOWNLOAD_REPORT)) {
 					process_run(uacc, process_download_report, jObj, 0);
 				} else if (!strcmp(type, SOTA_REPORT)) {
@@ -731,8 +734,14 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	update_err_t updateErr = UE_NONE;
 	install_state_t state  = INSTALL_READY;
 
-	if (uacc->state != UA_STATE_PREPARE_UPDATE_STARTED &&
-	    !get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
+	if (uacc->state == UA_STATE_PREPARE_UPDATE_STARTED ||
+	    (uacc->state == UA_STATE_READY_UPDATE_DONE && uacc->rb_type == URB_NONE)) {
+		DBG("UA state is %d, can not process prepare-update.", uacc->state);
+		return;
+
+	}
+
+	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 		get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
@@ -757,7 +766,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 					if (!calc_sha256_x(updateFile.file, updateFile.sha_of_sha)) {
 						add_pkg_file_manifest(uacc->update_manifest, &updateFile);
 					} else {
-					/* TODO: stop installation/clean up resource.*/
+						/* TODO: stop installation/clean up resource.*/
 						state = INSTALL_FAILED;
 					}
 				}
@@ -893,7 +902,10 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 		if (backup_manifest != NULL) {
-			if (!get_body_rollback_from_json(jsonObj, &rollback) && rollback && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
+			if (!get_body_rollback_from_json(jsonObj, &rollback)
+			    && rollback
+			    && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version)
+			    )
 				remove_old_backup(backup_manifest, pkgInfo.rollback_version);
 			else
 				remove_old_backup(backup_manifest, pkgInfo.version);
@@ -989,12 +1001,11 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 				*ue = UE_INCREMENTAL_FAILED;
 			state = INSTALL_FAILED;
 		}
-		if(err == E_UA_OK)
+		if (err == E_UA_OK)
 			calculate_sha256_b64(updateFile->file, updateFile->sha256b64);
 		updateFile->downloaded = 0;
 
 	} else {
-
 		updateFile->file = f_strdup(pkgFile->file);
 		memcpy(updateFile->sha256b64, pkgFile->sha256b64, sizeof(updateFile->sha256b64));
 		if (err == E_UA_OK)
@@ -1106,7 +1117,7 @@ install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo,
 	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = INSTALL_FAILED;
 
-	if(uar) {
+	if (uar) {
 		DBG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
 		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 
@@ -1419,6 +1430,7 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 	int ret               = E_UA_OK;
 	pkg_info_t pkgInfo    = {0};
 	pkg_file_t updateFile = {0};
+
 	pkgInfo.name    = pkgName;
 	pkgInfo.version = version;
 
@@ -1435,7 +1447,7 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 			DBG("Could not parse info from update_manifest %s.", uacc->update_manifest);
 		}
 
-		if(!access(uacc->update_manifest, F_OK)) {
+		if (!access(uacc->update_manifest, F_OK)) {
 			DBG("Removing update_manifest %s", uacc->update_manifest);
 			remove(uacc->update_manifest);
 		}
