@@ -547,6 +547,11 @@ void update_release_comp_context(ua_component_context_t* uacc)
 		if (uacc->rb_type != URB_NONE)
 			f_free(uacc->update_file_info.file);
 
+		if(uacc->processing_type){
+			free(uacc->processing_type);
+			uacc->processing_type = NULL;
+		}
+
 		uacc->update_pkg.name                 = NULL;
 		uacc->update_pkg.version              = NULL;
 		uacc->update_pkg.type                 = NULL;

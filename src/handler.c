@@ -825,8 +825,9 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	double flashing_time;
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir) == E_UA_OK) {
-		uacc->state = UA_STATE_READY_UPDATE_STARTED;
-		start_time  = clock();
+		uacc->state           = UA_STATE_READY_UPDATE_STARTED;
+		uacc->processing_type = f_strdup(uacc->update_pkg.type);
+		start_time            = clock();
 		update_set_rollback_info(uacc);
 
 		if (uacc->rb_type == URB_DMC_INITIATED) {
@@ -898,6 +899,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	int rollback       = 0;
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
+	    !strcmp(uacc->processing_type, pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
 		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
