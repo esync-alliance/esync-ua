@@ -676,7 +676,10 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 							json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
 							if (ua_intl.delta) {
-								json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
+								if(delta_use_external_algo())
+									json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+								else
+									json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
 							}
 
 							json_object_object_add(verListObject, pf->version, versionObject);
@@ -689,6 +692,16 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 						json_object_object_add(pkgObject, "version-list", verListObject);
 						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+
+					} else if(delta_use_external_algo() && installedVer) {
+
+						json_object* verListObject = json_object_new_object();
+						json_object* versionObject = json_object_new_object();
+						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
+						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+						json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
+						json_object_object_add(pkgObject, "version-list", verListObject);
+
 					}
 
 					free(backup_manifest);
