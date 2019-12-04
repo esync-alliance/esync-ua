@@ -86,6 +86,10 @@ int is_delta_package(const char* pkgFile)
 	return !zip_find_file(pkgFile, MANIFEST_DIFF);
 }
 
+int delta_use_external_algo(void)
+{
+	return delta_stg.use_external_algo;
+}
 
 int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const char* newPkgFile)
 {
@@ -270,30 +274,33 @@ static int get_espatch_version(char* ver, int len)
 static char* get_config_delta_cap(char* delta_cap)
 {
 	char espatch_ver[7] = "";
+	char* ret_cap = NULL;
 
 	if (delta_cap) {
-		if (!strstr(delta_cap, "E:")) {
-			char* tmp_cap = f_strdup(delta_cap);
-			char* tmp     = strtok(tmp_cap, ";");
-			if (tmp && *tmp == 'A') {
-				char* format = strstr(tmp, ":");
-				while (format) {
-					if (*(format+1) == '3') {
-						if (E_UA_OK == get_espatch_version(espatch_ver, sizeof(espatch_ver)))
-							return f_asprintf("%s;E:%s", delta_cap, espatch_ver);
-					}
-
-					tmp    = format + 1;
-					format = strstr(tmp, ",");
+		char* tmp_cap = f_strdup(delta_cap);
+		char* tmp     = strtok(tmp_cap, ";");
+		if (tmp && *tmp == 'A') {
+			char* format = strstr(tmp, ":");
+			while (format) {
+				if (!strstr(delta_cap, "E:") && *(format+1) == '3') {
+					if (E_UA_OK == get_espatch_version(espatch_ver, sizeof(espatch_ver)))
+						ret_cap = f_asprintf("%s;E:%s", delta_cap, espatch_ver);
+				} else if (*(format+1) == '4') {
+					delta_stg.use_external_algo = 1;
 				}
 
+				tmp    = format + 1;
+				format = strstr(tmp, ",");
 			}
-			free(tmp_cap);
+
 		}
+
+		if(ret_cap == NULL)
+			ret_cap = f_strdup(delta_cap);
+		free(tmp_cap);
 	}
 
-	return f_strdup(delta_cap);
-
+	return ret_cap;
 }
 
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool)

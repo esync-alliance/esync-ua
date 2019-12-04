@@ -48,7 +48,7 @@ typedef struct delta_stg {
 	char* cache_dir;
 	delta_tool_hh_t* patch_tool;
 	delta_tool_hh_t* decomp_tool;
-
+	int use_external_algo;
 } delta_stg_t;
 
 
@@ -62,7 +62,7 @@ void delta_stop();
 const char* get_delta_capability();
 int is_delta_package(const char* pkgFile);
 int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const char* newPkgFile);
-
+int delta_use_external_algo(void);
 void free_diff_info(diff_info_t* di);
 void free_delta_tool_hh (delta_tool_hh_t* dth);
 
