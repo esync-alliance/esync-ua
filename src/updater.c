@@ -323,6 +323,10 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 		uacc->update_pkg.rollback_version = next_rb_version;
 
 		if (update_installed_version_same(uacc, next_rb_version)) {
+			f_free(uacc->update_file_info.version);
+			f_free(uacc->update_file_info.file);
+			uacc->update_file_info.version = next_rb_version;
+			uacc->update_file_info.file = NULL;
 			send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 			DBG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
@@ -502,26 +506,7 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 	}
 }
 
-int update_cc_set_update_file_info(ua_component_context_t* uacc, char* version, json_object* jsonObj)
-{
-	int err = E_UA_ERR;
-
-	if(uacc && version) {
-		uacc->update_file_info.version = version;
-		uacc->cur_msg = jsonObj;
-		char *update_file_name = NULL;
-		if( !get_pkg_file_from_json(uacc->cur_msg, uacc->update_file_info.version, &update_file_name) 
-			&& !get_pkg_sha256_from_json(uacc->cur_msg, uacc->update_file_info.version, uacc->update_file_info.sha256b64)
-			&& !get_pkg_downloaded_from_json(uacc->cur_msg, uacc->update_file_info.version, &uacc->update_file_info.downloaded))
-		{
-			uacc->update_file_info.file = update_file_name;
-			err = E_UA_OK;
-		}
-	}
-	return err;
-}
-
-int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir)
+int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir, char* backup_dir)
 {
 	int err = E_UA_OK;
 
@@ -537,32 +522,30 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 		if (err == E_UA_OK) {
 			uacc->update_manifest = JOIN(cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+			uacc->backup_manifest = JOIN(backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 
 			get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
-
 			get_pkg_rollback_versions_from_json(jsonObj, &uacc->update_pkg.rollback_versions);
-#if 1
+
 			uacc->update_file_info.version = S(uacc->update_pkg.rollback_version) ?
 			    f_strdup(uacc->update_pkg.rollback_version) : f_strdup(uacc->update_pkg.version);
-#else
-			char * version_to_update = S(uacc->update_pkg.rollback_version) ? 
-				uacc->update_pkg.rollback_version : uacc->update_pkg.version;
-#endif 
+
 			if ((err = get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info)))
 			{
 				DBG("Could not load temp update manifest, getting info from json package object instead.");
-#if 0
-				err = update_cc_set_update_file_info(uacc, version_to_update, jsonObj);
-#else
 				char *update_file_name = NULL;
-				if( !get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &update_file_name) 
-					&& !get_pkg_sha256_from_json(jsonObj, uacc->update_file_info.version, uacc->update_file_info.sha256b64)
-					&& !get_pkg_downloaded_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.downloaded))
-					{
-						uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
-						err = E_UA_OK;
+				if(!get_pkg_downloaded_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.downloaded)
+					&& !get_pkg_sha256_from_json(jsonObj, uacc->update_file_info.version, uacc->update_file_info.sha256b64)) {
+						if(uacc->update_file_info.downloaded) {
+							if(!get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &update_file_name)) {
+								uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
+								err = E_UA_OK;							
+							} else {
+								DBG("Getting filepath from backup manifest.");
+								err = get_pkg_file_manifest(uacc->backup_manifest, uacc->update_file_info.version, &uacc->update_file_info);
+							}
+						}
 					}
-#endif 
 			}
 		}
 	}

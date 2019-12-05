@@ -762,20 +762,6 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
 
 			state = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
-
-			if (state == INSTALL_READY) {
-				uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-
-				if (uacc->update_manifest != NULL) {
-					if (!calc_sha256_x(updateFile.file, updateFile.sha_of_sha)) {
-						add_pkg_file_manifest(uacc->update_manifest, &updateFile);
-					} else {
-						/* TODO: stop installation/clean up resource.*/
-						state = INSTALL_FAILED;
-					}
-				}
-			}
-
 			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
 			f_free(updateFile.version);
@@ -828,7 +814,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	clock_t start_time;
 	double flashing_time;
 
-	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir) == E_UA_OK) {
+	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
 		uacc->state           = UA_STATE_READY_UPDATE_STARTED;
 		uacc->processing_type = f_strdup(uacc->update_pkg.type);
 		start_time            = clock();
@@ -847,7 +833,6 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}
 
 		if (update_sts == INSTALL_COMPLETED) {
-			uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 
@@ -1032,6 +1017,18 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 		state = INSTALL_FAILED;
 	}
 
+	if (state == INSTALL_READY) {
+		uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo->name, MANIFEST_PKG);
+
+		if (uacc->update_manifest != NULL) {
+			if (!calc_sha256_x(updateFile->file, updateFile->sha_of_sha)) {
+				add_pkg_file_manifest(uacc->update_manifest, updateFile);
+			} else {
+				/* TODO: stop installation/clean up resource.*/
+				state = INSTALL_FAILED;
+			}
+		}
+	}
 	return state;
 
 }
