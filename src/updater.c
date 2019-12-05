@@ -556,7 +556,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 void update_release_comp_context(ua_component_context_t* uacc)
 {
 	if (uacc->state > UA_STATE_IDLE_INIT) {
-#if 1
+
 	// TODO: 
 	// The goal is to not have to alloc/free memories for any of this. 
 	// Should be able to set their pointers to NULL. 
@@ -569,12 +569,8 @@ void update_release_comp_context(ua_component_context_t* uacc)
 		if (uacc->rb_type != URB_NONE)
 			f_free(uacc->update_file_info.file);
 
-		if(uacc->processing_type){
-			free(uacc->processing_type);
-			uacc->processing_type = NULL;
-		}
+		f_free(uacc->processing_type);
 
-#endif
 		uacc->update_pkg.name                 = NULL;
 		uacc->update_pkg.version              = NULL;
 		uacc->update_pkg.type                 = NULL;

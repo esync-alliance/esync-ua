@@ -95,9 +95,9 @@ int ua_init(ua_cfg_t* uaConfig)
 
 int ua_stop(void)
 {
-	if (ua_intl.cache_dir) { free(ua_intl.cache_dir); ua_intl.cache_dir = NULL; }
-	if (ua_intl.backup_dir) { free(ua_intl.backup_dir); ua_intl.backup_dir = NULL; }
-	if (ua_intl.record_file) { free(ua_intl.record_file); ua_intl.record_file = NULL; }
+ 	f_free(ua_intl.cache_dir);
+	f_free(ua_intl.backup_dir);
+	f_free(ua_intl.record_file);
 	delta_stop();
 	if (ua_intl.state >= UAI_STATE_INITIALIZED)
 		return xl4bus_client_stop();
@@ -761,25 +761,20 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		    ((!get_pkg_file_manifest(uacc->backup_manifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
 
+			uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 			state = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
 			f_free(updateFile.version);
 			f_free(updateFile.file);
+			f_free(uacc->update_manifest);
 		}
 
 		if (bck) {
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
-		if (uacc->backup_manifest) {
-			free(uacc->backup_manifest);
-			uacc->backup_manifest = NULL;
-		}
-		if (uacc->update_manifest) {
-			free(uacc->update_manifest);
-			uacc->update_manifest = NULL;
-		}
+		f_free(uacc->backup_manifest);
 		uacc->state = UA_STATE_PREPARE_UPDATE_DONE;
 	}
 }
@@ -839,15 +834,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		json_object_put(jo);
 		uacc->state = UA_STATE_READY_UPDATE_DONE;
 
-		if (uacc->backup_manifest) {
-			free(uacc->backup_manifest);
-			uacc->backup_manifest = NULL;
-		}
-
-		if (uacc->update_manifest) {
-			free(uacc->update_manifest);
-			uacc->update_manifest = NULL;
-		}
+		f_free(uacc->backup_manifest);
+		f_free(uacc->update_manifest);
 
 		log_data_t ld;
 		flashing_time = (double)(clock()-start_time) / CLOCKS_PER_SEC;
@@ -1018,8 +1006,6 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 	}
 
 	if (state == INSTALL_READY) {
-		uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo->name, MANIFEST_PKG);
-
 		if (uacc->update_manifest != NULL) {
 			if (!calc_sha256_x(updateFile->file, updateFile->sha_of_sha)) {
 				add_pkg_file_manifest(uacc->update_manifest, updateFile);
@@ -1092,10 +1078,7 @@ install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgI
 
 			if (rc == ETIMEDOUT) {
 				DBG("Timed out waiting for update status response");
-				if (uacc->update_status_info.reply_id) {
-					free(uacc->update_status_info.reply_id);
-					uacc->update_status_info.reply_id = NULL;
-				}
+				f_free(uacc->update_status_info.reply_id);
 			}
 
 			//Check if update-status reponse was set to successful.
@@ -1242,10 +1225,7 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 	json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
-	if (uacc->update_status_info.reply_id) {
-		free(uacc->update_status_info.reply_id);
-		uacc->update_status_info.reply_id = NULL;
-	}
+	f_free(uacc->update_status_info.reply_id);
 
 	uacc->update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
 	if (uacc->update_status_info.reply_id)
@@ -1512,15 +1492,10 @@ int ua_backup_package(char* type, char* pkgName, char* version)
 
 	ret = handler_backup_actions(uacc, pkgName, version);
 
-	if (uacc->update_manifest && free_update) {
-		free(uacc->update_manifest);
-		uacc->update_manifest = NULL;
-	}
-
-	if (uacc->backup_manifest && free_backup) {
-		free(uacc->backup_manifest);
-		uacc->backup_manifest = NULL;
-	}
+	if(free_update)
+		f_free(uacc->update_manifest);
+	if(free_backup)
+		f_free(uacc->backup_manifest);
 
 	return ret;
 
