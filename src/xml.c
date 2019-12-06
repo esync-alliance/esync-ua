@@ -440,7 +440,6 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 		BOLT_IF(!(doc = xmlReadFile(xmlFile, NULL, 0)), E_UA_ERR, "Could not read xml file %s", xmlFile);
 
 		root = xmlDocGetRootElement(doc);
-        xmlFreeDoc(doc);
 		BOLT_IF(!(pf = get_xml_version_pkg_file(root, version)), E_UA_ERR, "version %s not found in pkg_manifest %s", version, xmlFile);
 
 		memcpy(pkgFile, pf, sizeof(pkg_file_t));
@@ -448,5 +447,8 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 
 	} while (0);
 
+    if (doc) {
+        xmlFreeDoc(doc);
+    }
 	return err;
 }
