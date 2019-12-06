@@ -839,7 +839,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		flashing_time = (double)(clock()-start_time) / CLOCKS_PER_SEC;
 		set_flashing_time_log_data(&ld, flashing_time, uacc->update_pkg.name, update_sts);
 		ua_send_log_report(uacc->update_pkg.type, LOG_INFO, &ld);
-
+		if (ld.message)
+			json_object_put(ld.message);
 	}else {
 		if (uacc == NULL || jsonObj == NULL)
 			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
