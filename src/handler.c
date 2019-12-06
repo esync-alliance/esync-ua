@@ -846,14 +846,14 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
-        if (uacc->update_file_info.version) {
-            f_free(uacc->update_file_info.version);
-            uacc->update_file_info.version = NULL;
-        }
-        if (uacc->update_file_info.file) {
-            f_free(uacc->update_file_info.file);
-            uacc->update_file_info.file = NULL;
-        }
+	if (uacc->update_file_info.version) {
+		f_free(uacc->update_file_info.version);
+		uacc->update_file_info.version = NULL;
+	}
+	if (uacc->update_file_info.file) {
+		f_free(uacc->update_file_info.file);
+		uacc->update_file_info.file = NULL;
+	}
 		json_object_put(jo);
 		uacc->state = UA_STATE_READY_UPDATE_DONE;
 

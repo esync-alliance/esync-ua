@@ -447,8 +447,8 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 
 	} while (0);
 
-    if (doc) {
-        xmlFreeDoc(doc);
-    }
+	if (doc) {
+		xmlFreeDoc(doc);
+	}
 	return err;
 }
