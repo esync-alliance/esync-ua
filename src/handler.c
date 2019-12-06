@@ -95,7 +95,7 @@ int ua_init(ua_cfg_t* uaConfig)
 
 int ua_stop(void)
 {
- 	f_free(ua_intl.cache_dir);
+	f_free(ua_intl.cache_dir);
 	f_free(ua_intl.backup_dir);
 	f_free(ua_intl.record_file);
 	delta_stop();
@@ -549,8 +549,6 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 	json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
 
 	if (jErr == json_tokener_success) {
-		uacc->cur_msg = jObj;
-
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
 			if (!uacc->uar->on_message || !(*uacc->uar->on_message)(type, jObj)) {
 				if (!strcmp(type, QUERY_PACKAGE)) {
@@ -585,7 +583,6 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 		DBG("Failed to parse json (%s): %s", json_tokener_error_desc(jErr), msg);
 	}
 
-	uacc->cur_msg = NULL;
 	if (!jErr) json_object_put(jObj);
 }
 
@@ -617,7 +614,6 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 			if (pthread_create(&uacc->worker.worker_thread, 0, worker_action, uacc)) {
 				DBG_SYS("pthread create");
 				json_object_put(uacc->worker.worker_jobj);
-				uacc->cur_msg = NULL;
 				uacc->worker.worker_running = 0;
 			}
 
@@ -762,7 +758,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
 
 			uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-			state = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
+			state                 = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
 			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
 
 			f_free(updateFile.version);
@@ -806,6 +802,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 {
 	install_state_t update_sts = INSTALL_READY;
 	json_object* jo            = json_object_get(jsonObj);
+
+	uacc->cur_msg = jo;
 	clock_t start_time;
 	double flashing_time;
 
@@ -830,7 +828,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		if (update_sts == INSTALL_COMPLETED) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
-
+		uacc->cur_msg = NULL;
 		json_object_put(jo);
 		uacc->state = UA_STATE_READY_UPDATE_DONE;
 
@@ -1158,13 +1156,7 @@ void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t*
 			json_object_object_add(pkgObject, "version-list", verListObject);
 		}
 	}
-#if 0
-	/*
-		TODO:
-		version-list has been reported by query-update, 
-		is this needed in update-status?
-		disable for now. 
-	*/
+
 	if ((state == INSTALL_ROLLBACK) && pkgFile) {
 		json_object* versionObject = json_object_new_object();
 		json_object* verListObject = json_object_new_object();
@@ -1172,7 +1164,7 @@ void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t*
 		json_object_object_add(verListObject, pkgFile->version, versionObject);
 		json_object_object_add(pkgObject, "version-list", verListObject);
 	}
-#endif 
+
 	json_object* bodyObject = json_object_new_object();
 	json_object_object_add(bodyObject, "package", pkgObject);
 
@@ -1492,9 +1484,9 @@ int ua_backup_package(char* type, char* pkgName, char* version)
 
 	ret = handler_backup_actions(uacc, pkgName, version);
 
-	if(free_update)
+	if (free_update)
 		f_free(uacc->update_manifest);
-	if(free_backup)
+	if (free_backup)
 		f_free(uacc->backup_manifest);
 
 	return ret;
