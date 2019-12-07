@@ -124,6 +124,7 @@ static void do_tmpl_post_install(const char* type, const char* pkgName)
 
 static install_state_t do_prepare_install(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile)
 {
+	printf("Emulate do_prepare_install for %s version: %s, file: %s\n", pkgName, version, pkgFile);
 	return INSTALL_READY;
 
 }
