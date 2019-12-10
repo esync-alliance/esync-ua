@@ -362,11 +362,17 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				DBG("Rollback package file is not available locally, asking eSync client to download it.");
 				tmp_rb_file_info.downloaded = 0;
 				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
+				tmp_cur_version = next_rb_version;
 				next_rb_version = NULL;
 				update_sts      = INSTALL_IN_PROGRESS;
 
 			}
 
+		}
+
+		if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {
+			DBG("Removing temp manifest, RB version was %s.", tmp_cur_version);
+			remove(uacc->update_manifest);
 		}
 
 	};
@@ -528,7 +534,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			uacc->update_file_info.version = S(uacc->update_pkg.rollback_version) ?
 			                                 f_strdup(uacc->update_pkg.rollback_version) : f_strdup(uacc->update_pkg.version);
 
-			if ((err = get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info)))
+			if ((E_UA_ERR == get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info)))
 			{
 				DBG("Could not load temp update manifest, getting info from json package object instead.");
 				char* update_file_name = NULL;
@@ -547,6 +553,9 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			}
 		}
 	}
+
+	if(err == E_UA_ERR && S(uacc->update_pkg.rollback_version))
+		uacc->update_error = UE_TERMINAL_FAILURE;
 
 	return err;
 }

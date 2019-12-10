@@ -379,12 +379,11 @@ void handle_message(const char* type, const char* msg, size_t len)
 	query_hash_tree(ri_tree, 0, type, 0, &ri_list, 0);
 
 	int l = utarray_len(&ri_list);
-#if 0
-	if (l)
-		DBG("Registered handlers found for %s : %d", type, l);
-	else
+	if (!l)
 		DBG("Incoming message for non-registered handler %s : %s", type, msg);
-#endif
+	//else
+	//	DBG("Registered handlers found for %s : %d", type, l);
+
 	for (int j = 0; j < l; j++) {
 		runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
 		BOLT_SYS(pthread_mutex_lock(&ri->lock), "lock failed");
@@ -676,7 +675,10 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 							json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
 							if (ua_intl.delta) {
-								json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
+								if(delta_use_external_algo())
+									json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+								else
+									json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
 							}
 
 							json_object_object_add(verListObject, pf->version, versionObject);
@@ -689,6 +691,16 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 						json_object_object_add(pkgObject, "version-list", verListObject);
 						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+
+					} else if(delta_use_external_algo() && installedVer) {
+
+						json_object* verListObject = json_object_new_object();
+						json_object* versionObject = json_object_new_object();
+						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
+						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+						json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
+						json_object_object_add(pkgObject, "version-list", verListObject);
+
 					}
 
 					free(backup_manifest);
@@ -846,7 +858,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
 		else {
 			DBG("Error: parsing ready-update, or getting info form temp manifest.");
-			send_install_status(&uacc->update_pkg, INSTALL_FAILED, 0, 0);
+			send_install_status(&uacc->update_pkg, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 		}
 	}
 }
@@ -990,7 +1002,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 			updateFile->downloaded = 1;
 	}
 
-	if (err == E_UA_OK) {
+	if (err == E_UA_OK && access(uacc->update_manifest, F_OK)) {
 		if (uar->on_prepare_install) {
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
 			if (S(newFile)) {
