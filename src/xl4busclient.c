@@ -78,7 +78,7 @@ int xl4bus_client_init(char* url, char* cert_dir)
 	} while (0);
 
 	if (err) {
-		f_free(m_xl4bus_url);
+		Z_FREE(m_xl4bus_url);
 		m_xl4bus_url = NULL;
 	}
 
@@ -89,7 +89,7 @@ int xl4bus_client_init(char* url, char* cert_dir)
 
 int xl4bus_client_stop(void)
 {
-	f_free(m_xl4bus_url);
+	Z_FREE(m_xl4bus_url);
 	m_xl4bus_url = NULL;
 	return xl4bus_stop_client(&m_xl4bus_clt);
 

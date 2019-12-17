@@ -274,6 +274,7 @@ int remove_old_backup(char* xmlFile, char* version)
 	char* tmp_dir;
 
 	do {
+		DBG("Cleaning up backup after installing version: %s in %s", version, xmlFile);
 		if (!access(xmlFile, W_OK)) {
 			BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
 			root = xmlDocGetRootElement(doc);
@@ -288,7 +289,7 @@ int remove_old_backup(char* xmlFile, char* version)
 			if ((n = get_xml_child(node, XMLT "version"))) {
 				if ((c = xmlNodeGetContent(n))) {
 					if (!xmlStrEqual(c, XMLT version)) {
-						DBG("Removing pkg entry for version: %s in %s", version, xmlFile);
+						DBG("Removing pkg entry for version: %s in %s", c, xmlFile);
 						if ((n = get_xml_child(node, XMLT "file"))) {
 							if ((backpath = xmlNodeGetContent(n))) {
 								tmp_dir = f_dirname((const char*)backpath);
