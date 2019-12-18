@@ -649,7 +649,7 @@ int calculate_sha256_b64(const char* file, char b64buff[SHA256_B64_LENGTH])
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 
 	if (!(err = calc_sha256(file, hash))) {
-		if(b64buff)
+		if (b64buff)
 			err = base64_encode(hash, b64buff);
 
 	} else {
@@ -676,7 +676,7 @@ int verify_file_hash_b64(const char* file, const char* sha256_b64)
 		}
 
 	}
-	
+
 	return err;
 
 }

@@ -103,7 +103,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	do {
 		top_delta_dir = JOIN(delta_stg.cache_dir, "delta");
 		if (top_delta_dir) {
-			if(!access(top_delta_dir, W_OK))
+			if (!access(top_delta_dir, W_OK))
 				rmdirp(top_delta_dir);
 			free(top_delta_dir);
 		}
@@ -275,7 +275,7 @@ static int get_espatch_version(char* ver, int len)
 static char* get_config_delta_cap(char* delta_cap)
 {
 	char espatch_ver[7] = "";
-	char* ret_cap = NULL;
+	char* ret_cap       = NULL;
 
 	if (delta_cap) {
 		char* tmp_cap = f_strdup(delta_cap);
@@ -296,7 +296,7 @@ static char* get_config_delta_cap(char* delta_cap)
 
 		}
 
-		if(ret_cap == NULL)
+		if (ret_cap == NULL)
 			ret_cap = f_strdup(delta_cap);
 		free(tmp_cap);
 	}

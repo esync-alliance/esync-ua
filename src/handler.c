@@ -672,7 +672,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 							json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
 							if (ua_intl.delta) {
-								if(delta_use_external_algo())
+								if (delta_use_external_algo())
 									json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
 								else
 									json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
@@ -689,8 +689,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 						json_object_object_add(pkgObject, "version-list", verListObject);
 						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 
-					} else if(delta_use_external_algo() && installedVer) {
-
+					} else if (delta_use_external_algo() && installedVer) {
 						json_object* verListObject = json_object_new_object();
 						json_object* versionObject = json_object_new_object();
 						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
@@ -816,8 +815,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	double flashing_time;
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
-		uacc->state           = UA_STATE_READY_UPDATE_STARTED;
-		start_time            = clock();
+		uacc->state = UA_STATE_READY_UPDATE_STARTED;
+		start_time  = clock();
 		update_set_rollback_info(uacc);
 
 		if (uacc->rb_type == URB_DMC_INITIATED) {
@@ -888,16 +887,14 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-
 		char* update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
-		
-		if (backup_manifest && update_manifest) {
 
+		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
 				if (!get_body_rollback_from_json(jsonObj, &rollback)
-					&& rollback
-					&& !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
+				    && rollback
+				    && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
 					remove_old_backup(backup_manifest, pkgInfo.rollback_version);
 				else
 					remove_old_backup(backup_manifest, pkgInfo.version);
@@ -974,8 +971,10 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 
 	updateFile->version = f_strdup(pkgFile->version);
 
-	if (!bck && uar->on_transfer_file) {
+	if (!bck && uar->on_transfer_file && access(uacc->update_manifest, F_OK)) {
 		err = transfer_file_action(uacc, pkgInfo, pkgFile);
+		if (err == E_UA_ERR)
+			DBG("UA:on_transfer_file returned error");
 	}
 
 	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
@@ -1010,17 +1009,21 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 			updateFile->downloaded = 1;
 	}
 
-	if (err == E_UA_OK && access(uacc->update_manifest, F_OK)) {
-		if (uar->on_prepare_install) {
-			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
-			if (S(newFile)) {
-				DBG("UA indicated to update using this new file: %s", newFile);
-				free(updateFile->file);
-				updateFile->file = f_strdup(newFile);
+	if (err == E_UA_OK) {
+		//Only call UA's on_prepare_install if no temp manifest file.
+		if (access(uacc->update_manifest, F_OK)) {
+			if (uar->on_prepare_install) {
+				state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
+				if (S(newFile)) {
+					DBG("UA indicated to update using this new file: %s", newFile);
+					free(updateFile->file);
+					updateFile->file = f_strdup(newFile);
+				}
 			}
 		}
 
 	} else {
+		DBG("Error in prepare_install_action, returning INSTALL_FAILED");
 		state = INSTALL_FAILED;
 	}
 
@@ -1029,7 +1032,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 			if (!calc_sha256_x(updateFile->file, updateFile->sha_of_sha)) {
 				add_pkg_file_manifest(uacc->update_manifest, updateFile);
 			} else {
-				/* TODO: stop installation/clean up resource.*/
+				DBG("Error in calculating sha_of_sha, returning INSTALL_FAILED");
 				state = INSTALL_FAILED;
 			}
 		}

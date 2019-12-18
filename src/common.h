@@ -19,6 +19,6 @@ void f_free(void* p);
 char* f_dirname(const char* s);
 char* f_basename(const char* s);
 
-#define Z_FREE(p) {f_free(p); p=NULL;} do {} while (0)
+#define Z_FREE(p) {f_free(p); p=NULL; } do {} while (0)
 
 #endif /* UA_COMMON_H_ */
