@@ -204,6 +204,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 
 		if (update_sts == INSTALL_IN_PROGRESS)
 			update_sts = update_action(uacc, &uacc->update_pkg, &uacc->update_file_info);
+
 		if (update_sts == INSTALL_COMPLETED)
 			post_update_action(uacc, &uacc->update_pkg);
 
@@ -327,13 +328,11 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 
 	while (update_sts != INSTALL_COMPLETED && next_rb_version != NULL) {
 		DBG("Starting rollback type(%d) to version(%s)", uacc->rb_type, next_rb_version);
+		Z_FREE(uacc->update_file_info.version);
+		Z_FREE(uacc->update_file_info.file);
 		uacc->update_pkg.rollback_version = next_rb_version;
 
 		if (update_installed_version_same(uacc, next_rb_version)) {
-			if (uacc->rb_type == URB_DMC_INITIATED) {
-				Z_FREE(uacc->update_file_info.version);
-				Z_FREE(uacc->update_file_info.file);
-			}
 			uacc->update_file_info.version = f_strdup(next_rb_version);
 			uacc->update_file_info.file    = NULL;
 			send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
@@ -362,8 +361,6 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 						DBG("Rollback will try the next version(%s).", next_rb_version);
 					else
 						DBG("No more rollback version.");
-					Z_FREE(uacc->update_file_info.version);
-					Z_FREE(uacc->update_file_info.file);
 				}
 				Z_FREE(tmp_rb_file_info.version);
 				Z_FREE(tmp_rb_file_info.file);

@@ -215,10 +215,10 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 
 	if (!S(pkgFile->file) || !S(pkgFile->version) || !S(pkgFile->sha256b64)) {
 		DBG("Incomplete pkg node");
-		if (pkgFile->file) free(pkgFile->file);
-		if (pkgFile->version) free(pkgFile->version);
-		free(pkgFile);
-		pkgFile = NULL;
+		Z_FREE(pkgFile->file);
+		Z_FREE(pkgFile->version);
+		Z_FREE(pkgFile);
+
 	}
 
 	return pkgFile;

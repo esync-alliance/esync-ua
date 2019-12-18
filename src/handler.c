@@ -827,8 +827,6 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
 			    uacc->rb_type >= URB_UA_INITIATED) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				Z_FREE(uacc->update_file_info.version);
-				Z_FREE(uacc->update_file_info.file);
 				update_sts =  update_start_rollback_operations(uacc, rb_version, ua_intl.reboot_support);
 
 			}
@@ -884,6 +882,11 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 {
 	pkg_info_t pkgInfo = {0};
 	int rollback       = 0;
+
+	if(uacc->state == UA_STATE_READY_UPDATE_STARTED) {
+		DBG("Skip confirm-update, still processing ready-update");
+		return;
+	}
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
