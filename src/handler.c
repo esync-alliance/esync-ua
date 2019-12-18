@@ -99,6 +99,7 @@ int ua_stop(void)
 	Z_FREE(ua_intl.backup_dir);
 	Z_FREE(ua_intl.record_file);
 	delta_stop();
+	xmlCleanupParser();
 	if (ua_intl.state >= UAI_STATE_INITIALIZED)
 		return xl4bus_client_stop();
 	pthread_mutex_destroy(&ua_intl.backup_lock);

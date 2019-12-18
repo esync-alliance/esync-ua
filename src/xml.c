@@ -141,7 +141,6 @@ int parse_diff_manifest(char* xmlFile, diff_info_t** diffInfo)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	if (!err) {
@@ -255,7 +254,6 @@ int parse_pkg_manifest(char* xmlFile, pkg_file_t** pkgFile)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	if (!err) {
@@ -322,7 +320,6 @@ int remove_old_backup(char* xmlFile, char* version)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	return err;
@@ -394,7 +391,6 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	return err;
