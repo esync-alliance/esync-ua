@@ -90,7 +90,6 @@ int xl4bus_client_init(char* url, char* cert_dir)
 int xl4bus_client_stop(void)
 {
 	Z_FREE(m_xl4bus_url);
-	m_xl4bus_url = NULL;
 	return xl4bus_stop_client(&m_xl4bus_clt);
 
 }
