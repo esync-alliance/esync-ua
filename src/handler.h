@@ -154,8 +154,7 @@ typedef enum update_rollback {
 } update_rollback_t;
 
 typedef struct ua_component_context {
-	char* type;             //Registered hanlder type.
-	char* processing_type;  //Could be same as type, or a sub-type of type.
+	char* type; //Registered hanlder type.
 	json_object* cur_msg;
 	ua_state_t state;
 	ua_routine_t* uar;

@@ -164,7 +164,7 @@ typedef struct ua_cfg {
 	
 	// specifies which source package file used for backup,
 	// when  delta reconstruction is triggered.
-	// 0 = Use the actual full path used installation, this is default. 
+	// 0 = Use the actual full path used for installation, this is default. 
 	// 1 = Use the full path resulted from delta reconstruction. 
 	// Both may or may not be the same full path. 
 	int backup_source;

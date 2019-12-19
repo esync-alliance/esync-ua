@@ -102,8 +102,9 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 	do {
 		top_delta_dir = JOIN(delta_stg.cache_dir, "delta");
-		if (top_delta_dir && !access(top_delta_dir, W_OK)) {
-			rmdirp(top_delta_dir);
+		if (top_delta_dir) {
+			if (!access(top_delta_dir, W_OK))
+				rmdirp(top_delta_dir);
 			free(top_delta_dir);
 		}
 
@@ -168,8 +169,8 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	} while (0);
 
 #define DTR_RM(type) \
-	if ((type ## Path) && !access(type ## Path, F_OK)) { if (rmdirp(type ## Path)) DBG("failed to remove directory %s", type ## Path); free(type ## Path); } \
-	f_free(manifest_ ## type); do { } while (0)
+	if ((type ## Path) ) { if (!access(type ## Path, F_OK) && rmdirp(type ## Path)) DBG("error removing directory %s", type ## Path); free(type ## Path); } \
+	Z_FREE(manifest_ ## type); do { } while (0)
 
 	DTR_RM(old);
 	DTR_RM(diff);
@@ -177,7 +178,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 #undef DTR_RM
 
-	f_free(diff_manifest);
+	Z_FREE(diff_manifest);
 
 	return err;
 }
@@ -274,7 +275,7 @@ static int get_espatch_version(char* ver, int len)
 static char* get_config_delta_cap(char* delta_cap)
 {
 	char espatch_ver[7] = "";
-	char* ret_cap = NULL;
+	char* ret_cap       = NULL;
 
 	if (delta_cap) {
 		char* tmp_cap = f_strdup(delta_cap);
@@ -295,7 +296,7 @@ static char* get_config_delta_cap(char* delta_cap)
 
 		}
 
-		if(ret_cap == NULL)
+		if (ret_cap == NULL)
 			ret_cap = f_strdup(delta_cap);
 		free(tmp_cap);
 	}
@@ -435,19 +436,19 @@ static int verify_file(const char* file, const char* sha256)
 
 void free_delta_tool_hh(delta_tool_hh_t* dth)
 {
-	f_free(dth->tool.algo);
-	f_free(dth->tool.path);
-	f_free(dth->tool.args);
-	f_free(dth);
+	Z_FREE(dth->tool.algo);
+	Z_FREE(dth->tool.path);
+	Z_FREE(dth->tool.args);
+	Z_FREE(dth);
 
 }
 
 void free_diff_info(diff_info_t* di)
 {
-	f_free(di->name);
-	f_free(di->format);
-	f_free(di->compression);
-	f_free(di);
+	Z_FREE(di->name);
+	Z_FREE(di->format);
+	Z_FREE(di->compression);
+	Z_FREE(di);
 
 }
 
