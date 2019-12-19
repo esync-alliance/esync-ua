@@ -95,15 +95,19 @@ int ua_init(ua_cfg_t* uaConfig)
 
 int ua_stop(void)
 {
+	int rc = 0;
+
 	Z_FREE(ua_intl.cache_dir);
 	Z_FREE(ua_intl.backup_dir);
 	Z_FREE(ua_intl.record_file);
 	delta_stop();
 	xmlCleanupParser();
-	if (ua_intl.state >= UAI_STATE_INITIALIZED)
-		return xl4bus_client_stop();
+	if (ua_intl.state >= UAI_STATE_INITIALIZED) {
+		rc = xl4bus_client_stop();
+		ua_intl.state = UAI_STATE_NOT_KNOWN;
+	}
 	pthread_mutex_destroy(&ua_intl.backup_lock);
-	return 0;
+	return rc;
 }
 
 
@@ -174,6 +178,8 @@ int ua_unregister(ua_handler_t* uah, int len)
 					ri->run = 0;
 					BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
 					BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
+					void *res;
+					BOLT_SYS(pthread_join(ri->thread, &res), "thread join");
 					BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
 					BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
 					ri->component.record_file = NULL;
@@ -210,15 +216,9 @@ int ua_unregister(ua_handler_t* uah, int len)
 
 void* ua_handle_dmc_presence(void* arg)
 {
-	if (ua_intl.uah) {
-		for (int i = 0; i < ua_intl.n_uah; i++) {
-			ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
-			if (uar && uar->on_dmc_presence)
-				(*uar->on_dmc_presence)(NULL);
-
-		}
-	}
-
+	ua_routine_t* uar = (ua_routine_t*)arg;
+	if (uar && uar->on_dmc_presence)
+		(*uar->on_dmc_presence)(NULL);
 	return NULL;
 }
 
@@ -355,10 +355,20 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
 				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
 
-			pthread_t thread_dmc_presence;
-			if (pthread_create(&thread_dmc_presence, 0, ua_handle_dmc_presence, NULL)) {
-				DBG("Failed to spawn thread_dmc_presence.");
-
+			if (ua_intl.uah) {
+				for (int i = 0; i < ua_intl.n_uah; i++) {
+					ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
+					if (uar && uar->on_dmc_presence) {
+						pthread_t thread_dmc_presence;
+						pthread_attr_t attr;
+						pthread_attr_init(&attr);
+						pthread_attr_setdetachstate(&attr, 1);
+						if (pthread_create(&thread_dmc_presence, &attr, ua_handle_dmc_presence, (void*)uar)) {
+							DBG("Failed to spawn thread_dmc_presence.");
+						}
+						pthread_attr_destroy(&attr);
+					}
+				}
 			}
 			break;
 		default:
@@ -608,11 +618,15 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 			uacc->worker.worker_func    = func;
 			uacc->worker.worker_jobj    = json_object_get(jObj);
 
-			if (pthread_create(&uacc->worker.worker_thread, 0, worker_action, uacc)) {
+			pthread_attr_t attr;
+			pthread_attr_init(&attr);
+			pthread_attr_setdetachstate(&attr, 1);
+			if (pthread_create(&uacc->worker.worker_thread, &attr, worker_action, uacc)) {
 				DBG_SYS("pthread create");
 				json_object_put(uacc->worker.worker_jobj);
 				uacc->worker.worker_running = 0;
 			}
+			pthread_attr_destroy(&attr);
 
 		} else {
 			DBG("UA worker busy, discarding this message.");
