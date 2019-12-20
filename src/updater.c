@@ -15,6 +15,7 @@
 #include "pthread.h"
 #include "debug.h"
 
+extern ua_internal_t ua_intl;
 json_object* update_get_pkg_info_jo(pkg_info_t* pkg)
 {
 	json_object* jo_pkg = json_object_new_object();
@@ -550,7 +551,23 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 				    && !get_pkg_sha256_from_json(jsonObj, version_to_update, uacc->update_file_info.sha256b64)) {
 					if (uacc->update_file_info.downloaded) {
 						if (!get_pkg_file_from_json(jsonObj, version_to_update, &update_file_name)) {
-							uacc->update_file_info.file    = update_file_name ? f_strdup(update_file_name) : NULL;
+
+							#ifdef SUPPORT_UA_DOWNLOAD
+							if(ua_intl.ua_download_required) {
+								char tmp_filename[PATH_MAX] = {0};
+								snprintf(tmp_filename, PATH_MAX, "%s/%s/%s/%s.e",
+									ua_intl.ua_dl_dir,
+									uacc->update_pkg.name, uacc->update_file_info.version,
+									uacc->update_file_info.version);
+									f_free(uacc->update_file_info.file);
+								uacc->update_file_info.file = f_strdup(tmp_filename);
+							} else {
+								uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
+							}
+							#else
+							uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
+							#endif
+
 							uacc->update_file_info.version = f_strdup(version_to_update);
 							err                            = E_UA_OK;
 						} else {

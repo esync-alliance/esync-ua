@@ -12,6 +12,12 @@
 #include "ua_version.h"
 #include "updater.h"
 
+#ifdef SUPPORT_UA_DOWNLOAD
+#include <sys/types.h>
+#include <dirent.h>
+#include "ua_download.h"
+#endif
+
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
 static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj);
@@ -35,6 +41,12 @@ static char* download_state_string(download_state_t state);
 static char* update_stage_string(update_stage_t stage);
 static char* log_type_string(log_type_t log);
 void* runner_loop(void* arg);
+
+#ifdef SUPPORT_UA_DOWNLOAD
+static void ua_verify_ca_file_init(const char* path);
+static void process_start_download(ua_component_context_t* uacc, json_object * jsonObj);
+static void process_query_trust(ua_component_context_t* uacc, json_object * jsonObj);
+#endif
 
 int ua_debug          = 1;
 ua_internal_t ua_intl = {0};
@@ -76,6 +88,16 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.backup_source                 = uaConfig->backup_source;
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 
+		#ifdef SUPPORT_UA_DOWNLOAD
+		ua_intl.ua_download_required = uaConfig->ua_download_required;
+		ua_intl.ua_dl_dir = S(uaConfig->ua_dl_dir) ? f_strdup(uaConfig->ua_dl_dir) : NULL;
+		ua_intl.ua_dl_connect_timout_ms = 3*60*1000;	// 3 minutes
+		ua_intl.ua_dl_download_timeout_ms = 3*60*1000;	// 3 minutes
+		if(S(uaConfig->sigca_dir)) {
+			ua_verify_ca_file_init(uaConfig->sigca_dir);
+		}
+		#endif
+
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "backup lock init");
 
@@ -100,6 +122,18 @@ int ua_stop(void)
 	Z_FREE(ua_intl.cache_dir);
 	Z_FREE(ua_intl.backup_dir);
 	Z_FREE(ua_intl.record_file);
+
+	#ifdef SUPPORT_UA_DOWNLOAD
+	if (ua_intl.ua_dl_dir) { free(ua_intl.ua_dl_dir); ua_intl.ua_dl_dir = NULL; }
+	int index = 0;
+	for (index = 0; index < MAX_VERIFY_CA_COUNT; ++index) {
+		if (ua_intl.verify_ca_file[index]) {
+			free(ua_intl.verify_ca_file[index]); 
+			ua_intl.verify_ca_file[index] = NULL; 
+		}
+	}
+	#endif
+
 	delta_stop();
 	xmlCleanupParser();
 	if (ua_intl.state >= UAI_STATE_INITIALIZED) {
@@ -579,6 +613,12 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_log_report, jObj, 0);
 				} else if (!strcmp(type, UPDATE_STATUS)) {
 					process_run(uacc, process_update_status, jObj, 0);
+				#ifdef SUPPORT_UA_DOWNLOAD
+				} else if (!strcmp(type, START_DOWNLOAD)) {
+					process_run(uacc, process_start_download, jObj, 1);
+				} else if (!strcmp(type, QUERY_TRUST)) {
+					process_run(uacc, process_query_trust, jObj, 0);
+				#endif
 				} else {
 					DBG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
 				}
@@ -665,6 +705,12 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			if (ua_intl.delta) {
 				json_object_object_add(pkgObject, "delta-cap", S(get_delta_capability()) ? json_object_new_string(get_delta_capability()) : NULL);
 			}
+
+			#ifdef SUPPORT_UA_DOWNLOAD
+			if(ua_intl.ua_download_required) {
+				json_object_object_add(pkgObject, "user-agent-download", json_object_new_boolean(1));
+			}
+			#endif
 
 			if (uae != E_UA_OK) {
 				json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
@@ -756,6 +802,9 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	pkg_file_t pkgFile     = {0}, updateFile = {0};
 	update_err_t updateErr = UE_NONE;
 	install_state_t state  = INSTALL_READY;
+	#ifdef SUPPORT_UA_DOWNLOAD
+	char tmp_filename[PATH_MAX] = {0};
+	#endif
 
 	if (uacc->state == UA_STATE_PREPARE_UPDATE_STARTED ) {
 		DBG("UA state is %d, can not process prepare-update.", uacc->state);
@@ -773,11 +822,26 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
 		uacc->state     = UA_STATE_PREPARE_UPDATE_STARTED;
 
-		if ((!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) &&
+		if (( (!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file) 
+				#ifdef SUPPORT_UA_DOWNLOAD
+				|| ua_intl.ua_download_required
+				#endif
+				) &&
 		     !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
 		     !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
 		    ((!get_pkg_file_manifest(uacc->backup_manifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
 			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
+
+			#ifdef SUPPORT_UA_DOWNLOAD
+			if(ua_intl.ua_download_required && bck != 1) {
+				snprintf(tmp_filename, PATH_MAX, "%s/%s/%s/%s.e",
+					ua_intl.ua_dl_dir,
+					pkgInfo.name, pkgInfo.version,
+					pkgInfo.version);
+				pkgFile.file = tmp_filename;
+				DBG("ua download changes pkf file path[%s]=", pkgFile.file);
+			}
+			#endif
 
 			uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 			state                 = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
@@ -1533,3 +1597,150 @@ void handler_set_internal_state(ua_internal_state_t st)
 {
 	ua_intl.state = st;
 }
+
+#ifdef SUPPORT_UA_DOWNLOAD
+void ua_verify_ca_file_init(const char* path)
+{
+    struct dirent* ent = 0;
+    DIR *dir = 0;
+    int count = 0;
+    if (!path) {
+        return;
+    }
+
+    if (0 != access(path, F_OK)) {
+        return;
+    }
+
+    dir = opendir(path);
+    if(!dir) {
+        return;
+    }
+    
+    while((ent = readdir(dir))) {
+        if(strcmp(ent->d_name,".") == 0 || strcmp(ent->d_name,"..") == 0){
+            continue;
+        }
+
+        if(ent->d_type == DT_DIR) {
+            continue;
+        } else {
+            ua_intl.verify_ca_file[count] = f_asprintf("%s/%s", path, ent->d_name);
+            DBG("ua_verify_ca_file_init ca file: %s", ua_intl.verify_ca_file[count]);
+            ++count;
+            if (count >= MAX_VERIFY_CA_COUNT) {
+                break;
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+static void process_start_download(ua_component_context_t* uacc, json_object * jsonObj)
+{
+    pkg_info_t pkgInfo = {0};
+    if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
+        !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
+        !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
+        !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi)) {
+           ua_dl_start_download(&pkgInfo);
+    }
+}
+
+static void process_query_trust(ua_component_context_t* uacc, json_object * jsonObj)
+{
+    char * replyTo = NULL;
+
+    if (!get_replyto_from_json(jsonObj, &replyTo) &&
+        ua_intl.update_status_info.reply_id &&
+        !strcmp(replyTo, ua_intl.update_status_info.reply_id)) {        
+
+        free(ua_intl.update_status_info.reply_id);
+        ua_intl.update_status_info.reply_id = NULL;
+
+        ua_dl_trust_t dlt = {0};
+        if(E_UA_OK != get_trust_info_from_json(jsonObj, &dlt)) {
+            DBG("Error parsing query trust.");
+        }
+
+        ua_dl_set_trust_info(&dlt);
+    }
+}
+
+int send_dl_report(pkg_info_t * pkgInfo, ua_dl_info_t dl_info, int  is_done)
+{
+    int err = E_UA_OK;
+
+    do {
+        BOLT_IF(!pkgInfo || !S(pkgInfo->name) || !S(pkgInfo->version) || !S(pkgInfo->type), 
+        E_UA_ARG, "download report info invalid");
+
+        json_object * pkgObject = json_object_new_object();
+        json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
+        json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
+        json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
+        json_object_object_add(pkgObject, "status", json_object_new_string("DOWNLOAD_REPORT"));
+
+        json_object * versionObject = json_object_new_object();
+        json_object * verListObject = json_object_new_object();
+        json_object * dlInfoObject = json_object_new_object();
+
+       /*
+        Completed: no "error" property, "no-download" set to false or missing, "completed-download" set to true
+        Failed: "error" property must be set, "no-download" and "completed-download" must be set to false or missing
+        Failed, and should no longer be attempted: "error" property must be set, "no-download" property must be set to true, 
+            "completed-download" must be set to false or missing
+        */
+        json_object_object_add(dlInfoObject, "total-bytes", json_object_new_int(dl_info.total_bytes));
+        json_object_object_add(dlInfoObject, "downloaded-bytes", json_object_new_int(dl_info.downloaded_bytes));
+        json_object_object_add(dlInfoObject, "expected-bytes", json_object_new_int(dl_info.expected_bytes));
+        json_object_object_add(dlInfoObject, "no-download", json_object_new_boolean(dl_info.no_download));
+        json_object_object_add(dlInfoObject, "completed-download", 
+            json_object_new_boolean(dl_info.completed_download && is_done));
+        if(dl_info.error != NULL)
+            json_object_object_add(dlInfoObject, "error", json_object_new_string(dl_info.error));
+
+        json_object_object_add(versionObject, "download-report", dlInfoObject);
+
+        json_object_object_add(verListObject, pkgInfo->version, versionObject);
+        json_object_object_add(pkgObject, "version-list", verListObject);
+
+        json_object * bodyObject = json_object_new_object();
+        json_object_object_add(bodyObject, "package", pkgObject);
+
+
+        json_object * jObject = json_object_new_object();
+        json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+        json_object_object_add(jObject, "body", bodyObject);
+
+        DBG("Sending : %s", json_object_to_json_string(jObject));
+
+        if((err = xl4bus_client_send_msg(json_object_to_json_string(jObject))) != E_UA_OK)
+            DBG("Failed to send download-report to dmc");
+
+        json_object_put(jObject);
+    } while (0);
+
+    return err;
+}
+
+int send_query_trust(void)
+{
+    int err = E_UA_OK;
+    json_object * jObject = json_object_new_object();
+    json_object * bodyObject = json_object_new_object();
+
+    ua_intl.update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
+    if(ua_intl.update_status_info.reply_id) {
+        json_object_object_add(jObject, "type", json_object_new_string(QUERY_TRUST));
+        json_object_object_add(jObject, "body", bodyObject);
+        json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.update_status_info.reply_id ));
+        err = ua_send_message(jObject);
+    }
+    json_object_put(jObject);
+
+    return err;
+}
+#endif
+
