@@ -110,6 +110,18 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/include/xl4ua.h
 )
 
+if (SUPPORT_UA_DOWNLOAD)
+    set(LIB_SOURCE ${LIB_SOURCE}
+        src/Crc32.c
+        src/Crc32.h
+        src/base64.c
+        src/base64.h
+        src/ua_download.c
+        src/ua_download.h
+        src/eua_json.h
+    )
+endif()
+
 if (XL4_PROVIDE_THREADS)
     set(THREADS_PREFER_PTHREAD_FLAG TRUE)
     find_package(Threads MODULE REQUIRED)

@@ -174,6 +174,14 @@ typedef struct ua_cfg {
 	//1 = disable, do not verify downloaded package against sha256
 	int package_verification_disabled;
 
+#ifdef SUPPORT_UA_DOWNLOAD
+	// specifies whether UA is to handle package download.
+	int ua_download_required;
+	// specifies directory used for UA download.
+	char* ua_dl_dir;
+	// specifies sigca bundle  directory
+	char* sigca_dir;
+#endif
 } ua_cfg_t;
 
 

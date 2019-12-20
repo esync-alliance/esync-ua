@@ -8,6 +8,11 @@
 #include <libgen.h>
 #include <stdarg.h>
 #include <string.h>
+#ifdef SUPPORT_UA_DOWNLOAD
+#include <sys/stat.h>
+#include <dirent.h>
+#include <fcntl.h>
+#endif
 #include "debug.h"
 
 char* f_asprintf(char* fmt, ...)
@@ -100,4 +105,125 @@ char* f_basename(const char* s)
 	free(aux);
 	return s2;
 }
+
+#ifdef SUPPORT_UA_DOWNLOAD
+int f_is_dir(char* filename)
+{
+	struct stat buf;
+	int ret = stat(filename,&buf);
+
+	if (0 == ret) {
+		if (S_ISDIR(buf.st_mode)) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+
+	return -1;
+}
+
+int f_remove_dir(const char* dirname)
+{
+	char chBuf[256];
+	DIR* dir = NULL;
+	struct dirent* ptr;
+	int ret = 0;
+
+	dir = opendir(dirname);
+
+	if (NULL == dir) {
+		return -1;
+	}
+
+	while ((ptr = readdir(dir)) != NULL) {
+		ret = strcmp(ptr->d_name, ".");
+		if (0 == ret) {
+			continue;
+		}
+
+		ret = strcmp(ptr->d_name, "..");
+		if (0 == ret) {
+			continue;
+		}
+
+		snprintf(chBuf, 256, "%s/%s", dirname, ptr->d_name);
+		ret = f_is_dir(chBuf);
+		if (0 == ret) {
+			ret = f_remove_dir(chBuf);
+			if (0 != ret) {
+				continue;
+			}
+		} else if (1 == ret) {
+			ret = remove(chBuf);
+			if (0 != ret) {
+				continue;
+			}
+		}
+	}
+
+	closedir(dir);
+	ret = remove(dirname);
+
+	if (0 != ret) {
+		return -1;
+	}
+
+	return 0;
+}
+
+int f_copy(const char* source, const char* dest)
+{
+	FILE* s_fp;
+	FILE* d_fp;
+	char buf[1024];
+	int len;
+	int ret = 0;
+
+	if (!source || !dest) {
+		return -1;
+	}
+
+	s_fp = fopen(source, "r");
+	if (!s_fp) {
+		return -1;
+	}
+
+	d_fp = fopen(dest, "w+");
+	if (!d_fp) {
+		fclose(s_fp);
+		return -1;
+	}
+
+	while ((len = fread(buf, 1, 1024, s_fp))) {
+		if (len != fwrite(buf, 1, len, d_fp)) {
+			ret = -1;
+			break;
+		}
+	}
+
+	fclose(s_fp);
+	fclose(d_fp);
+	return ret;
+}
+
+int f_size(const char* file, int* size)
+{
+	FILE* fp;
+
+	if (!file || !size) {
+		return -1;
+	}
+
+	fp = fopen(file, "r");
+	if (!fp) {
+		return -1;
+	}
+	fseek(fp, 0, SEEK_END);
+	*size = ftell(fp);
+	fclose(fp);
+
+	return 0;
+}
+#endif
 
