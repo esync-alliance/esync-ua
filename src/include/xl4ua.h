@@ -175,12 +175,12 @@ typedef struct ua_cfg {
 	int package_verification_disabled;
 
 #ifdef SUPPORT_UA_DOWNLOAD
-	// specifies whether UA is to handle package download. 
-	int 					ua_download_required;
-	// specifies directory used for UA download. 
-	char *					ua_dl_dir;
+	// specifies whether UA is to handle package download.
+	int ua_download_required;
+	// specifies directory used for UA download.
+	char* ua_dl_dir;
 	// specifies sigca bundle  directory
-	char *					sigca_dir;
+	char* sigca_dir;
 #endif
 } ua_cfg_t;
 

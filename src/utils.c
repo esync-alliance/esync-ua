@@ -127,93 +127,90 @@ int get_pkg_delta_sha256_from_json(json_object* jsonObj, char* version, char val
 }
 
 #ifdef SUPPORT_UA_DOWNLOAD
-int get_pkg_version_item_from_json(json_object * jsonObj, char * version, version_item_t * vi) {
+int get_pkg_version_item_from_json(json_object* jsonObj, char* version, version_item_t* vi)
+{
+	if (jsonObj && version && vi) {
+		if (json_get_property(jsonObj, json_type_string, &vi->sha256, "body", "package", "version-list", version, "sha-256", NULL))
+			return E_UA_ERR;
 
+		if (json_get_property(jsonObj, json_type_boolean, &vi->downloaded, "body", "package", "version-list", version, "downloaded", NULL))
+			return E_UA_ERR;
 
-    if(jsonObj && version && vi){
+		json_object* jdl = NULL, * jdl_arr = NULL;
+		json_get_property(jsonObj, json_type_array, &jdl_arr, "body", "package", "version-list", version, "downloadables", NULL);
+		int jdl_arr_num = json_object_array_length(jdl_arr);
+		if (!jdl_arr && !json_object_is_type(jdl_arr, json_type_array) && jdl_arr_num < 1)
+			return E_UA_ERR;
 
-        if (json_get_property(jsonObj, json_type_string, &vi->sha256, "body", "package", "version-list", version, "sha-256", NULL))
-            return E_UA_ERR;
+		for (int i = 0; i < jdl_arr_num; i++) {
+			jdl = json_object_array_get_idx(jdl_arr, i);
 
-        if (json_get_property(jsonObj, json_type_boolean, &vi->downloaded, "body", "package", "version-list", version, "downloaded", NULL))
-            return E_UA_ERR;
+			if (json_get_property(jdl, json_type_string, &vi->downloadable.sha256, "sha-256", NULL))
+				return E_UA_ERR;
 
-        json_object *jdl = NULL, * jdl_arr = NULL;
-        json_get_property(jsonObj, json_type_array, &jdl_arr, "body", "package", "version-list", version, "downloadables", NULL);
-        int jdl_arr_num = json_object_array_length(jdl_arr);
-        if(!jdl_arr && !json_object_is_type(jdl_arr, json_type_array) && jdl_arr_num < 1)
-            return E_UA_ERR;
-            
-        for (int i = 0; i < jdl_arr_num; i++) {
-            jdl = json_object_array_get_idx(jdl_arr, i);
+			if (json_get_property(jdl, json_type_int, &vi->downloadable.length, "length", NULL))
+				return E_UA_ERR;
 
-            if (json_get_property(jdl, json_type_string, &vi->downloadable.sha256, "sha-256", NULL))
-                return E_UA_ERR;
+			if (json_get_property(jdl, json_type_string, &vi->downloadable.url, "url", NULL))
+				return E_UA_ERR;
 
-            if (json_get_property(jdl, json_type_int, &vi->downloadable.length, "length", NULL))
-                return E_UA_ERR;
+			if (json_get_property(jsonObj, json_type_string, &vi->encryption.method, "body", "package", "version-list", version, "encryption", "method", NULL))
+				return E_UA_ERR;
 
-            if (json_get_property(jdl, json_type_string, &vi->downloadable.url, "url", NULL))
-                return E_UA_ERR;
+			if (json_get_property(jsonObj, json_type_string, &vi->encryption.key, "body", "package", "version-list", version, "encryption", "key", NULL))
+				return E_UA_ERR;
 
-            if (json_get_property(jsonObj, json_type_string, &vi->encryption.method, "body", "package", "version-list", version, "encryption", "method", NULL))
-                return E_UA_ERR;
-
-            if (json_get_property(jsonObj, json_type_string, &vi->encryption.key, "body", "package", "version-list", version, "encryption", "key", NULL))
-                return E_UA_ERR;
-
-            if (!json_get_property(jdl, json_type_string, &vi->downloadable.against_sha256, "against-sha-256", NULL)) // This url is delta URL
-                break;
-        }
+			if (!json_get_property(jdl, json_type_string, &vi->downloadable.against_sha256, "against-sha-256", NULL)) // This url is delta URL
+				break;
+		}
 #if 1
-        DBG("vi->sha256: %s", vi->sha256);
-        DBG("vi->downloaded: %d", vi->downloaded);
-        DBG("vi->downloadable.sha256: %s", vi->downloadable.sha256);
-        DBG("vi->downloadable.length: %d", vi->downloadable.length);
-        DBG("vi->downloadable.url: %s", vi->downloadable.url);
-        DBG("vi->encryption.method: %s", vi->encryption.method);
-        DBG("vi->encryption.key: %s", vi->encryption.key);
+		DBG("vi->sha256: %s", vi->sha256);
+		DBG("vi->downloaded: %d", vi->downloaded);
+		DBG("vi->downloadable.sha256: %s", vi->downloadable.sha256);
+		DBG("vi->downloadable.length: %d", vi->downloadable.length);
+		DBG("vi->downloadable.url: %s", vi->downloadable.url);
+		DBG("vi->encryption.method: %s", vi->encryption.method);
+		DBG("vi->encryption.key: %s", vi->encryption.key);
 #endif
-        return E_UA_OK;
-    }
+		return E_UA_OK;
+	}
 
-    return E_UA_ERR;
+	return E_UA_ERR;
 
 }
 
 
-int get_trust_info_from_json(json_object * jsonObj, ua_dl_trust_t * dlt) { //char ** sync_trust, char ** pkg_trust) {
+int get_trust_info_from_json(json_object* jsonObj, ua_dl_trust_t* dlt) //char ** sync_trust, char ** pkg_trust) {
+{
+	if (jsonObj && dlt) {
+		json_object* jarr = NULL;
+		int len           = 0;
 
-    if(jsonObj && dlt) {
+		json_get_property(jsonObj, json_type_array, &jarr, "body", "sync", "trust", NULL);
+		len = json_object_array_length(jarr);
+		if (len > 0)
+			dlt->sync_trust = (char*)json_object_get_string(json_object_array_get_idx(jarr, 0));
 
-        json_object * jarr = NULL;
-        int len = 0;
+		json_get_property(jsonObj, json_type_array, &jarr, "body", "sync", "crl", NULL);
+		len = json_object_array_length(jarr);
+		if (len > 0)
+			dlt->sync_crl = (char*)json_object_get_string(json_object_array_get_idx(jarr, 0));
 
-        json_get_property(jsonObj, json_type_array, &jarr, "body", "sync", "trust", NULL);
-        len = json_object_array_length(jarr);
-        if(len > 0)
-            dlt->sync_trust = (char *)json_object_get_string(json_object_array_get_idx(jarr, 0));        
+		json_get_property(jsonObj, json_type_array, &jarr, "body", "package", "trust", NULL);
+		len = json_object_array_length(jarr);
+		if (len > 0)
+			dlt->pkg_trust = (char*)json_object_get_string(json_object_array_get_idx(jarr, 0));
 
-        json_get_property(jsonObj, json_type_array, &jarr, "body", "sync", "crl", NULL);
-        len = json_object_array_length(jarr);
-        if(len > 0)
-            dlt->sync_crl = (char *)json_object_get_string(json_object_array_get_idx(jarr, 0));        
+		json_get_property(jsonObj, json_type_array, &jarr, "body", "package", "crl", NULL);
+		len = json_object_array_length(jarr);
+		if (len > 0)
+			dlt->pkg_crl = (char*)json_object_get_string(json_object_array_get_idx(jarr, 0));
 
-        json_get_property(jsonObj, json_type_array, &jarr, "body", "package", "trust", NULL);
-        len = json_object_array_length(jarr);
-        if(len > 0)
-            dlt->pkg_trust = (char *)json_object_get_string(json_object_array_get_idx(jarr, 0));
+		return E_UA_OK;
 
-        json_get_property(jsonObj, json_type_array, &jarr, "body", "package", "crl", NULL);
-        len = json_object_array_length(jarr);
-        if(len > 0)
-            dlt->pkg_crl = (char *)json_object_get_string(json_object_array_get_idx(jarr, 0));
-        
-        return E_UA_OK;
+	}
 
-    }
-
-    return E_UA_ERR;
+	return E_UA_ERR;
 }
 #endif
 

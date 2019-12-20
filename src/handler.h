@@ -30,8 +30,8 @@
 #define UPDATE_REPORT   "xl4.update-report"
 
 #ifdef SUPPORT_UA_DOWNLOAD
-#define START_DOWNLOAD      "xl4.start-download"
-#define QUERY_TRUST         "xl4.query-trust"
+#define START_DOWNLOAD "xl4.start-download"
+#define QUERY_TRUST    "xl4.query-trust"
 #endif
 
 typedef struct pkg_info {
@@ -145,12 +145,12 @@ typedef struct ua_internal {
 
 #ifdef SUPPORT_UA_DOWNLOAD
 	int ua_download_required;
-	char * ua_downloaded_filename;
-	char * ua_dl_dir;
+	char* ua_downloaded_filename;
+	char* ua_dl_dir;
 	int ua_dl_connect_timout_ms;
 	int ua_dl_download_timeout_ms;
-	char * ua_dl_ca_file;
-	char * verify_ca_file[MAX_VERIFY_CA_COUNT];
+	char* ua_dl_ca_file;
+	char* verify_ca_file[MAX_VERIFY_CA_COUNT];
 	async_update_status_t update_status_info;
 #endif
 } ua_internal_t;
@@ -220,7 +220,7 @@ int get_local_next_rollback_version(char* manifest, char* currentVer, char** nex
 void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
 
 #ifdef SUPPORT_UA_DOWNLOAD
-int send_dl_report(pkg_info_t * pkgInfo, ua_dl_info_t dl_info, int  is_done);
+int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done);
 int send_query_trust(void);
 #endif
 

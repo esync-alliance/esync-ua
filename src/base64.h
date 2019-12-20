@@ -10,8 +10,8 @@ extern "C" {
 #endif
 
 void print_buffer(void* buff, unsigned int len);
-int base64_encode_v(const char * sourcedata, char * base64);
-int base64_decode(const char * base64, char * dedata);
+int base64_encode_v(const char* sourcedata, char* base64);
+int base64_decode(const char* base64, char* dedata);
 int base64_decode_size(int size);
 
 

@@ -3,68 +3,63 @@
  * Proprietary and confidential.
  * Its use or disclosure, in whole or in part, without
  * written permission of Excelfore Corp. is prohibited.
- * 
- * eua_json.h- eSync UA JSON helper. 
- * 
+ *
+ * eua_json.h- eSync UA JSON helper.
+ *
  */
 
 #ifndef _EUA_JSON_H
 #define _EUA_JSON_H
 
 typedef enum ua_dl_error {
-
-    DLE_PREPARE,
-    DLE_CONNECT, 
-    DLE_AUTH,
-    DLE_DOWNLOAD,
-    DLE_VERIFY,
-    DLE_STORE,
-    DLE_PROMPT,
-    DLE_DENIED,
-    DLE_POSTPONED,
+	DLE_PREPARE,
+	DLE_CONNECT,
+	DLE_AUTH,
+	DLE_DOWNLOAD,
+	DLE_VERIFY,
+	DLE_STORE,
+	DLE_PROMPT,
+	DLE_DENIED,
+	DLE_POSTPONED,
 
 }ua_dl_error_t;
 
 typedef struct ua_dl_info {
-
-    int total_bytes;
-    int downloaded_bytes;
-    int expected_bytes;
-    int no_download;
-    int completed_download;
-    char *error;
+	int total_bytes;
+	int downloaded_bytes;
+	int expected_bytes;
+	int no_download;
+	int completed_download;
+	char* error;
 
 } ua_dl_info_t;
 
 typedef struct vi_encryption {
-    char * method;
-    char * key;
+	char* method;
+	char* key;
 }vi_encryption_t;
 
 typedef struct vi_downloadable {
-
-    char * sha256;
-    int length;
-    char * url;
-    char * against_sha256;
+	char* sha256;
+	int length;
+	char* url;
+	char* against_sha256;
 
 }vi_downloadable_t;
 
 typedef struct version_item {
-
-    int downloaded; /*boolean*/
-    char * sha256;
-    vi_downloadable_t downloadable;
-    vi_encryption_t encryption;
+	int downloaded; /*boolean*/
+	char* sha256;
+	vi_downloadable_t downloadable;
+	vi_encryption_t encryption;
 
 }version_item_t;
 
 typedef struct ua_dl_trust {
-
-    char * sync_trust;
-    char * sync_crl;
-    char * pkg_trust;
-    char * pkg_crl;
+	char* sync_trust;
+	char* sync_crl;
+	char* pkg_trust;
+	char* pkg_crl;
 
 }ua_dl_trust_t;
 

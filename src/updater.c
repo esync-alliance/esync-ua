@@ -551,15 +551,14 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 				    && !get_pkg_sha256_from_json(jsonObj, version_to_update, uacc->update_file_info.sha256b64)) {
 					if (uacc->update_file_info.downloaded) {
 						if (!get_pkg_file_from_json(jsonObj, version_to_update, &update_file_name)) {
-
 							#ifdef SUPPORT_UA_DOWNLOAD
-							if(ua_intl.ua_download_required) {
+							if (ua_intl.ua_download_required) {
 								char tmp_filename[PATH_MAX] = {0};
 								snprintf(tmp_filename, PATH_MAX, "%s/%s/%s/%s.e",
-									ua_intl.ua_dl_dir,
-									uacc->update_pkg.name, uacc->update_file_info.version,
-									uacc->update_file_info.version);
-									f_free(uacc->update_file_info.file);
+								         ua_intl.ua_dl_dir,
+								         uacc->update_pkg.name, uacc->update_file_info.version,
+								         uacc->update_file_info.version);
+								f_free(uacc->update_file_info.file);
 								uacc->update_file_info.file = f_strdup(tmp_filename);
 							} else {
 								uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
