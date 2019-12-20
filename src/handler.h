@@ -15,7 +15,7 @@
 #ifdef SUPPORT_UA_DOWNLOAD
 #include "eua_json.h"
 #endif
-
+#include <pthread.h>
 #define MSG_TIMEOUT     10
 
 #define QUERY_PACKAGE   "xl4.query-package"
