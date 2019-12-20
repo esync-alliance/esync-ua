@@ -120,8 +120,6 @@ if (SUPPORT_UA_DOWNLOAD)
         src/ua_download.h
         src/eua_json.h
     )
-
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSUPPORT_UA_DOWNLOAD")
 endif()
 
 if (XL4_PROVIDE_THREADS)
