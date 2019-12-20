@@ -3,7 +3,6 @@
  */
 
 #include "handler.h"
-#include <pthread.h>
 #include "utils.h"
 #include "delta.h"
 #include "debug.h"
