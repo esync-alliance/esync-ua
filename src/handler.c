@@ -127,8 +127,8 @@ int ua_stop(void)
 	int index = 0;
 	for (index = 0; index < MAX_VERIFY_CA_COUNT; ++index) {
 		if (ua_intl.verify_ca_file[index]) {
-			free(ua_intl.verify_ca_file[index]); 
-			ua_intl.verify_ca_file[index] = NULL; 
+			free(ua_intl.verify_ca_file[index]);
+			ua_intl.verify_ca_file[index] = NULL;
 		}
 	}
 	#endif
@@ -136,7 +136,7 @@ int ua_stop(void)
 	delta_stop();
 	xmlCleanupParser();
 	if (ua_intl.state >= UAI_STATE_INITIALIZED) {
-		rc = xl4bus_client_stop();
+		rc            = xl4bus_client_stop();
 		ua_intl.state = UAI_STATE_NOT_KNOWN;
 	}
 	pthread_mutex_destroy(&ua_intl.backup_lock);
@@ -211,7 +211,7 @@ int ua_unregister(ua_handler_t* uah, int len)
 					ri->run = 0;
 					BOLT_SYS(pthread_cond_broadcast(&ri->cond), "cond broadcast");
 					BOLT_SYS(pthread_mutex_unlock(&ri->lock), "lock unlock");
-					void *res;
+					void* res;
 					BOLT_SYS(pthread_join(ri->thread, &res), "thread join");
 					BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
 					BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
@@ -250,6 +250,7 @@ int ua_unregister(ua_handler_t* uah, int len)
 void* ua_handle_dmc_presence(void* arg)
 {
 	ua_routine_t* uar = (ua_routine_t*)arg;
+
 	if (uar && uar->on_dmc_presence)
 		(*uar->on_dmc_presence)(NULL);
 	return NULL;
@@ -961,7 +962,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	pkg_info_t pkgInfo = {0};
 	int rollback       = 0;
 
-	if(uacc->state == UA_STATE_READY_UPDATE_STARTED) {
+	if (uacc->state == UA_STATE_READY_UPDATE_STARTED) {
 		DBG("Skip confirm-update, still processing ready-update");
 		return;
 	}
@@ -1059,7 +1060,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 			DBG("UA:on_transfer_file returned error");
 	}
 
-	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
+	if (err == E_UA_OK && !ua_intl.package_verification_disabled && access(uacc->update_manifest, F_OK)) {
 		if (strlen(pkgFile->delta_sha256b64) > 0)
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->delta_sha256b64);
 		else
