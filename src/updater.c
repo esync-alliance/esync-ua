@@ -543,7 +543,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 			char* version_to_update = S(uacc->update_pkg.rollback_version) ?
 			                          uacc->update_pkg.rollback_version : uacc->update_pkg.version;
 
-			if ((E_UA_ERR == get_pkg_file_manifest(uacc->update_manifest, version_to_update, &uacc->update_file_info)))
+			if ((E_UA_OK != get_pkg_file_manifest(uacc->update_manifest, version_to_update, &uacc->update_file_info)))
 			{
 				DBG("Could not load temp update manifest, getting info from json package object instead.");
 				char* update_file_name = NULL;
@@ -568,7 +568,14 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 							#endif
 
 							uacc->update_file_info.version = f_strdup(version_to_update);
-							err                            = E_UA_OK;
+
+							if (!calc_sha256_x(uacc->update_file_info.file, uacc->update_file_info.sha_of_sha)) {
+								add_pkg_file_manifest(uacc->update_manifest, &uacc->update_file_info);
+								err = E_UA_OK;
+							} else {
+								DBG("Error in calculating sha_of_sha.");
+								err = E_UA_ERR;
+							}
 						} else {
 							DBG("Getting filepath from backup manifest.");
 							err = get_pkg_file_manifest(uacc->backup_manifest, version_to_update, &uacc->update_file_info);
