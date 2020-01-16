@@ -582,7 +582,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 
 				sum = 0;
 				while (sum != sb.size) {
-					BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
+					BOLT_IF((len = zip_fread(zf, buf,ua_rw_buff_size)) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					SHA256_Update(&ctx, buf, len);
 					sum += len;
 				}
