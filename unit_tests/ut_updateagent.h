@@ -1,5 +1,5 @@
 /*
- * ua.h
+ * ut_updateagent.h
  */
 
 #ifndef TMPL_UPDATEAGENT_H_

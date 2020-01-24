@@ -1,5 +1,5 @@
 /*
- * tmpl_updateagent.c
+ * ut_updateagent.c
  */
 
 #include "ut_updateagent.h"
