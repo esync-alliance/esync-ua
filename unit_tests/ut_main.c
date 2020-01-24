@@ -8,7 +8,7 @@
 #include <linux/limits.h>
 #include "handler.h"
 #include "test_setup.h"
-#include "test_agents/tmpl_updateagent.h"
+#include "ut_updateagent.h"
 
 extern char* optarg;
 char* handler_type;
