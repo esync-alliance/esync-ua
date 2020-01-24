@@ -83,7 +83,7 @@ const char* get_delta_capability()
 
 int is_delta_package(const char* pkgFile)
 {
-	return !zip_find_file(pkgFile, MANIFEST_DIFF);
+	return !libzip_find_file(pkgFile, MANIFEST_DIFF);
 }
 
 int delta_use_external_algo(void)

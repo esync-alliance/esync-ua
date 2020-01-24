@@ -11,6 +11,7 @@
 #include <Python.h>
 #include <unistd.h>
 #include "xl4ua.h"
+#include "libxl4bus/low_level.h"
 #include "libxl4bus/high_level.h"
 
 #define VERSION_SIZE_MAX 256
