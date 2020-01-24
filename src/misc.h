@@ -56,7 +56,7 @@ extern size_t ua_rw_buff_size;
 uint64_t currentms();
 int unzip(const char* archive, const char* path);
 int zip(const char* archive, const char* path);
-int zip_find_file(const char* archive, const char* path);
+int libzip_find_file(const char* archive, const char* path);
 int copy_file(const char* from, const char* to);
 int make_file_hard_link(const char* from, const char* to);
 int calc_sha256(const char* path, unsigned char obuff[SHA256_DIGEST_LENGTH]);

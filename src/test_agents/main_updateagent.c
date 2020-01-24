@@ -1,5 +1,5 @@
 /*
- * main_updateagent.c
+ * updateagent.c
  */
 
 #include <stdio.h>
@@ -24,10 +24,6 @@ static void _help(const char* app)
 	       "  -D         : disable delta reconstruction\n"
 	       "  -a <cap>   : delta capability\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
-	       "  -t <type>  : handler type\n"
-	       "  -M <0/1/2/3> : update mode - 0: success(default); 1: failure; 2: toggle; 3: rollback"
-	       "  -r <path>  : path to rbconf file (default: \"/data/sota/rbConf\")\n"
-	       "  -Z         : emulate reboot after update (default no reboot) \n"
 	       "  -h         : display this help and exit\n"
 	       );
 	_exit(1);
@@ -41,19 +37,15 @@ int main(int argc, char** argv)
 	int c = 0;
 	ua_cfg_t cfg;
 	memset(&cfg, 0, sizeof(ua_cfg_t));
-	int mode          = 0;
-	int reboot_enable = 0;
 
-	cfg.debug                         = 0;
-	cfg.delta                         = 1;
-	cfg.cert_dir                      = "./../pki/certs/updateagent";
-	cfg.url                           = "tcp://localhost:9133";
-	cfg.cache_dir                     = "/tmp/esync/";
-	cfg.backup_dir                    = "/data/sota/esync/";
-	cfg.reboot_support                = 0;
-	cfg.package_verification_disabled = 0;
+	cfg.debug      = 0;
+	cfg.delta      = 1;
+	cfg.cert_dir   = "./../pki/certs/updateagent";
+	cfg.url        = "tcp://localhost:9133";
+	cfg.cache_dir  = "/tmp/esync/";
+	cfg.backup_dir = "/data/sota/esync/";
 
-	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:M:r:dDZh")) != -1) {
+	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:dDh")) != -1) {
 		switch (c) {
 			case 'k':
 				cfg.cert_dir = optarg;
@@ -63,7 +55,6 @@ int main(int argc, char** argv)
 				break;
 			case 'b':
 				cfg.backup_dir = optarg;
-				set_backup_dir(optarg);
 				break;
 			case 'c':
 				cfg.cache_dir = optarg;
@@ -83,15 +74,6 @@ int main(int argc, char** argv)
 			case 'm':
 				if ((cfg.rw_buffer_size = atoi(optarg)) > 0)
 					break;
-			case 'Z':
-				reboot_enable = 1;
-				break;
-			case 'M':
-				mode = atoi(optarg);
-				break;
-			case 'r':
-				set_rbConf_path(optarg);
-				break;
 			case 'h':
 			default:
 				_help(argv[0]);
@@ -99,7 +81,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	set_test_installation_mode((update_mode_t)mode, reboot_enable);
 
 	if (ua_init(&cfg)) {
 		printf("Updateagent failed!");

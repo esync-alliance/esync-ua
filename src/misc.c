@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <zip.h>
@@ -16,11 +17,10 @@
 #include "utlist.h"
 #include "xl4ua.h"
 #include "debug.h"
-#if 0
-static int zip_archive_add_file(struct zip* za, const char* path, const char* base);
-static int zip_archive_add_dir(struct zip* za, const char* path, const char* base);
-#endif
-static char* get_zip_error(int ze);
+
+static int libzip_archive_add_file(struct zip* za, const char* path, const char* base);
+static int libzip_archive_add_dir(struct zip* za, const char* path, const char* base);
+static char* libzip_get_error(int ze);
 
 size_t ua_rw_buff_size = 16 * 1024;
 
@@ -201,7 +201,7 @@ int run_cmd(char* cmd, char* argv[])
 	return rc;
 }
 
-static char* get_zip_error(int ze)
+static char* libzip_get_error(int ze)
 {
 	int se = errno;
 	char buf[256];
@@ -218,8 +218,8 @@ static char* get_zip_error(int ze)
 
 }
 
-#if 0
-int unzip(const char* archive, const char* path)
+
+static int libzip_unzip(const char* archive, const char* path)
 {
 	int i, len, fd, zerr, err = E_UA_OK;
 	char* buf = 0;
@@ -230,11 +230,11 @@ int unzip(const char* archive, const char* path)
 	struct zip_file* zf;
 	struct zip_stat sb;
 
-	DBG("unziping archive %s to %s", archive, path);
+	DBG("unzipping(libzip) archive %s to %s", archive, path);
 
 	do {
 		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-		        "failed to open file as ZIP %s : %s", archive, aux = get_zip_error(zerr));
+		        "failed to open file as ZIP %s : %s", archive, aux = libzip_get_error(zerr));
 
 		BOLT_MALLOC(buf, ua_rw_buff_size);
 
@@ -277,11 +277,12 @@ int unzip(const char* archive, const char* path)
 
 	return err;
 }
-#else
-int unzip(const char* archive, const char* path)
+
+static int zip_unzip(const char* archive, const char* path)
 {
 	int err = E_UA_OK;
 
+	DBG("unzipping(zip) archive %s to %s", archive, path);
 	if (archive && path) {
 		do {
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
@@ -297,29 +298,34 @@ int unzip(const char* archive, const char* path)
 	return err;
 }
 
-#endif
-
-int zip(const char* archive, const char* path)
+int unzip(const char* archive, const char* path)
 {
-	DBG("ziping %s to %s", path, archive);
+	int err = zip_unzip(archive, path);
 
-#if 0 //ESYNC-3166 - todo: make zip as fast as zip tool
+	if (err != E_UA_OK) {
+		err = libzip_unzip(archive, path);
+	}
 
+	return err;
+}
+
+static int libzip_zip(const char* archive, const char* path)
+{
 	int zerr, err = E_UA_OK;
 	char* aux = 0;
 	struct stat path_stat;
 	struct zip* za = 0;
 
-	DBG("ziping %s to %s", path, archive);
+	DBG("zipping(libzip) %s to %s", path, archive);
 
 	do {
 		BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
 		BOLT_IF(!S_ISREG(path_stat.st_mode) && !S_ISDIR(path_stat.st_mode), E_UA_ERR, "path is not file or directory");
 		BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
 		BOLT_IF(!(za = zip_open(archive, ZIP_CREATE | ZIP_TRUNCATE, &zerr)), E_UA_ERR,
-		        "failed to create zip file %s : %s", archive, aux = get_zip_error(zerr));
+		        "failed to create zip file %s : %s", archive, aux = libzip_get_error(zerr));
 
-		err = S_ISREG(path_stat.st_mode) ? zip_archive_add_file(za, path, 0) : zip_archive_add_dir(za, path, 0);
+		err = S_ISREG(path_stat.st_mode) ? libzip_archive_add_file(za, path, 0) : libzip_archive_add_dir(za, path, 0);
 
 	} while (0);
 
@@ -329,7 +335,12 @@ int zip(const char* archive, const char* path)
 		if (aux) free(aux);
 		if (za) zip_discard(za);
 	}
-#endif
+	return err;
+}
+
+static int zip_zip(const char* archive, const char* path)
+{
+	DBG("zipping(zip) %s to %s", path, archive);
 
 	int err = E_UA_OK;
 
@@ -349,8 +360,17 @@ int zip(const char* archive, const char* path)
 	return err;
 }
 
-#if 0
-static int zip_archive_add_file(struct zip* za, const char* path, const char* base)
+int zip(const char* archive, const char* path)
+{
+	int err = zip_zip(archive, path);
+
+	if (err != E_UA_OK)
+		err = libzip_zip(archive, path);
+
+	return err;
+}
+
+static int libzip_archive_add_file(struct zip* za, const char* path, const char* base)
 {
 	int err = E_UA_OK;
 	zip_source_t* s;
@@ -377,7 +397,7 @@ static int zip_archive_add_file(struct zip* za, const char* path, const char* ba
 }
 
 
-static int zip_archive_add_dir(struct zip* za, const char* path, const char* base)
+static int libzip_archive_add_dir(struct zip* za, const char* path, const char* base)
 {
 	int err = E_UA_OK;
 	DIR* dir;
@@ -395,14 +415,14 @@ static int zip_archive_add_dir(struct zip* za, const char* path, const char* bas
 			basepath = JOIN(SAFE_STR(base), entry->d_name);
 
 			if (entry->d_type != DT_DIR) {
-				err = zip_archive_add_file(za, filepath, base);
+				err = libzip_archive_add_file(za, filepath, base);
 
 			} else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
 				if (zip_add_dir(za, basepath) < 0) {
 					DBG("error adding directory: %s", basepath);
 					err = E_UA_ERR;
 				} else {
-					zip_archive_add_dir(za, filepath, basepath);
+					libzip_archive_add_dir(za, filepath, basepath);
 				}
 
 			}
@@ -419,9 +439,9 @@ static int zip_archive_add_dir(struct zip* za, const char* path, const char* bas
 
 	return err;
 }
-#endif
 
-int zip_find_file(const char* archive, const char* path)
+
+int libzip_find_file(const char* archive, const char* path)
 {
 	int zerr, err = E_UA_OK;
 	char* aux = 0;
@@ -429,7 +449,7 @@ int zip_find_file(const char* archive, const char* path)
 
 	do {
 		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-		        "failed to open file as zip %s : %s", archive, aux = get_zip_error(zerr));
+		        "failed to open file as zip %s : %s", archive, aux = libzip_get_error(zerr));
 		if (zip_name_locate(za, path, 0) < 0) {
 			DBG("file: %s not found in zip: %s", path, archive);
 			err = E_UA_ERR;
@@ -561,7 +581,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 
 	do {
 		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
-		        "failed to open file as ZIP %s : %s", archive, zstr = get_zip_error(zerr));
+		        "failed to open file as ZIP %s : %s", archive, zstr = libzip_get_error(zerr));
 
 		BOLT_MALLOC(buf, ua_rw_buff_size);
 
@@ -582,7 +602,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 
 				sum = 0;
 				while (sum != sb.size) {
-					BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
+					BOLT_IF((len = zip_fread(zf, buf,ua_rw_buff_size)) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					SHA256_Update(&ctx, buf, len);
 					sum += len;
 				}
