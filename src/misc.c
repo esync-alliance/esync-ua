@@ -254,7 +254,7 @@ static int libzip_unzip(const char* archive, const char* path)
 				while (sum != sb.size) {
 					BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0,
 					        E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
-					write(fd, buf, len);
+					BOLT_IF((write(fd, buf, len) < len), E_UA_ERR, "error writing %s", sb.name);
 					sum += len;
 				}
 
