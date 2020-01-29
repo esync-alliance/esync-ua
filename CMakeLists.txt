@@ -212,8 +212,9 @@ if(BUILD_PY_LIBUA)
             "${PY_LIBUA_DIR}/*.i")
             
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE}
-            ${SETUP_PY} build_ext)
+            ${SETUP_PY} develop --user )
 
 		install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --record install_files.txt)")
 	endif()

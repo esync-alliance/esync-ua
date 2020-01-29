@@ -2,7 +2,7 @@
 # This makefile is meant to be used in x86 Linux development enviroment,
 # not for cross-build.
 # Default is to build for Python 3. 
-# To build for Python 3, set the enviroment variable PY2_BUILD
+# To build for Python 2, set the enviroment variable PY2_BUILD
 # 	export PY2_BUILD=1
 
 MKFILE_DIR = $(shell (dirname $(abspath $(lastword $(MAKEFILE_LIST)))))
@@ -43,4 +43,5 @@ clean:
 cleanall: clean
 	rm -rf $(MKFILE_DIR)/libuamodule.py  $(MKFILE_DIR)/libuac_wrap.c $(MKFILE_DIR)/__pycache__  \
 		$(BUILD_DIR)/build $(BUILD_DIR)/*.linux-x86_64* \
-		$(SETUP_PY_DIR)/_libuamodule*.so $(SETUP_PY_DIR)/*.egg-info
+		$(SETUP_PY_DIR)/_libuamodule*.so $(SETUP_PY_DIR)/*.egg-info \
+		$(MKFILE_DIR)/*.pyc

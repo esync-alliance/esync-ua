@@ -251,6 +251,7 @@ static int get_espatch_version(char* ver, int len)
 					output[strlen(output) - 1] = 0;
 				char* tmp = strstr(output, "version: ");
 				if (tmp && (strlen(tmp)- strlen("version: ") < len-1)) {
+					memset(ver, 0, len);
 					strncpy(ver, tmp+strlen("version: "), len-1);
 					DBG("espatch outputs version: %s", ver);
 				} else {

@@ -34,7 +34,7 @@ int sha256cmp(struct sha256_list* a, struct sha256_list* b)
 	return memcmp(a->sha256, b->sha256, SHA256_DIGEST_LENGTH);
 }
 
-uint64_t currentms()
+uint64_t currentms(void)
 {
 	struct timespec tp;
 

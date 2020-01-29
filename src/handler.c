@@ -308,7 +308,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 		BOLT_IF(!S(pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
 
 		if (S(logdata->timestamp)) {
-			strncpy(timestamp, logdata->timestamp, sizeof(timestamp));
+			strncpy(timestamp, logdata->timestamp, sizeof(timestamp) - 1);
 		} else {
 			time_t t          = time(NULL);
 			struct tm* cur_tm = gmtime(&t);

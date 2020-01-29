@@ -18,7 +18,7 @@ static int get_tmpl_version(const char* type, const char* pkgName, char** versio
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
 	if(version)
-		strncpy(tmpl_version, version, sizeof(tmpl_version));
+		strncpy(tmpl_version, version, sizeof(tmpl_version) - 1);
 	return E_UA_OK;
 
 }

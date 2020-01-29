@@ -417,11 +417,11 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 			dlc->dl_rec.last_bytes_written = dlc->dl_rec.bytes_written;
 			dlc->dl_rec.bytes_written      = dlc->dl_info.downloaded_bytes;
 			//dlc->dl_info.expected_bytes = ddc->content_length;
+			memset(dlc->dl_rec.e_tag, 0, sizeof(dlc->dl_rec.e_tag));
 			if (ddc->e_tag) {
 				dlc->dl_rec.e_tag_valid = 1;
-				strncpy(dlc->dl_rec.e_tag, ddc->e_tag, E_TAG_MAX_SIZE);
+				strncpy(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag)-1);
 			} else {
-				memset(dlc->dl_rec.e_tag, 0, E_TAG_MAX_SIZE);
 				dlc->dl_rec.e_tag_valid = 0;
 			}
 
