@@ -219,13 +219,9 @@ int ua_unregister(ua_handler_t* uah, int len)
 					Z_FREE(ri->component.update_manifest);
 					Z_FREE(ri->component.backup_manifest);
 					Z_FREE(ri->component.type);
+					Z_FREE(ri->component.update_status_info.reply_id);
 					Z_FREE(ri);
 					DBG("Unregistered: %s", type);
-				}
-
-				if (ri->component.update_status_info.reply_id) {
-					free(ri->component.update_status_info.reply_id);
-					ri->component.update_status_info.reply_id = NULL;
 				}
 
 			} while (0);
@@ -239,11 +235,8 @@ int ua_unregister(ua_handler_t* uah, int len)
 		utarray_done(&ri_list);
 	}
 
-
-	if (ri_tree) {
-		free(ri_tree);
-		ri_tree = NULL;
-	}
+	Z_FREE(ri_tree);
+	
 	return ret;
 }
 

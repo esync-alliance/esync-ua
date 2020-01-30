@@ -194,7 +194,7 @@ if(UNIT_TEST)
     set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
     target_compile_definitions(ut_test PRIVATE WITH_UNIT_TEST)
     target_compile_options(ut_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
-    target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${USE_LIB} ${APP_DEPS})
+    target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${APP_DEPS})
 
 endif()
 
