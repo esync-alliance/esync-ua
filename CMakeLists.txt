@@ -194,7 +194,7 @@ if(UNIT_TEST)
     set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
     target_compile_definitions(ut_test PRIVATE WITH_UNIT_TEST)
     target_compile_options(ut_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
-    target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${USE_LIB} ${APP_DEPS})
+    target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${APP_DEPS})
 
 endif()
 
@@ -212,8 +212,9 @@ if(BUILD_PY_LIBUA)
             "${PY_LIBUA_DIR}/*.i")
             
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE}
-            ${SETUP_PY} build_ext)
+            ${SETUP_PY} develop --user )
 
 		install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --record install_files.txt)")
 	endif()

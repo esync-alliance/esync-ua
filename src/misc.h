@@ -53,7 +53,7 @@ static inline const char* chop_path(const char* path)
 
 extern size_t ua_rw_buff_size;
 
-uint64_t currentms();
+uint64_t currentms(void);
 int unzip(const char* archive, const char* path);
 int zip(const char* archive, const char* path);
 int libzip_find_file(const char* archive, const char* path);

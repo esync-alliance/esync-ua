@@ -219,13 +219,9 @@ int ua_unregister(ua_handler_t* uah, int len)
 					Z_FREE(ri->component.update_manifest);
 					Z_FREE(ri->component.backup_manifest);
 					Z_FREE(ri->component.type);
+					Z_FREE(ri->component.update_status_info.reply_id);
 					Z_FREE(ri);
 					DBG("Unregistered: %s", type);
-				}
-
-				if (ri->component.update_status_info.reply_id) {
-					free(ri->component.update_status_info.reply_id);
-					ri->component.update_status_info.reply_id = NULL;
 				}
 
 			} while (0);
@@ -239,11 +235,8 @@ int ua_unregister(ua_handler_t* uah, int len)
 		utarray_done(&ri_list);
 	}
 
-
-	if (ri_tree) {
-		free(ri_tree);
-		ri_tree = NULL;
-	}
+	Z_FREE(ri_tree);
+	
 	return ret;
 }
 
@@ -308,7 +301,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 		BOLT_IF(!S(pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
 
 		if (S(logdata->timestamp)) {
-			strncpy(timestamp, logdata->timestamp, sizeof(timestamp));
+			strncpy(timestamp, logdata->timestamp, sizeof(timestamp) - 1);
 		} else {
 			time_t t          = time(NULL);
 			struct tm* cur_tm = gmtime(&t);
