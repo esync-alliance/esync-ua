@@ -9,6 +9,10 @@
 #include <json.h>
 #include "misc.h"
 
+#ifdef SUPPORT_UA_DOWNLOAD
+#include "eua_json.h"
+#endif
+
 int get_type_from_json(json_object* jsonObj, char** value);
 
 int get_replyid_from_json(json_object* jsonObj, char** value);
@@ -44,6 +48,12 @@ int get_pkg_next_rollback_version(json_object* jsonArr, char* currentVer, char**
 int get_pkg_sha256_from_json(json_object * jsonObj, char* version, char value[SHA256_B64_LENGTH]);
 
 int get_pkg_delta_sha256_from_json(json_object* jsonObj, char* version, char value[SHA256_B64_LENGTH]);
+
+#ifdef SUPPORT_UA_DOWNLOAD
+int get_pkg_version_item_from_json(json_object* jsonObj, char* version, version_item_t* vi);
+
+int get_trust_info_from_json(json_object* jsonObj, ua_dl_trust_t* dlt);
+#endif
 
 int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... );
 

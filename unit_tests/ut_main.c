@@ -8,7 +8,7 @@
 #include <linux/limits.h>
 #include "handler.h"
 #include "test_setup.h"
-#include "test_agents/tmpl_updateagent.h"
+#include "ut_updateagent.h"
 
 extern char* optarg;
 char* handler_type;
@@ -92,7 +92,8 @@ int main(int argc, char** argv)
 	while ((c = getopt(argc, argv, ":c:t:h")) != -1) {
 		switch (c) {
 			case 'c':
-				strncpy(case_dir, optarg, sizeof(case_dir));
+				memset(case_dir, 0, sizeof(case_dir));
+				strncpy(case_dir, optarg, sizeof(case_dir) - 1);
 				break;
 			case 't':
 				handler_type = optarg;

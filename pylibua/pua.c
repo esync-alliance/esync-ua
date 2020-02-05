@@ -152,8 +152,7 @@ static int pua_get_version(const char* type, const char* pkgName, char** version
 		if (result) {
 			if ((tmp_ver = pua_get_string_from_pylist_ob(result, 1))) {
 				PY_DBG("PUA reported version: %s", tmp_ver );
-				strncpy(pua_version, tmp_ver, sizeof(pua_version));
-				*version = pua_version;
+				*version = strncpy(pua_version, tmp_ver, sizeof(pua_version) - 1);
 			}
 
 			rc =  pua_get_int_from_pylist_ob(result, 0);

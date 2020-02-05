@@ -31,6 +31,7 @@ moduleconf = {
                 os.path.join(libua_dir, 'pylibua/pua.c')],
     'libraries': ['ua', 'xl4bus', 'xml2', 'zip'],
     'include_dirs': pylib_inc,
+    'extra_compile_args' : ["-Wall", "-Werror"]
 }
 moduleconf['library_dirs'] = []
 moduleconf['runtime_library_dirs'] = []

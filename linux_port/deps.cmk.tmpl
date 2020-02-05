@@ -32,6 +32,17 @@ else()
 set(XL4BUS_LIB -lxl4bus)
 endif()
 
+# Checking dmclient
+if (SUPPORT_UA_DOWNLOAD)
+include_directories(SYSTEM ${DMCLIENT_DIR}/include)
+set(DMCLIENT_LIB ${DMCLIENT_DIR}/build/libdmclient.so)
+    if (NOT EXISTS ${DMCLIENT_LIB})
+        message(WARNING "Not found libdmclient.so in build folder , You should build libdmclient sources first!")
+        set(DMCLIENT_LIB -ldmclient)
+    endif()
+set(CURL_LIB -lcurl)
+endif()
+
 # Set include path
 include_directories(SYSTEM ${JSON_C})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
@@ -39,6 +50,6 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR})
 
 # Set linker flags
-set(COMMON_DEPS ${XL4BUS_LIB} -Wl,-Bdynamic ${LIBZIP_LIBRARY} -lxml2 -lssl -lcrypto -lm -lz)
+set(COMMON_DEPS ${XL4BUS_LIB} ${DMCLIENT_LIB} ${CURL_LIB} -Wl,-Bdynamic ${LIBZIP_LIBRARY} -lxml2 -lssl -lcrypto -lm -lz)
 set(SHARED_DEPS ${JSON_C_LIB} ${COMMON_DEPS})
 set(APP_DEPS ${JSON_C_LIB} ${COMMON_DEPS})

@@ -110,6 +110,18 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/include/xl4ua.h
 )
 
+if (SUPPORT_UA_DOWNLOAD)
+    set(LIB_SOURCE ${LIB_SOURCE}
+        src/Crc32.c
+        src/Crc32.h
+        src/base64.c
+        src/base64.h
+        src/ua_download.c
+        src/ua_download.h
+        src/eua_json.h
+    )
+endif()
+
 if (XL4_PROVIDE_THREADS)
     set(THREADS_PREFER_PTHREAD_FLAG TRUE)
     find_package(Threads MODULE REQUIRED)
@@ -172,17 +184,17 @@ install(FILES src/include/xl4ua.h  DESTINATION include)
 
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
-    add_executable(	ual_test ${LIB_SOURCE}
-                    src/test_agents/tmpl_updateagent.c
-                    src/test_agents/tmpl_updateagent.h
+    add_executable(	ut_test ${LIB_SOURCE}
+                    unit_tests/ut_updateagent.c
+                    unit_tests/ut_updateagent.h
                     unit_tests/test_setup.c
                     unit_tests/test_setup.h
-                    unit_tests/ual_test.c
+                    unit_tests/ut_main.c
                     )
     set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
-    target_compile_definitions(ual_test PRIVATE WITH_UNIT_TEST)
-    target_compile_options(ual_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
-    target_link_libraries(ual_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${USE_LIB} ${APP_DEPS})
+    target_compile_definitions(ut_test PRIVATE WITH_UNIT_TEST)
+    target_compile_options(ut_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
+    target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${APP_DEPS})
 
 endif()
 
@@ -200,8 +212,9 @@ if(BUILD_PY_LIBUA)
             "${PY_LIBUA_DIR}/*.i")
             
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE}
-            ${SETUP_PY} build_ext)
+            ${SETUP_PY} develop --user )
 
 		install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --record install_files.txt)")
 	endif()

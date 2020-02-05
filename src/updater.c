@@ -15,6 +15,7 @@
 #include "pthread.h"
 #include "debug.h"
 
+extern ua_internal_t ua_intl;
 json_object* update_get_pkg_info_jo(pkg_info_t* pkg)
 {
 	json_object* jo_pkg = json_object_new_object();
@@ -193,6 +194,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 
 	DBG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
 	if (update_installed_version_same(uacc, uacc->update_pkg.version)) {
+		DBG("Found installed version is same as requested target version.");
 		send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
 		update_sts = INSTALL_COMPLETED;
 	}else {
@@ -203,6 +205,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 
 		if (update_sts == INSTALL_IN_PROGRESS)
 			update_sts = update_action(uacc, &uacc->update_pkg, &uacc->update_file_info);
+
 		if (update_sts == INSTALL_COMPLETED)
 			post_update_action(uacc, &uacc->update_pkg);
 
@@ -283,24 +286,35 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 	if (uacc->rb_type == URB_NONE) {
 		DBG("Error: rollback type is none, why asked for rollback package?");
 		rc = E_UA_ERR;
-	}else if (uacc->rb_type == URB_DMC_INITIATED) {
-		if (rb_file_info) {
-			rb_file_info->file = f_strdup(uacc->update_file_info.file);
-			rb_file_info->version = f_strdup(uacc->update_file_info.version);
-			memcpy(rb_file_info->sha256b64, &uacc->update_file_info.sha256b64, sizeof(rb_file_info->sha256b64));
-			if (update_package_available(rb_file_info, rb_version))
-				rc = E_UA_OK;
-			else {
-				DBG("eSync client says rb file is %s, but I could not find it.", rb_file_info->file);
-				uacc->update_file_info.downloaded = FALSE;
-			}
-		} else
-			DBG("rb_file_info is NIL pointer");
-
 	}else {
-		if (!get_pkg_file_manifest(uacc->backup_manifest, rb_file_info->version, rb_file_info)
-		    && update_package_available(rb_file_info, rb_version))
-			rc = E_UA_OK;
+		if (rb_file_info && rb_version) {
+			char* filepath = 0;
+			if (!get_pkg_downloaded_from_json(uacc->cur_msg, rb_version, &rb_file_info->downloaded)
+			    && rb_file_info->downloaded
+			    && !get_pkg_sha256_from_json(uacc->cur_msg, rb_version, rb_file_info->sha256b64)
+			    && !get_pkg_file_from_json(uacc->cur_msg, rb_version, &filepath)) {
+				DBG("RB info available from ready-update package.");
+
+				rb_file_info->file    = f_strdup(filepath);
+				rb_file_info->version = f_strdup(rb_version);
+				if (update_package_available(rb_file_info, rb_version))
+					rc = E_UA_OK;
+				else {
+					free(rb_file_info->file);
+					free(rb_file_info->version);
+				}
+			} else {
+				DBG("Getting RB info from backup manifest.");
+				if (E_UA_OK == get_pkg_file_manifest(uacc->backup_manifest, rb_version, rb_file_info)) {
+					if (update_package_available(rb_file_info, rb_version))
+						rc = E_UA_OK;
+					else {
+						free(rb_file_info->file);
+						free(rb_file_info->version);
+					}
+				}
+			}
+		}
 	}
 
 	return rc;
@@ -312,49 +326,62 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	char* next_rb_version       = rb_version;
 	char* tmp_cur_version       = NULL;
 	pkg_file_t tmp_rb_file_info = {0};
- 
+
 	while (update_sts != INSTALL_COMPLETED && next_rb_version != NULL) {
 		DBG("Starting rollback type(%d) to version(%s)", uacc->rb_type, next_rb_version);
+		Z_FREE(uacc->update_file_info.version);
+		Z_FREE(uacc->update_file_info.file);
 		uacc->update_pkg.rollback_version = next_rb_version;
 
 		if (update_installed_version_same(uacc, next_rb_version)) {
+			uacc->update_file_info.version = f_strdup(next_rb_version);
+			uacc->update_file_info.file    = NULL;
 			send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 			DBG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
 			send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
 
 		}else{
-			tmp_rb_file_info.version = next_rb_version;
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
 				DBG("Rollback package found, rollback installation starts now.");
-				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
-				f_free(uacc->update_file_info.version);
-				f_free(uacc->update_file_info.file);
+				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
 
 				update_sts = prepare_install_action(uacc, &uacc->update_pkg, &tmp_rb_file_info,
 				                                    0, &uacc->update_file_info, &uacc->update_error);
 
 				if (update_sts == INSTALL_READY) {
 					uacc->update_pkg.rollback_version = uacc->update_file_info.version;
-					update_sts = update_start_install_operations(uacc, reboot_support);
+					update_sts                        = update_start_install_operations(uacc, reboot_support);
 				}
 
-				if (update_sts != INSTALL_COMPLETED){
+				if (update_sts != INSTALL_COMPLETED) {
+					DBG("Rollback to version(%s) was not successful", next_rb_version);
 					tmp_cur_version = next_rb_version;
 					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
+					if (next_rb_version)
+						DBG("Rollback will try the next version(%s).", next_rb_version);
+					else
+						DBG("No more rollback version.");
 				}
-				f_free(tmp_rb_file_info.version);
-				f_free(tmp_rb_file_info.file);
+				Z_FREE(tmp_rb_file_info.version);
+				Z_FREE(tmp_rb_file_info.file);
 
 			} else {
 				DBG("Rollback package file is not available locally, asking eSync client to download it.");
-				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK,
-				                    &uacc->update_file_info, UE_NONE);
+				tmp_rb_file_info.downloaded = 0;
+				tmp_rb_file_info.version    = next_rb_version;
+				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
+				tmp_cur_version = next_rb_version;
 				next_rb_version = NULL;
-				update_sts      = INSTALL_IN_PROGRESS;
+				update_sts      = INSTALL_ROLLBACK;
 
 			}
 
+		}
+
+		if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {
+			DBG("Removing temp manifest, RB version was %s.", tmp_cur_version);
+			remove(uacc->update_manifest);
 		}
 
 	};
@@ -402,7 +429,7 @@ void* update_resume_from_reboot(void* arg)
 
 		remove(uacc->record_file);
 		json_object_put(t_arg->jo_update_rec);
-		f_free(t_arg);
+		Z_FREE(t_arg);
 		DBG("Resume operations after reboot have completed");
 		handler_set_internal_state(UAI_STATE_RESUME_DONE);
 		uacc->worker.worker_running = 0;
@@ -456,7 +483,7 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 					if (pthread_create(&thread_resume, 0, update_resume_from_reboot, thread_arg)) {
 						DBG("Failed to spawn a resume thread.");
 						json_object_put(jo_update_rec);
-						f_free(thread_arg);
+						Z_FREE(thread_arg);
 						err = E_UA_ERR;
 					}
 				} else
@@ -490,11 +517,9 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 			remove(rec_file);
 		handler_set_internal_state(UAI_STATE_RESUME_DONE);
 	}
-
-
 }
 
-int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir)
+int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir, char* backup_dir)
 {
 	int err = E_UA_OK;
 
@@ -505,62 +530,88 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 		if (err == E_UA_OK)
 			err = get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name);
 
-		if (err == E_UA_OK)
-			err = get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version);
-
 		if (err == E_UA_OK) {
 			uacc->update_manifest = JOIN(cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+			uacc->backup_manifest = JOIN(backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
+			err                   = get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version);
+		}
 
+		if (err == E_UA_OK) {
 			get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
-
 			get_pkg_rollback_versions_from_json(jsonObj, &uacc->update_pkg.rollback_versions);
 
-			uacc->update_file_info.version = S(uacc->update_pkg.rollback_version) ?
-			                                 uacc->update_pkg.rollback_version : uacc->update_pkg.version;
+			char* version_to_update = S(uacc->update_pkg.rollback_version) ?
+			                          uacc->update_pkg.rollback_version : uacc->update_pkg.version;
 
-			if ((err = get_pkg_file_manifest(uacc->update_manifest, uacc->update_file_info.version, &uacc->update_file_info)))
+			if ((E_UA_OK != get_pkg_file_manifest(uacc->update_manifest, version_to_update, &uacc->update_file_info)))
 			{
-				/* TODO: determine if is necessary to get information from ready-update json if 
-
 				DBG("Could not load temp update manifest, getting info from json package object instead.");
-				get_pkg_file_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.file);
-				get_pkg_sha256_from_json(jsonObj, uacc->update_file_info.version, uacc->update_file_info.sha256b64);
-				get_pkg_downloaded_from_json(jsonObj, uacc->update_file_info.version, &uacc->update_file_info.downloaded);
-				*/
-				DBG("Could not load temp update manifest!");
+				char* update_file_name = NULL;
+				if (!get_pkg_downloaded_from_json(jsonObj, version_to_update, &uacc->update_file_info.downloaded)
+				    && !get_pkg_sha256_from_json(jsonObj, version_to_update, uacc->update_file_info.sha256b64)) {
+					if (uacc->update_file_info.downloaded) {
+						if (!get_pkg_file_from_json(jsonObj, version_to_update, &update_file_name)) {
+							#ifdef SUPPORT_UA_DOWNLOAD
+							if (ua_intl.ua_download_required) {
+								char tmp_filename[PATH_MAX] = {0};
+								snprintf(tmp_filename, PATH_MAX, "%s/%s/%s/%s.e",
+								         ua_intl.ua_dl_dir,
+								         uacc->update_pkg.name, uacc->update_file_info.version,
+								         uacc->update_file_info.version);
+								f_free(uacc->update_file_info.file);
+								uacc->update_file_info.file = f_strdup(tmp_filename);
+							} else {
+								uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
+							}
+							#else
+							uacc->update_file_info.file = update_file_name ? f_strdup(update_file_name) : NULL;
+							#endif
 
+							uacc->update_file_info.version = f_strdup(version_to_update);
+
+							if (!calc_sha256_x(uacc->update_file_info.file, uacc->update_file_info.sha_of_sha)) {
+								add_pkg_file_manifest(uacc->update_manifest, &uacc->update_file_info);
+								err = E_UA_OK;
+							} else {
+								DBG("Error in calculating sha_of_sha.");
+								err = E_UA_ERR;
+							}
+						} else {
+							DBG("Getting filepath from backup manifest.");
+							err = get_pkg_file_manifest(uacc->backup_manifest, version_to_update, &uacc->update_file_info);
+						}
+					}
+				}
 			}
 		}
+
+		if (err == E_UA_ERR) {
+			Z_FREE(uacc->backup_manifest);
+			Z_FREE(uacc->update_manifest);
+		}
 	}
+
+	if (err == E_UA_ERR && S(uacc->update_pkg.rollback_version))
+		uacc->update_error = UE_TERMINAL_FAILURE;
 
 	return err;
 }
 
 void update_release_comp_context(ua_component_context_t* uacc)
 {
-	if (uacc->state > UA_STATE_IDLE_INIT) {
-		if (uacc->rb_type == URB_UA_LOCAL_BACKUP) {
-			if (uacc->update_pkg.rollback_versions)
-				json_object_put(uacc->update_pkg.rollback_versions);
-			f_free(uacc->update_file_info.version);
-		}
-		if (uacc->rb_type != URB_NONE)
-			f_free(uacc->update_file_info.file);
-
-		if(uacc->processing_type){
-			free(uacc->processing_type);
-			uacc->processing_type = NULL;
-		}
-
-		uacc->update_pkg.name                 = NULL;
-		uacc->update_pkg.version              = NULL;
-		uacc->update_pkg.type                 = NULL;
-		uacc->update_pkg.rollback_version     = NULL;
-		uacc->update_pkg.rollback_versions    = NULL;
-		uacc->update_file_info.rollback_order = 0;
-		uacc->rb_type                         = URB_NONE;
-		uacc->update_error                    = UE_NONE;
-		uacc->state                           = UA_STATE_IDLE_INIT;
+	if (uacc->rb_type == URB_UA_LOCAL_BACKUP) {
+		if (uacc->update_pkg.rollback_versions)
+			json_object_put(uacc->update_pkg.rollback_versions);
 	}
 
+	Z_FREE(uacc->update_file_info.version);
+	Z_FREE(uacc->update_file_info.file);
+
+	uacc->update_pkg.name                 = NULL;
+	uacc->update_pkg.version              = NULL;
+	uacc->update_pkg.type                 = NULL;
+	uacc->update_pkg.rollback_version     = NULL;
+	uacc->update_pkg.rollback_versions    = NULL;
+	uacc->update_file_info.rollback_order = 0;
+	uacc->update_error                    = UE_NONE;
 }

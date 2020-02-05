@@ -141,7 +141,6 @@ int parse_diff_manifest(char* xmlFile, diff_info_t** diffInfo)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	if (!err) {
@@ -216,10 +215,10 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 
 	if (!S(pkgFile->file) || !S(pkgFile->version) || !S(pkgFile->sha256b64)) {
 		DBG("Incomplete pkg node");
-		if (pkgFile->file) free(pkgFile->file);
-		if (pkgFile->version) free(pkgFile->version);
-		free(pkgFile);
-		pkgFile = NULL;
+		Z_FREE(pkgFile->file);
+		Z_FREE(pkgFile->version);
+		Z_FREE(pkgFile);
+
 	}
 
 	return pkgFile;
@@ -255,7 +254,6 @@ int parse_pkg_manifest(char* xmlFile, pkg_file_t** pkgFile)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	if (!err) {
@@ -274,6 +272,7 @@ int remove_old_backup(char* xmlFile, char* version)
 	char* tmp_dir;
 
 	do {
+		DBG("Cleaning up backup after installing version: %s in %s", version, xmlFile);
 		if (!access(xmlFile, W_OK)) {
 			BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
 			root = xmlDocGetRootElement(doc);
@@ -288,7 +287,7 @@ int remove_old_backup(char* xmlFile, char* version)
 			if ((n = get_xml_child(node, XMLT "version"))) {
 				if ((c = xmlNodeGetContent(n))) {
 					if (!xmlStrEqual(c, XMLT version)) {
-						DBG("Removing pkg entry for version: %s in %s", version, xmlFile);
+						DBG("Removing pkg entry for version: %s in %s", c, xmlFile);
 						if ((n = get_xml_child(node, XMLT "file"))) {
 							if ((backpath = xmlNodeGetContent(n))) {
 								tmp_dir = f_dirname((const char*)backpath);
@@ -321,7 +320,6 @@ int remove_old_backup(char* xmlFile, char* version)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	return err;
@@ -393,7 +391,6 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 
 	if (doc) {
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 	}
 
 	return err;

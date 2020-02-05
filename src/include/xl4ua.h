@@ -164,7 +164,7 @@ typedef struct ua_cfg {
 	
 	// specifies which source package file used for backup,
 	// when  delta reconstruction is triggered.
-	// 0 = Use the actual full path used installation, this is default. 
+	// 0 = Use the actual full path used for installation, this is default. 
 	// 1 = Use the full path resulted from delta reconstruction. 
 	// Both may or may not be the same full path. 
 	int backup_source;
@@ -174,6 +174,14 @@ typedef struct ua_cfg {
 	//1 = disable, do not verify downloaded package against sha256
 	int package_verification_disabled;
 
+#ifdef SUPPORT_UA_DOWNLOAD
+	// specifies whether UA is to handle package download.
+	int ua_download_required;
+	// specifies directory used for UA download.
+	char* ua_dl_dir;
+	// specifies sigca bundle  directory
+	char* sigca_dir;
+#endif
 } ua_cfg_t;
 
 
