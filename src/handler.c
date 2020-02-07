@@ -636,7 +636,6 @@ static void* worker_action(void* arg)
 	json_object_put(uacc->worker.worker_jobj);
 
 	uacc->worker.worker_running = 0;
-	pthread_detach(pthread_self());
 
 	return NULL;
 }
