@@ -55,4 +55,9 @@
  */
 #cmakedefine01 XL4_HAVE_STD_MALLOC
 
+/**
+ *  Support scp file transfer in on_transfer_file of tmpl-updateagent
+ */
+#cmakedefine01 TMPL_UA_SUPPORT_SCP_TRANSFER
+
 #endif

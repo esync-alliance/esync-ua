@@ -17,7 +17,7 @@ static int get_tmpl_version(const char* type, const char* pkgName, char** versio
 
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
-	if(version)
+	if (version)
 		strncpy(tmpl_version, version, sizeof(tmpl_version) - 1);
 	return E_UA_OK;
 
@@ -60,7 +60,10 @@ ua_routine_t tmpl_rtns = {
 	.on_install         = do_tmpl_install,
 	.on_post_install    = do_tmpl_post_install,
 	.on_prepare_install = do_prepare_install,
-	.on_dmc_presence    = tmpl_on_dmc_presence
+	.on_dmc_presence    = tmpl_on_dmc_presence,
+#if TMPL_UA_SUPPORT_SCP_TRANSFER
+	.on_transfer_file = do_transfer_file
+#endif
 };
 
 ua_routine_t* get_tmpl_routine(void)

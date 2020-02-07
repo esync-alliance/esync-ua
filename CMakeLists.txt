@@ -163,11 +163,18 @@ endif()
 if (BUILD_BINS)
     add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
 
-    add_executable(tmpl-updateagent
-            src/test_agents/main_updateagent.c
-            src/test_agents/tmpl_updateagent.c
-            src/test_agents/tmpl_updateagent.h
-    )
+    set(TMPL_UA_SOURCE     
+        src/test_agents/main_updateagent.c
+        src/test_agents/tmpl_updateagent.c
+        src/test_agents/tmpl_updateagent.h
+        )
+    if(TMPL_UA_SUPPORT_SCP_TRANSFER)
+    set(TMPL_UA_SOURCE  ${TMPL_UA_SOURCE}
+        src/test_agents/util.c
+        src/test_agents/util.h
+        )
+    endif()
+    add_executable(tmpl-updateagent ${TMPL_UA_SOURCE})
 
     targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
 
