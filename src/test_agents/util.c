@@ -64,45 +64,53 @@ scp_info_t* scp_init(scp_info_t* scp)
 
 char* scp_get_file(scp_info_t* scp, char* remote_path)
 {
-	char* argv[9] = {0};
-	char full_scp_path[PATH_MAX];
+	char* argv[9]                = {0};
+	char full_scp_path[PATH_MAX] = {0};
+	int err                      = E_UA_OK;
 
 	if (scp && scp->url && scp->user && scp->local_dir && remote_path) {
-		if (snprintf(full_scp_path, sizeof(full_scp_path), "%s@%s:%s", scp->user, scp->url, remote_path) <= 0) {
+		if (snprintf(full_scp_path, sizeof(full_scp_path) - 1, "%s@%s:%s", scp->user, scp->url, remote_path) <= 0) {
 			DBG("Error creating full_scp_path");
+			err = E_UA_ERR;
 		}
 
-		char* basec = strdup(remote_path);
-		if (snprintf(scp->dest_path, sizeof(scp->dest_path), "%s/%s", scp->local_dir, basename(basec)) <= 0) {
-			DBG("Error creating full_scp_path");
+		if (err == E_UA_OK) {
+			char* basec = strdup(remote_path);
+			if (snprintf(scp->dest_path, sizeof(scp->dest_path)- 1, "%s/%s", scp->local_dir, basename(basec)) <= 0) {
+				DBG("Error creating dest_path");
+				err = E_UA_ERR;
+			}
+			if (basec)
+				free(basec);
 		}
-		if (basec)
-			free(basec);
 
-		if (scp->password) {
-			argv[0] = scp->sshpass_bin;
-			argv[1] = "-p";
-			argv[2] = scp->password;
-			argv[3] = scp->scp_bin;
-			argv[4] = "-o";
-			argv[5] = "StrictHostKeyChecking no";
-			argv[6] = full_scp_path;
-			argv[7] = scp->dest_path;
-		} else {
-			argv[0] = scp->scp_bin;
-			argv[1] = "-o";
-			argv[2] = "StrictHostKeyChecking no";
-			argv[3] = full_scp_path;
-			argv[4] = scp->dest_path;
+		if (err == E_UA_OK) {
+			if (scp->password) {
+				argv[0] = scp->sshpass_bin;
+				argv[1] = "-p";
+				argv[2] = scp->password;
+				argv[3] = scp->scp_bin;
+				argv[4] = "-o";
+				argv[5] = "StrictHostKeyChecking no";
+				argv[6] = full_scp_path;
+				argv[7] = scp->dest_path;
+			} else {
+				argv[0] = scp->scp_bin;
+				argv[1] = "-o";
+				argv[2] = "StrictHostKeyChecking no";
+				argv[3] = full_scp_path;
+				argv[4] = scp->dest_path;
+			}
+
+			if (xl4_run_cmd(argv) == E_UA_OK)
+				return scp->dest_path;
 		}
+
 	} else {
 		DBG("scp info is not set.");
 	}
 
-	if (xl4_run_cmd(argv) == E_UA_OK) {
-		return scp->dest_path;
-	} else
-		return NULL;
+	return NULL;
 }
 
 scp_info_t* scp_get_info(void)
