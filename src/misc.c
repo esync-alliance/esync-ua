@@ -252,7 +252,7 @@ static int libzip_unzip(const char* archive, const char* path)
 
 				sum = 0;
 				while (sum != sb.size) {
-					BOLT_IF((len = zip_fread(zf, buf, sizeof(buf))) < 0,
+					BOLT_IF((len = zip_fread(zf, buf, ua_rw_buff_size)) < 0,
 					        E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					BOLT_IF((write(fd, buf, len) < len), E_UA_ERR, "error writing %s", sb.name);
 					sum += len;
@@ -490,7 +490,7 @@ int copy_file(const char* from, const char* to)
 		BOLT_MALLOC(buf, ua_rw_buff_size);
 
 		do {
-			BOLT_SYS(((nread = fread(buf, sizeof(char), sizeof(buf), in)) == 0) && ferror(in), "reading from file: %s", from);
+			BOLT_SYS(((nread = fread(buf, sizeof(char), ua_rw_buff_size, in)) == 0) && ferror(in), "reading from file: %s", from);
 			BOLT_SYS(nread && (fwrite(buf, sizeof(char), nread, out) != nread), "writing to file: %s", to);
 		} while (nread);
 
@@ -531,7 +531,7 @@ int calc_sha256(const char* fpath, unsigned char obuff[SHA256_DIGEST_LENGTH])
 
 		SHA256_Init(&ctx);
 
-		while ((nread = fread(buf, sizeof(char), sizeof(buf), file))) {
+		while ((nread = fread(buf, sizeof(char), ua_rw_buff_size, file))) {
 			SHA256_Update(&ctx, buf, nread);
 		}
 
