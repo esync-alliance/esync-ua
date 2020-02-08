@@ -32,7 +32,7 @@ static char* m_xl4bus_url = NULL;
 void debug_print(const char* msg)
 {
 	if (ua_debug > 1)
-		DBG("%s", msg);
+		printf("%s\n", msg);
 
 }
 
