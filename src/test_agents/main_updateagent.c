@@ -24,6 +24,12 @@ static void _help(const char* app)
 	       "  -D         : disable delta reconstruction\n"
 	       "  -a <cap>   : delta capability\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
+#if TMPL_UA_SUPPORT_SCP_TRANSFER
+	       "  -H <host>  : host of scp server.\n"
+	       "  -U <user>  : scp username\n"
+	       "  -P <pass>  : scp password\n"
+	       "  -C <path>  : path to cache direcotry used for scp (default: \"/tmp/esync/scp\")\n"
+#endif
 	       "  -h         : display this help and exit\n"
 	       );
 	_exit(1);
@@ -45,7 +51,15 @@ int main(int argc, char** argv)
 	cfg.cache_dir  = "/tmp/esync/";
 	cfg.backup_dir = "/data/sota/esync/";
 
-	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:dDh")) != -1) {
+#if TMPL_UA_SUPPORT_SCP_TRANSFER
+	scp_info_t scpi;
+	memset(&scpi, 0, sizeof(scp_info_t));
+	scpi.local_dir   = "/tmp/esync/scp";
+	scpi.scp_bin     = "scp";
+	scpi.sshpass_bin = "sshpass";
+#endif
+
+	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:dDh")) != -1) {
 		switch (c) {
 			case 'k':
 				cfg.cert_dir = optarg;
@@ -65,6 +79,20 @@ int main(int argc, char** argv)
 			case 't':
 				uah[0].type_handler = optarg;
 				break;
+#if TMPL_UA_SUPPORT_SCP_TRANSFER
+			case 'H':
+				scpi.url = optarg;
+				break;
+			case 'U':
+				scpi.user = optarg;
+				break;
+			case 'P':
+				scpi.password = optarg;
+				break;
+			case 'C':
+				scpi.local_dir = optarg;
+				break;
+#endif
 			case 'd':
 				cfg.debug = 1;
 				break;
@@ -80,8 +108,9 @@ int main(int argc, char** argv)
 				break;
 		}
 	}
-
-
+#if TMPL_UA_SUPPORT_SCP_TRANSFER
+	scp_init(&scpi);
+#endif
 	if (ua_init(&cfg)) {
 		printf("Updateagent failed!");
 		_exit(1);
