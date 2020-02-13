@@ -809,11 +809,10 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+			
 		get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
-
-		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
-
 		pkgFile.version = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
+		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 		uacc->state     = UA_STATE_PREPARE_UPDATE_STARTED;
 
 		if (( (!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file)
@@ -821,9 +820,10 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		       || ua_intl.ua_download_required
 				#endif
 		       ) &&
-		      !get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64) &&
 		      !get_pkg_downloaded_from_json(jsonObj, pkgFile.version, &pkgFile.downloaded)) ||
 		    ((!get_pkg_file_manifest(uacc->backup_manifest, pkgFile.version, &pkgFile)) && (bck = 1))) {
+
+			get_pkg_sha256_from_json(jsonObj, pkgFile.version, pkgFile.sha256b64);
 			get_pkg_delta_sha256_from_json(jsonObj, pkgFile.version, pkgFile.delta_sha256b64);
 
 			#ifdef SUPPORT_UA_DOWNLOAD
@@ -844,6 +844,11 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			Z_FREE(updateFile.version);
 			Z_FREE(updateFile.file);
 			Z_FREE(uacc->update_manifest);
+			
+		} else {
+			DBG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
+			send_install_status(&pkgInfo, INSTALL_FAILED, 0, 0);
+
 		}
 
 		if (bck) {
@@ -1054,13 +1059,13 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t*
 	}
 
 	if (err == E_UA_OK && !ua_intl.package_verification_disabled && access(uacc->update_manifest, F_OK)) {
-		if (strlen(pkgFile->delta_sha256b64) > 0)
+		if (S(pkgFile->delta_sha256b64))
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->delta_sha256b64);
 		else
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->sha256b64);
 	}
 
-	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file)) {
+	if (err == E_UA_OK && ua_intl.delta && !delta_use_external_algo() && is_delta_package(pkgFile->file)) {
 		char* bname = f_basename(pkgFile->file);
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
