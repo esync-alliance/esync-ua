@@ -695,34 +695,9 @@ int verify_file_hash_b64(const char* file, const char* sha256_b64)
 			err = E_UA_ERR;
 		}
 
-	}
-
-	return err;
-
-}
-
-int NGverify_file_hash_b64(const char* file, const char* sha256_b64)
-{
-	int err = E_UA_ERR;
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	char b64buff[SHA256_B64_LENGTH];
-
-	if (!(err = calc_sha256(file, hash))) {
-		if (base64_encode(hash, b64buff) == E_UA_OK) {
-			if (!strncmp(b64buff, sha256_b64, sizeof(b64buff) - 1)) {
-				DBG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
-				err = E_UA_OK;
-
-			} else {
-				DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
-				err = E_UA_ERR;
-			}
-
-		}
-
 	} else {
 		DBG("SHA256 Hash calculation failed : %s", file);
-	}
+	} 
 
 	return err;
 
