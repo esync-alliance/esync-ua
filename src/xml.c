@@ -310,6 +310,9 @@ int remove_old_backup(char* xmlFile, char* version)
 			}
 		}
 
+		if(xmlChildElementCount(root) == 0) 
+			unlink(xmlFile);
+
 		tmp_dir = f_dirname((const char*)xmlFile);
 		if (tmp_dir) {
 			remove_subdirs_except(tmp_dir, version);

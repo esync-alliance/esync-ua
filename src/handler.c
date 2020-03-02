@@ -714,11 +714,15 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 				if (backup_manifest != NULL) {
+
+					json_object* verListObject = json_object_new_object();
+
 					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
-						json_object* verListObject = json_object_new_object();
+
 						json_object* rbVersArray   = json_object_new_array();
 
 						DL_FOREACH_SAFE(pkgFile, pf, aux) {
+
 							json_object* versionObject = json_object_new_object();
 
 							json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
@@ -740,11 +744,13 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 						}
 
-						json_object_object_add(pkgObject, "version-list", verListObject);
-						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+						if(json_object_array_length(rbVersArray) > 0) {
+							json_object_object_add(pkgObject, "version-list", verListObject);
+							json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+						}
 
 					} else if (delta_use_external_algo() && installedVer) {
-						json_object* verListObject = json_object_new_object();
+
 						json_object* versionObject = json_object_new_object();
 						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
 						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
@@ -1525,7 +1531,9 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 
 	if (uacc->update_manifest != NULL) {
 		if (!get_pkg_file_manifest(uacc->update_manifest,  pkgInfo.version, &updateFile)) {
-			backup_package(uacc, &pkgInfo, &updateFile);
+
+			if(!is_delta_package(updateFile.file))
+				backup_package(uacc, &pkgInfo, &updateFile);
 
 			free(updateFile.file);
 			free(updateFile.version);
