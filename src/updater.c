@@ -320,6 +320,28 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 	return rc;
 }
 
+int update_send_rollback_status(ua_component_context_t* uacc, char* next_rb_version)
+{
+	pkg_file_t tmp_rb_file_info = {0};
+
+	uacc->update_pkg.rollback_version = next_rb_version;
+
+	if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) != E_UA_OK) {
+		tmp_rb_file_info.downloaded = 0;
+		tmp_rb_file_info.version    = next_rb_version;
+	}
+
+	send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
+
+	if (tmp_rb_file_info.file) {
+		Z_FREE(tmp_rb_file_info.file);
+		Z_FREE(tmp_rb_file_info.version);
+	}
+
+	return 0;
+
+}
+
 install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version, int reboot_support)
 {
 	install_state_t update_sts  = INSTALL_FAILED;
@@ -327,7 +349,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	char* tmp_cur_version       = NULL;
 	pkg_file_t tmp_rb_file_info = {0};
 
-	while (update_sts != INSTALL_COMPLETED && next_rb_version != NULL) {
+	if (uacc && rb_version ) {
 		DBG("Starting rollback type(%d) to version(%s)", uacc->rb_type, next_rb_version);
 		Z_FREE(uacc->update_file_info.version);
 		Z_FREE(uacc->update_file_info.file);
@@ -344,7 +366,6 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 		}else{
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
 				DBG("Rollback package found, rollback installation starts now.");
-				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
 
 				update_sts = prepare_install_action(uacc, &uacc->update_pkg, &tmp_rb_file_info,
 				                                    0, &uacc->update_file_info, &uacc->update_error);
@@ -354,23 +375,26 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 					update_sts                        = update_start_install_operations(uacc, reboot_support);
 				}
 
+				Z_FREE(tmp_rb_file_info.version);
+				Z_FREE(tmp_rb_file_info.file);
+
 				if (update_sts != INSTALL_COMPLETED) {
 					DBG("Rollback to version(%s) was not successful", next_rb_version);
 					tmp_cur_version = next_rb_version;
 					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
-					if (next_rb_version)
+					if (next_rb_version) {
 						DBG("Rollback will try the next version(%s).", next_rb_version);
+						update_sts = INSTALL_ROLLBACK;
+						update_send_rollback_status(uacc, next_rb_version);
+
+					}
 					else
 						DBG("No more rollback version.");
 				}
-				Z_FREE(tmp_rb_file_info.version);
-				Z_FREE(tmp_rb_file_info.file);
 
 			} else {
 				DBG("Rollback package file is not available locally, asking eSync client to download it.");
-				tmp_rb_file_info.downloaded = 0;
-				tmp_rb_file_info.version    = next_rb_version;
-				send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
+				update_send_rollback_status(uacc, next_rb_version);
 				tmp_cur_version = next_rb_version;
 				next_rb_version = NULL;
 				update_sts      = INSTALL_ROLLBACK;
@@ -549,9 +573,8 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 				char* update_file_name = NULL;
 				if (!get_pkg_downloaded_from_json(jsonObj, version_to_update, &uacc->update_file_info.downloaded)) {
 					if (uacc->update_file_info.downloaded) {
+						get_pkg_sha256_from_json(jsonObj, version_to_update, uacc->update_file_info.sha256b64);
 
-				    	get_pkg_sha256_from_json(jsonObj, version_to_update, uacc->update_file_info.sha256b64);
-						
 						if (!get_pkg_file_from_json(jsonObj, version_to_update, &update_file_name)) {
 							#ifdef SUPPORT_UA_DOWNLOAD
 							if (ua_intl.ua_download_required) {

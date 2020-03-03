@@ -697,7 +697,7 @@ int verify_file_hash_b64(const char* file, const char* sha256_b64)
 
 	} else {
 		DBG("SHA256 Hash calculation failed : %s", file);
-	} 
+	}
 
 	return err;
 

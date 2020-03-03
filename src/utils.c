@@ -222,37 +222,29 @@ int get_body_rollback_from_json(json_object* jsonObj, int* value)
 
 int get_pkg_next_rollback_version(json_object* jsonArr, char* currentVer, char** nextVer)
 {
-	int i, len, idx, err = E_UA_OK;
+	int i, len, idx, err = E_UA_ERR;
 	char* ver = 0;
 
-	*nextVer = 0;
-	idx      = 0;
-
 	if (currentVer && json_object_is_type(jsonArr, json_type_array) && ((len = json_object_array_length(jsonArr)) > 0)) {
-		idx = len - 1;
+		idx = 0;
 
-		for (i = len-1; i >= 0; i--) {
+		for (i = 0; i < len; i++) {
 			ver = (char*) json_object_get_string(json_object_array_get_idx(jsonArr, i));
 			if (!strcmp(currentVer, ver)) {
-				idx = i - 1;
+				idx = i + 1;
 				break;
 			}
 		}
 
-		if (idx >= 0) {
+		if (idx >= 0 && idx < len) {
 			*nextVer = (char*) json_object_get_string(json_object_array_get_idx(jsonArr, idx));
-		} else {
-			err = E_UA_ERR;
+			err      = E_UA_OK;
 		}
 
-	} else {
-		err = E_UA_ERR;
 	}
 
 	return err;
 }
-
-
 
 int json_get_property(json_object* json, enum json_type typ, void* value, const char* node, ... )
 {

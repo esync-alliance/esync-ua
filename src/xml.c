@@ -243,7 +243,7 @@ int parse_pkg_manifest(char* xmlFile, pkg_file_t** pkgFile)
 		if (xmlStrEqual(node->name, XMLT "package")) {
 			if ((pf = get_xml_pkg_file(node))) {
 				if (!access(pf->file, R_OK)) {
-					DL_APPEND(pfList, pf);
+					DL_PREPEND(pfList, pf);
 				} else {
 					free_pkg_file(pf);
 				}
@@ -309,6 +309,9 @@ int remove_old_backup(char* xmlFile, char* version)
 				}
 			}
 		}
+
+		if (xmlChildElementCount(root) == 0)
+			unlink(xmlFile);
 
 		tmp_dir = f_dirname((const char*)xmlFile);
 		if (tmp_dir) {
