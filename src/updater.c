@@ -322,7 +322,7 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 
 int update_send_rollback_status(ua_component_context_t* uacc, char* next_rb_version)
 {
-	pkg_file_t tmp_rb_file_info;
+	pkg_file_t tmp_rb_file_info = {0};
 
 	uacc->update_pkg.rollback_version = next_rb_version;
 
