@@ -904,7 +904,10 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
 			    uacc->rb_type >= URB_UA_INITIATED) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				update_send_rollback_status(uacc, rb_version);
+				if(rb_version) {
+					update_sts = INSTALL_ROLLBACK;
+					update_send_rollback_status(uacc, rb_version);
+				}
 
 			}
 		}
