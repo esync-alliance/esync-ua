@@ -15,14 +15,14 @@ if(NOT JSON_C)
     set(JSON_C ${CMAKE_SOURCE_DIR}/json-c-build)
 endif()
 
-set(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a)
+get_filename_component(JSON_C_LIB ${JSON_C}/.libs/libjson-c.a REALPATH)
 if (NOT EXISTS ${JSON_C_LIB})
     message(FATAL_ERROR "You must build json-c sources first!")
 endif()
 
 if(XL4BUS_DIR)
 # Checking libxl4bus
-    set(XL4BUS_LIB ${XL4BUS_DIR}/libxl4bus.so)
+    get_filename_component(XL4BUS_LIB ${XL4BUS_DIR}/libxl4bus.so REALPATH)
     if (NOT EXISTS ${XL4BUS_LIB})
         message(FATAL_ERROR "You must build libxl4bus sources first!")
     endif()
@@ -34,8 +34,8 @@ endif()
 
 # Checking dmclient
 if (SUPPORT_UA_DOWNLOAD)
-include_directories(SYSTEM ${DMCLIENT_DIR}/include)
-set(DMCLIENT_LIB ${DMCLIENT_DIR}/build/libdmclient.so)
+    include_directories(SYSTEM ${DMCLIENT_DIR}/include)
+    get_filename_component(DMCLIENT_LIB ${DMCLIENT_DIR}/build/libdmclient.so REALPATH)
     if (NOT EXISTS ${DMCLIENT_LIB})
         message(WARNING "Not found libdmclient.so in build folder , You should build libdmclient sources first!")
         set(DMCLIENT_LIB -ldmclient)
