@@ -337,8 +337,7 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 	char rb_order[32] = {0};
 
 	do {
-		if (!access(xmlFile, W_OK)) {
-			BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
+		if (!access(xmlFile, W_OK) && (doc = xmlReadFile(xmlFile, NULL, 0))) {
 			root = xmlDocGetRootElement(doc);
 		} else {
 			doc  = xmlNewDoc(XMLT "1.0");
