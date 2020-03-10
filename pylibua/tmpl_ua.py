@@ -15,7 +15,7 @@ class SampleUA(eSyncUA):
     def do_prepare_install(self, packageName, version, packageFile):
         print("UA:do_prepare_install %s:%s:%s" %
               (packageName, version, packageFile))
-        newFile = '/tmp/' + os.path.basename(packageFile)
+        newFile = os.path.join(self.cache, os.path.basename(packageFile))
         try:
             print("UA: copying %s to %s" % (packageFile, newFile))
             shutil.copy(packageFile, newFile)
@@ -66,6 +66,8 @@ if __name__ == "__main__":
                       dest="ssh_pw", help="ssh password ", metavar="PASS")
     parser.add_option("-a", "--cap", default='A:3;B:3;C:100', type='string', action="store",
                       help="delta capability ", metavar=" CAP")
+    parser.add_option("-c", "--temp", default='/tmp', type='string', action="store",
+                      dest="cache", help="cache directory ", metavar="TEMP")
     parser.add_option('-D', '--delta', default=False, action='store_true', dest="disable_delta",
                     help="disable delta")
     parser.add_option('-d', '--debug', default=False, action='store_true',
@@ -83,4 +85,5 @@ if __name__ == "__main__":
     sample_ua.ssh_host = options.host
     sample_ua.ssh_user = options.ssh_user
     sample_ua.ssh_pw = options.ssh_pw
+    sample_ua.cache = options.cache
     sample_ua.run_forever()
