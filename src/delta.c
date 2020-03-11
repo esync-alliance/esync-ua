@@ -45,6 +45,8 @@ int delta_init(char* cacheDir, delta_cfg_t* deltaConfig)
 		delta_stg.delta_cap = (deltaConfig && S(deltaConfig->delta_cap)) ? get_config_delta_cap(deltaConfig->delta_cap) :
 		                      get_deflt_delta_cap(delta_stg.patch_tool, delta_stg.decomp_tool);
 
+		BOLT_IF((delta_stg.delta_cap == NULL), E_UA_ERR, "delta_cap is NULL");
+
 	} while (0);
 
 	if (err) {
@@ -308,11 +310,12 @@ static char* get_config_delta_cap(char* delta_cap)
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool)
 {
 	int memory            = 100;
-	char format[7]        = "";
-	char compression[7]   = "";
+	char format[16]       = "A:";
+	char compression[16]  = "B:";
 	char espatch_ver[7]   = "";
 	int espatch_ver_valid = E_UA_ERR;
 	delta_tool_hh_t* dth  = 0;
+	char* delta_cap       = NULL;
 
 	HASH_FIND_STR(patchTool, "bsdiff", dth);
 	if (dth) strcat(format, "1,");
@@ -331,13 +334,25 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	HASH_FIND_STR(decompTool, "xz", dth);
 	if (dth) strcat(compression, "3,");
 
-	format[strlen(format) - 1]           = 0;
-	compression[strlen(compression) - 1] = 0;
-
-	if (espatch_ver_valid == E_UA_OK)
-		return f_asprintf("A:%s;B:%s;C:%d;E:%s", format, compression, memory, espatch_ver);
+	if(strlen(format) > 2)
+		format[strlen(format) - 1] = ';';
 	else
-		return f_asprintf("A:%s;B:%s;C:%d", format, compression, memory);
+		format[0] = 0;
+	
+	if(strlen(compression) > 2)
+		compression[strlen(compression) - 1] = ';';
+	else
+		compression[0] = 0;
+
+	if(strlen(format) > 0 || strlen(compression) > 0) {
+		
+		if (espatch_ver_valid == E_UA_OK)
+			delta_cap = f_asprintf("%s%sC:%d;E:%s", format, compression, memory, espatch_ver);
+		else
+			delta_cap = f_asprintf("%s%sC:%d", format, compression, memory);		
+	}
+
+	return delta_cap;
 }
 
 

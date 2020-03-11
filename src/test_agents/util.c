@@ -34,7 +34,8 @@ int xl4_run_cmd(char* argv[])
 				rc = E_UA_SYS;
 			}else {
 				rc = WEXITSTATUS(status);
-				DBG("command(%s) exited with status: %d", cmd, rc);
+				if(rc)
+					DBG("command(%s) exited with status: %d", cmd, rc);
 			}
 		}
 	}else{

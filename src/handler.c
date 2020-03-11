@@ -76,7 +76,13 @@ int ua_init(ua_cfg_t* uaConfig)
 		        , E_UA_ARG, "configuration error");
 
 		BOLT_IF(uaConfig->delta && (!S(uaConfig->cache_dir) || !S(uaConfig->backup_dir)), E_UA_ARG, "cache and backup directory are must for delta");
-		BOLT_IF(uaConfig->delta && delta_init(uaConfig->cache_dir, uaConfig->delta_config), E_UA_ARG, "delta initialization error");
+
+		if (uaConfig->delta) {
+			if(delta_init(uaConfig->cache_dir, uaConfig->delta_config)) {
+				DBG("delta initialization failed, disabling delta feature. ");
+				uaConfig->delta = 0;
+			}
+		}
 
 		memset(&ua_intl, 0, sizeof(ua_internal_t));
 		ua_intl.delta                         = uaConfig->delta;
