@@ -53,6 +53,8 @@ int pua_start(char* node_type, ua_cfg_t* cfg)
 	ua_handler_t uah[] = {
 		{node_type, get_pua_routine }
 	};
+	
+	printf("version info: libua: %s, libxl4bus: %s\n", ua_get_updateagent_version(), ua_get_xl4bus_version());	
 
 	if (ua_init(cfg)) {
 		PY_DBG("Updateagent init failed!");
@@ -155,8 +157,8 @@ static int pua_get_version(const char* type, const char* pkgName, char** version
 				*version = strncpy(pua_version, tmp_ver, sizeof(pua_version) - 1);
 			}
 
-			rc =  pua_get_int_from_pylist_ob(result, 0);
-			PY_DBG("PUA get_version returned status: %d", rc);
+			if((rc =  pua_get_int_from_pylist_ob(result, 0)))
+				PY_DBG("PUA get_version returned error: %d", rc);
 		}else
 			PY_DBG("Error PyObject_CallFunction py_get_version");
 	}else
@@ -214,7 +216,7 @@ static install_state_t pua_install(const char* type, const char* pkgName, const 
 {
 	PyObject* result      = 0;
 	install_state_t state = INSTALL_FAILED;
-	PY_DBG("pua_install for %s(%s) with file %s", pkgName, version, pkgFile);
+	//PY_DBG("pua_install for %s(%s) with file %s", pkgName, version, pkgFile);
 	if ((py_class_instance) && (py_install))
 	{
 		result = PyObject_CallMethod(py_class_instance, py_install, "(s)",pkgFile);
@@ -268,7 +270,7 @@ static install_state_t pua_prepare_install(const char* type, const char* pkgName
 				state = pua_get_state_from_string(state_string);
 			}
 
-			if ((ret_path = pua_get_string_from_pylist_ob(result, 1))) {
+			if (PyList_Size(result) > 1 && (ret_path = pua_get_string_from_pylist_ob(result, 1))) {
 				PY_DBG("PUA prepare_install returned new update file path: %s", ret_path);
 				*newFile = ret_path;
 			}
@@ -339,7 +341,7 @@ static int pua_transfer_file(const char* type, const char* pkgName, const char* 
 		if (result) {
 			rc = pua_get_int_from_pylist_ob(result, 0);
 
-			if ((ret_path = pua_get_string_from_pylist_ob(result, 1)))
+			if (PyList_Size(result) > 1 && (ret_path = pua_get_string_from_pylist_ob(result, 1)))
 				PY_DBG("PUA do_transfer_file returned new update file path: %s", ret_path);
 
 		}else

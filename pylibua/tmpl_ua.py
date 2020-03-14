@@ -2,6 +2,7 @@
 import os
 import subprocess
 import shutil
+import sys
 from optparse import OptionParser
 from pylibua.esyncua import eSyncUA
 
@@ -13,20 +14,23 @@ class SampleUA(eSyncUA):
         return eSyncUA.do_get_version(self, packageName)
 
     def do_prepare_install(self, packageName, version, packageFile):
-        print("UA:do_prepare_install %s:%s:%s" %
-              (packageName, version, packageFile))
-        newFile = os.path.join(self.cache, os.path.basename(packageFile))
+        print("PUA: do_prepare_install %s:%s:%s" % (packageName, version, packageFile))
         try:
-            print("UA: copying %s to %s" % (packageFile, newFile))
-            shutil.copy(packageFile, newFile)
-            return ['INSTALL_READY', newFile]
-        except:
-            print("copyfile error!")
+            self.newFile = self.cache + os.sep + os.path.basename(packageFile)
+            try:
+                os.remove(self.newFile)
+            except:
+                pass
+            print("PUA: copying %s to %s" % (packageFile, self.newFile))
+            shutil.copy(packageFile, self.newFile)
+            return ['INSTALL_READY', self.newFile]
+        except Exception as why:
+            print("copy error: <%s>" % (str(why)))
             return ['INSTALL_FAILED']
 
     def do_transfer_file(self, packageName, version, packageFile):
+        print("PUA: do_transfer_file")
         if self.ssh_user is None:
-            print("UA:do_transfer_file")
             status = 0
         else:
             try:
@@ -47,10 +51,13 @@ class SampleUA(eSyncUA):
         return [status]
 
     def do_install(self, downloadFileStr):
+        print("PUA: do_install with %s" % (downloadFileStr))
         return 'INSTALL_COMPLETED'
 
 
 if __name__ == "__main__":
+
+    print("Running: %s" % ' '.join(sys.argv[0:]))
     parser = OptionParser(usage="usage: %prog [options]", version="%prog 1.0")
     parser.add_option("-k", "--cert", default='/data/sota/certs/rom-ua/', type='string',
                       action="store", dest="cert_dir", help="certificate directory", metavar="CERT")

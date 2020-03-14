@@ -88,7 +88,6 @@ class eSyncUA:
 
         Returns: None
         """
-        print(self.cert_dir, self.version_dir)
         uacfg = libuamodule.ua_cfg_t()
 
         uacfg.url = self.host_port
