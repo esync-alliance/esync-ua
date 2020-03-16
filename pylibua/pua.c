@@ -219,7 +219,7 @@ static install_state_t pua_install(const char* type, const char* pkgName, const 
 	//PY_DBG("pua_install for %s(%s) with file %s", pkgName, version, pkgFile);
 	if ((py_class_instance) && (py_install))
 	{
-		result = PyObject_CallMethod(py_class_instance, py_install, "(s)",pkgFile);
+		result = PyObject_CallMethod(py_class_instance, py_install, "(ss)", version, pkgFile);
 		if (result) {
 			state = pua_get_py_obj_state(result);
 

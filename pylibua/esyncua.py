@@ -148,7 +148,7 @@ class eSyncUA:
         """
         return "INSTALL_IN_PROGRESS"
 
-    def do_install(self, downloadFileStr):
+    def do_install(self, version, packageFile):
         """
         [Required] Interface to start updating after do_pre_install() upon
         receiving xl4.ready-update message.  
