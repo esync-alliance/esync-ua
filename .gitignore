@@ -10,7 +10,7 @@ deltapatcher
 install_manifest.txt
 json-c-build/
 libua.a
-libua.so
+*.so
 rules.ninja
 tmpl-updateagent
 ua_version.h
@@ -20,3 +20,4 @@ qnx_port/*.cmk
 libxml2-build
 libzip-build
 setup.cfg
+esync_libua.egg-info

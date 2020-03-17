@@ -15,6 +15,8 @@
 
 int get_type_from_json(json_object* jsonObj, char** value);
 
+int get_seq_num_from_json(json_object* jsonObj, int* value);
+
 int get_replyid_from_json(json_object* jsonObj, char** value);
 
 int get_replyto_from_json(json_object* jsonObj, char** value);

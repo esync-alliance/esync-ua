@@ -334,22 +334,21 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	HASH_FIND_STR(decompTool, "xz", dth);
 	if (dth) strcat(compression, "3,");
 
-	if(strlen(format) > 2)
+	if (strlen(format) > 2)
 		format[strlen(format) - 1] = ';';
 	else
 		format[0] = 0;
-	
-	if(strlen(compression) > 2)
+
+	if (strlen(compression) > 2)
 		compression[strlen(compression) - 1] = ';';
 	else
 		compression[0] = 0;
 
-	if(strlen(format) > 0 || strlen(compression) > 0) {
-		
+	if (strlen(format) > 0 || strlen(compression) > 0) {
 		if (espatch_ver_valid == E_UA_OK)
 			delta_cap = f_asprintf("%s%sC:%d;E:%s", format, compression, memory, espatch_ver);
 		else
-			delta_cap = f_asprintf("%s%sC:%d", format, compression, memory);		
+			delta_cap = f_asprintf("%s%sC:%d", format, compression, memory);
 	}
 
 	return delta_cap;

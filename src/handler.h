@@ -189,6 +189,8 @@ typedef struct ua_component_context {
 	char* update_manifest;
 	char* backup_manifest;
 	char* record_file;
+	int seq_num_in;
+	int seq_num_out;
 } ua_component_context_t;
 
 
@@ -208,13 +210,13 @@ void handle_message(const char* type, const char* msg, size_t len);
 
 void free_pkg_file(pkg_file_t* pkgFile);
 
-install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue);
-install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
+install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue);
+install_state_t pre_update_action(ua_component_context_t* uacc);
+install_state_t update_action(ua_component_context_t* uacc);
+void post_update_action(ua_component_context_t* uacc);
 
 void handler_set_internal_state(ua_internal_state_t st);
-void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
+void send_install_status(ua_component_context_t* uacc, install_state_t state, pkg_file_t* pkgFile, update_err_t ue);
 int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* version);
 int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
 void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
