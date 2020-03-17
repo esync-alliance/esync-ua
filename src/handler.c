@@ -28,9 +28,9 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj);
-static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo);
+static download_state_t prepare_download_action(ua_component_context_t* uacc);
 static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-static void send_download_status(pkg_info_t* pkgInfo, download_state_t state);
+static void send_download_status(ua_component_context_t* uacc, download_state_t state);
 static int send_update_report(const char* pkgName, const char* version, int indeterminate, int percent, update_stage_t us);
 static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version);
 static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
@@ -78,7 +78,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		BOLT_IF(uaConfig->delta && (!S(uaConfig->cache_dir) || !S(uaConfig->backup_dir)), E_UA_ARG, "cache and backup directory are must for delta");
 
 		if (uaConfig->delta) {
-			if(delta_init(uaConfig->cache_dir, uaConfig->delta_config)) {
+			if (delta_init(uaConfig->cache_dir, uaConfig->delta_config)) {
 				DBG("delta initialization failed, disabling delta feature. ");
 				uaConfig->delta = 0;
 			}
@@ -180,6 +180,8 @@ int ua_register(ua_handler_t* uah, int len)
 			BOLT_SYS(pthread_cond_init(&ri->component.update_status_info.cond, 0), "update status cond init");
 			ri->component.update_status_info.reply_id = NULL;
 			ri->component.record_file                 = ua_intl.record_file;
+			ri->component.seq_num_in                  = -1;
+			ri->component.seq_num_out                 = 0;
 			DBG("Registered: %s", ri->component.type);
 		} while (0);
 
@@ -588,8 +590,19 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 {
 	char* type;
 	enum json_tokener_error jErr;
+	int seq = -1;
 
 	json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
+
+	if (get_seq_num_from_json(jObj, &seq) == E_UA_OK) {
+		if (uacc->seq_num_in >= seq) {
+			DBG("Got outdated command with sequence number : %d", seq);
+			return;
+		}
+
+		uacc->seq_num_in = seq;
+
+	}
 
 	if (jErr == json_tokener_success) {
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
@@ -785,21 +798,20 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 static void process_ready_download(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	pkg_info_t pkgInfo = {0};
-
-	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
-	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		prepare_download_action(uacc, &pkgInfo);
+	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
+	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
+	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
+		prepare_download_action(uacc);
 
 	}
+
+	memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
 }
 
 
 static void process_prepare_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	int bck                = 0;
-	pkg_info_t pkgInfo     = {0};
 	pkg_file_t pkgFile     = {0}, updateFile = {0};
 	update_err_t updateErr = UE_NONE;
 	install_state_t state  = INSTALL_READY;
@@ -814,12 +826,12 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 	}
 
-	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
-	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version);
-		pkgFile.version       = S(pkgInfo.rollback_version) ? pkgInfo.rollback_version : pkgInfo.version;
-		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
+	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
+	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
+		get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
+		pkgFile.version       = S(uacc->update_pkg.rollback_version) ? uacc->update_pkg.rollback_version : uacc->update_pkg.version;
+		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 		uacc->state           = UA_STATE_PREPARE_UPDATE_STARTED;
 
 		if (( (!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file)
@@ -836,16 +848,16 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			if (ua_intl.ua_download_required && bck != 1) {
 				snprintf(tmp_filename, PATH_MAX, "%s/%s/%s/%s.e",
 				         ua_intl.ua_dl_dir,
-				         pkgInfo.name, pkgInfo.version,
-				         pkgInfo.version);
+				         uacc->update_pkg.name, uacc->update_pkg.version,
+				         uacc->update_pkg.version);
 				pkgFile.file = tmp_filename;
 				DBG("ua download changes pkf file path[%s]=", pkgFile.file);
 			}
 			#endif
 
-			uacc->update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
-			state                 = prepare_install_action(uacc, &pkgInfo, &pkgFile, bck, &updateFile, &updateErr);
-			send_install_status(&pkgInfo, state, &pkgFile, updateErr);
+			uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+			state                 = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
+			send_install_status(uacc, state, &pkgFile, updateErr);
 
 			Z_FREE(updateFile.version);
 			Z_FREE(updateFile.file);
@@ -853,7 +865,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 		} else {
 			DBG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
-			send_install_status(&pkgInfo, INSTALL_FAILED, 0, 0);
+			send_install_status(uacc, INSTALL_FAILED, 0, 0);
 
 		}
 
@@ -862,6 +874,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.file);
 		}
 		Z_FREE(uacc->backup_manifest);
+		memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
 		uacc->state = UA_STATE_PREPARE_UPDATE_DONE;
 	}
 }
@@ -910,7 +923,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
 			    uacc->rb_type >= URB_UA_INITIATED) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				if(rb_version) {
+				if (rb_version) {
 					update_sts = INSTALL_ROLLBACK;
 					update_send_rollback_status(uacc, rb_version);
 				}
@@ -941,7 +954,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
 		else {
 			DBG("Error: parsing ready-update, or getting info form temp manifest.");
-			send_install_status(&uacc->update_pkg, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
+			send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 		}
 	}
 }
@@ -1051,13 +1064,14 @@ static void process_update_status(ua_component_context_t* uacc, json_object* jso
 
 }
 
-install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue)
+install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue)
 {
 	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = INSTALL_READY;
 	char* newFile         = 0;
 	char* installedVer    = 0;
 	int err               = E_UA_OK;
+	pkg_info_t* pkgInfo   = (uacc != NULL) ? &uacc->update_pkg : NULL;
 
 	updateFile->version = f_strdup(pkgFile->version);
 
@@ -1138,7 +1152,7 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 	int ret           = E_UA_OK;
 	char* newFile     = 0;
 
-	if (uar->on_transfer_file) {
+	if (uar && uar->on_transfer_file && pkgInfo) {
 		ret = (*uar->on_transfer_file)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
 		if (!ret && S(newFile)) {
 			DBG("UA transfered file %s to new path %s", pkgFile->file, newFile);
@@ -1152,23 +1166,25 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 }
 
 
-static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo)
+static download_state_t prepare_download_action(ua_component_context_t* uacc)
 {
 	ua_routine_t* uar      = (uacc != NULL) ? uacc->uar : NULL;
 	download_state_t state = DOWNLOAD_CONSENT;
 
 	if (uar->on_prepare_download) {
-		state = (*uar->on_prepare_download)(pkgInfo->type, pkgInfo->name, pkgInfo->version);
-		send_download_status(pkgInfo, state);
+		state = (*uar->on_prepare_download)(uacc->update_pkg.type, uacc->update_pkg.name, uacc->update_pkg.version);
+		send_download_status(uacc, state);
 	}
 
 	return state;
 }
 
-install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
+install_state_t pre_update_action(ua_component_context_t* uacc)
 {
 	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = INSTALL_IN_PROGRESS;
+	pkg_info_t* pkgInfo   = &uacc->update_pkg;
+	pkg_file_t* pkgFile   = &uacc->update_file_info;
 
 	if (uar->on_pre_install) {
 		state = (*uar->on_pre_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
@@ -1204,16 +1220,18 @@ install_state_t pre_update_action(ua_component_context_t* uacc, pkg_info_t* pkgI
 
 	}
 
-	send_install_status(pkgInfo, state, 0, 0);
+	send_install_status(uacc, state, 0, 0);
 
 	return state;
 }
 
 
-install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
+install_state_t update_action(ua_component_context_t* uacc)
 {
 	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
 	install_state_t state = INSTALL_FAILED;
+	pkg_info_t* pkgInfo   = &uacc->update_pkg;
+	pkg_file_t* pkgFile   = &uacc->update_file_info;
 
 	if (uar) {
 		DBG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
@@ -1225,27 +1243,28 @@ install_state_t update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo,
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-			send_install_status(pkgInfo, state, 0, 0);
+			send_install_status(uacc, state, 0, 0);
 		}
 	}
 	return state;
 }
 
 
-void post_update_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo)
+void post_update_action(ua_component_context_t* uacc)
 {
 	ua_routine_t* uar = (uacc != NULL) ? uacc->uar : NULL;
 
 	if (uar->on_post_install) {
-		(*uar->on_post_install)(pkgInfo->type, pkgInfo->name);
+		(*uar->on_post_install)(uacc->update_pkg.type, uacc->update_pkg.name);
 	}
 
 }
 
 
-void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t* pkgFile, update_err_t ue)
+void send_install_status(ua_component_context_t* uacc, install_state_t state, pkg_file_t* pkgFile, update_err_t ue)
 {
 	json_object* pkgObject = json_object_new_object();
+	pkg_info_t* pkgInfo    = &uacc->update_pkg;
 
 	json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
@@ -1280,6 +1299,7 @@ void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t*
 	}
 
 	json_object* bodyObject = json_object_new_object();
+	json_object_object_add(bodyObject, "sequence", json_object_new_int(uacc->seq_num_out++));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1293,9 +1313,10 @@ void send_install_status(pkg_info_t* pkgInfo, install_state_t state, pkg_file_t*
 }
 
 
-static void send_download_status(pkg_info_t* pkgInfo, download_state_t state)
+static void send_download_status(ua_component_context_t* uacc, download_state_t state)
 {
 	json_object* pkgObject = json_object_new_object();
+	pkg_info_t* pkgInfo    = &uacc->update_pkg;
 
 	json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
@@ -1303,6 +1324,7 @@ static void send_download_status(pkg_info_t* pkgInfo, download_state_t state)
 	json_object_object_add(pkgObject, "status", json_object_new_string(download_state_string(state)));
 
 	json_object* bodyObject = json_object_new_object();
+	json_object_object_add(bodyObject, "sequence", json_object_new_int(uacc->seq_num_out++));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1325,6 +1347,7 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 	json_object_object_add(pkgObject, "status", json_object_new_string("CURRENT_REPORT"));
 
 	json_object* bodyObject = json_object_new_object();
+	json_object_object_add(bodyObject, "sequence", json_object_new_int(uacc->seq_num_out++));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();

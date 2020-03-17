@@ -195,19 +195,19 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	DBG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
 	if (update_installed_version_same(uacc, uacc->update_pkg.version)) {
 		DBG("Found installed version is same as requested target version.");
-		send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
+		send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
 		update_sts = INSTALL_COMPLETED;
 	}else {
 		if (reboot_support)
 			update_record_save(uacc);
 
-		update_sts = pre_update_action(uacc, &uacc->update_pkg, &uacc->update_file_info);
+		update_sts = pre_update_action(uacc);
 
 		if (update_sts == INSTALL_IN_PROGRESS)
-			update_sts = update_action(uacc, &uacc->update_pkg, &uacc->update_file_info);
+			update_sts = update_action(uacc);
 
 		if (update_sts == INSTALL_COMPLETED)
-			post_update_action(uacc, &uacc->update_pkg);
+			post_update_action(uacc);
 
 		if (reboot_support)
 			remove(uacc->record_file);
@@ -331,7 +331,7 @@ int update_send_rollback_status(ua_component_context_t* uacc, char* next_rb_vers
 		tmp_rb_file_info.version    = next_rb_version;
 	}
 
-	send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
+	send_install_status(uacc, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
 
 	if (tmp_rb_file_info.file) {
 		Z_FREE(tmp_rb_file_info.file);
@@ -358,17 +358,17 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 		if (update_installed_version_same(uacc, next_rb_version)) {
 			uacc->update_file_info.version = f_strdup(next_rb_version);
 			uacc->update_file_info.file    = NULL;
-			send_install_status(&uacc->update_pkg, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
+			send_install_status(uacc, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 			DBG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
-			send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
+			send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
 
 		}else{
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
 				DBG("Rollback package found, rollback installation starts now.");
 
-				update_sts = prepare_install_action(uacc, &uacc->update_pkg, &tmp_rb_file_info,
-				                                    0, &uacc->update_file_info, &uacc->update_error);
+				update_sts = prepare_install_action(uacc, &tmp_rb_file_info, 0,
+				                                    &uacc->update_file_info, &uacc->update_error);
 
 				if (update_sts == INSTALL_READY) {
 					uacc->update_pkg.rollback_version = uacc->update_file_info.version;
@@ -416,7 +416,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	} else if (update_sts == INSTALL_FAILED) {
 		DBG("Rollback has exhausted all available versions, informing terminal-failure.");
 		uacc->update_error = UE_TERMINAL_FAILURE;
-		send_install_status(&uacc->update_pkg, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
+		send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 
 	}
 
@@ -432,8 +432,8 @@ void* update_resume_from_reboot(void* arg)
 		uacc->worker.worker_running = 1;
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			DBG("Resume: update installation was successful.");
-			post_update_action(uacc, &uacc->update_pkg);
-			send_install_status(&uacc->update_pkg, INSTALL_COMPLETED, 0, 0);
+			post_update_action(uacc);
+			send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
 
 		}else {
 			if (uacc->rb_type != URB_NONE) {
@@ -442,12 +442,12 @@ void* update_resume_from_reboot(void* arg)
 				if (rb_version != NULL)
 					update_start_rollback_operations(uacc, rb_version, 1);
 				else
-					send_install_status(&uacc->update_pkg, INSTALL_FAILED,
+					send_install_status(uacc, INSTALL_FAILED,
 					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
 
 			}else {
 				DBG("Resume: update installation has failed, informing eSync client.");
-				send_install_status(&uacc->update_pkg, INSTALL_FAILED, 0, 0);
+				send_install_status(uacc, INSTALL_FAILED, 0, 0);
 			}
 		}
 

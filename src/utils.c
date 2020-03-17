@@ -14,6 +14,11 @@ int get_type_from_json(json_object* jsonObj, char** value)
 
 }
 
+int get_seq_num_from_json(json_object* jsonObj, int* value)
+{
+	return json_get_property(jsonObj, json_type_int, value, "body", "sequence", NULL);
+
+}
 
 int get_replyid_from_json(json_object* jsonObj, char** value)
 {
@@ -257,7 +262,11 @@ int json_get_property(json_object* json, enum json_type typ, void* value, const 
 	json_object* obj = json;
 
 	while (node) {
-		BOLT_IF(!json_object_object_get_ex(obj, node, &aux), E_UA_ERR, "No %s property in json object", node);
+		if (!json_object_object_get_ex(obj, node, &aux)) {
+			//DBG("No %s property in json object", node);
+			err = E_UA_ERR;
+			break;
+		}
 
 		node = va_arg(ap, const char* );
 		obj  = aux;
