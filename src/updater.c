@@ -193,7 +193,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	install_state_t update_sts;
 
 	DBG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
-	if (update_installed_version_same(uacc, uacc->update_pkg.version)) {
+	if (!uacc->update_pkg.rollback_version && update_installed_version_same(uacc, uacc->update_pkg.version)) {
 		DBG("Found installed version is same as requested target version.");
 		send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
 		update_sts = INSTALL_COMPLETED;
