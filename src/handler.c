@@ -39,6 +39,7 @@ static char* install_state_string(install_state_t state);
 static char* download_state_string(download_state_t state);
 static char* update_stage_string(update_stage_t stage);
 static char* log_type_string(log_type_t log);
+static void release_comp_sequence(comp_sequence_t* seq);
 void* runner_loop(void* arg);
 
 #ifdef SUPPORT_UA_DOWNLOAD
@@ -180,8 +181,6 @@ int ua_register(ua_handler_t* uah, int len)
 			BOLT_SYS(pthread_cond_init(&ri->component.update_status_info.cond, 0), "update status cond init");
 			ri->component.update_status_info.reply_id = NULL;
 			ri->component.record_file                 = ua_intl.record_file;
-			ri->component.seq_num_in                  = -1;
-			ri->component.seq_num_out                 = 0;
 			DBG("Registered: %s", ri->component.type);
 		} while (0);
 
@@ -223,6 +222,8 @@ int ua_unregister(ua_handler_t* uah, int len)
 					BOLT_SYS(pthread_join(ri->thread, &res), "thread join");
 					BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
 					BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
+					release_comp_sequence(ri->component.seq_in);
+					release_comp_sequence(ri->component.seq_out);
 					ri->component.record_file = NULL;
 					Z_FREE(ri->component.update_manifest);
 					Z_FREE(ri->component.backup_manifest);
@@ -584,28 +585,83 @@ int get_local_next_rollback_version(char* manifest, char* currentVer, char** nex
 	return err;
 }
 
+static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
+{
+	int num = 0;
+	comp_sequence_t* s = NULL;
 
+	HASH_FIND_STR(*seq, type, s);
+    if (s) {
+		num = s->num + 1;
+		HASH_DEL(*seq, s);
+		f_free(s->type);
+		free(s);
+	}
+
+	s = (comp_sequence_t *)malloc(sizeof(comp_sequence_t));
+	s->type = f_strdup(type);
+	s->num = num;
+	HASH_ADD_KEYPTR( hh, *seq, s->type, strlen(s->type), s );
+
+	return num;
+}
+
+static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
+{
+	int outdated = 0;
+	comp_sequence_t* s = NULL;
+
+	HASH_FIND_STR(*seq, type, s);
+    if (s) {
+		DBG("found %s in seq num: %d", s->type, s->num);
+		if(s->num >= num) {
+			DBG("Got outdated command sequence number : %d for %s", seq, type);
+			outdated = 1;
+		}
+		HASH_DEL(*seq, s);
+		f_free(s->type);
+		free(s);
+	}
+
+	s = (comp_sequence_t *)malloc(sizeof(comp_sequence_t));
+	s->type = f_strdup(type);;
+	s->num = num;
+	HASH_ADD_KEYPTR( hh, *seq, s->type, strlen(s->type), s );
+
+	return outdated;
+}
+
+static void release_comp_sequence(comp_sequence_t* seq)
+{
+	comp_sequence_t* cs, *tmp;
+
+	HASH_ITER(hh, seq, cs, tmp) {
+		f_free(cs->type);
+		HASH_DEL(seq, cs);
+		free(cs);
+	}	
+}
 
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len)
 {
-	char* type;
+	char* type = NULL;
+	char* pkg_type = NULL;
 	enum json_tokener_error jErr;
 	int seq = -1;
 
 	json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
 
-	if (get_seq_num_from_json(jObj, &seq) == E_UA_OK) {
-		if (uacc->seq_num_in >= seq) {
-			DBG("Got outdated command with sequence number : %d", seq);
-			return;
-		}
-
-		uacc->seq_num_in = seq;
-
-	}
 
 	if (jErr == json_tokener_success) {
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
+
+			if( !get_seq_num_from_json(jObj, &seq) && 
+				!get_pkg_type_from_json(jObj, &pkg_type) ) {
+
+				if(update_comp_in_sequence(&uacc->seq_in, pkg_type, seq))
+					return;			
+			}
+
 			if (!uacc->uar->on_message || !(*uacc->uar->on_message)(type, jObj)) {
 				if (!strcmp(type, QUERY_PACKAGE)) {
 					process_run(uacc, process_query_package, jObj, 0);
@@ -1299,7 +1355,7 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	}
 
 	json_object* bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "sequence", json_object_new_int(uacc->seq_num_out++));
+	json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1324,7 +1380,7 @@ static void send_download_status(ua_component_context_t* uacc, download_state_t 
 	json_object_object_add(pkgObject, "status", json_object_new_string(download_state_string(state)));
 
 	json_object* bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "sequence", json_object_new_int(uacc->seq_num_out++));
+	json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1347,7 +1403,7 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 	json_object_object_add(pkgObject, "status", json_object_new_string("CURRENT_REPORT"));
 
 	json_object* bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "sequence", json_object_new_int(uacc->seq_num_out++));
+	json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
