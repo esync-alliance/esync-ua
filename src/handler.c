@@ -587,20 +587,20 @@ int get_local_next_rollback_version(char* manifest, char* currentVer, char** nex
 
 static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
 {
-	int num = 0;
+	int num            = 0;
 	comp_sequence_t* s = NULL;
 
 	HASH_FIND_STR(*seq, type, s);
-    if (s) {
+	if (s) {
 		num = s->num + 1;
 		HASH_DEL(*seq, s);
 		f_free(s->type);
 		free(s);
 	}
 
-	s = (comp_sequence_t *)malloc(sizeof(comp_sequence_t));
+	s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
 	s->type = f_strdup(type);
-	s->num = num;
+	s->num  = num;
 	HASH_ADD_KEYPTR( hh, *seq, s->type, strlen(s->type), s );
 
 	return num;
@@ -608,13 +608,13 @@ static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
 
 static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
 {
-	int outdated = 0;
+	int outdated       = 0;
 	comp_sequence_t* s = NULL;
 
 	HASH_FIND_STR(*seq, type, s);
-    if (s) {
+	if (s) {
 		DBG("found %s in seq num: %d", s->type, s->num);
-		if(s->num >= num) {
+		if (s->num >= num) {
 			DBG("Got outdated command sequence number : %d for %s", seq, type);
 			outdated = 1;
 		}
@@ -623,9 +623,9 @@ static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
 		free(s);
 	}
 
-	s = (comp_sequence_t *)malloc(sizeof(comp_sequence_t));
+	s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
 	s->type = f_strdup(type);;
-	s->num = num;
+	s->num  = num;
 	HASH_ADD_KEYPTR( hh, *seq, s->type, strlen(s->type), s );
 
 	return outdated;
@@ -633,18 +633,18 @@ static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
 
 static void release_comp_sequence(comp_sequence_t* seq)
 {
-	comp_sequence_t* cs, *tmp;
+	comp_sequence_t* cs, * tmp;
 
 	HASH_ITER(hh, seq, cs, tmp) {
 		f_free(cs->type);
 		HASH_DEL(seq, cs);
 		free(cs);
-	}	
+	}
 }
 
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len)
 {
-	char* type = NULL;
+	char* type     = NULL;
 	char* pkg_type = NULL;
 	enum json_tokener_error jErr;
 	int seq = -1;
@@ -653,15 +653,13 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 
 
 	if (jErr == json_tokener_success) {
+		if ( !get_seq_num_from_json(jObj, &seq) &&
+		     !get_pkg_type_from_json(jObj, &pkg_type) ) {
+			if (update_comp_in_sequence(&uacc->seq_in, pkg_type, seq))
+				return;
+		}
+
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
-
-			if( !get_seq_num_from_json(jObj, &seq) && 
-				!get_pkg_type_from_json(jObj, &pkg_type) ) {
-
-				if(update_comp_in_sequence(&uacc->seq_in, pkg_type, seq))
-					return;			
-			}
-
 			if (!uacc->uar->on_message || !(*uacc->uar->on_message)(type, jObj)) {
 				if (!strcmp(type, QUERY_PACKAGE)) {
 					process_run(uacc, process_query_package, jObj, 0);
