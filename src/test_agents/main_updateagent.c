@@ -6,11 +6,19 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include "tmpl_updateagent.h"
 
 ua_handler_t uah[] = {
 	{"/template", get_tmpl_routine }
 };
+
+static int stop = 0;
+
+static void sig_handler(int num)
+{
+	stop = 1;
+}
 
 static void _help(const char* app)
 {
@@ -108,9 +116,13 @@ int main(int argc, char** argv)
 				break;
 		}
 	}
+
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	scp_init(&scpi);
 #endif
+
+	signal(SIGINT, sig_handler);
+
 	if (ua_init(&cfg)) {
 		printf("Updateagent failed!");
 		_exit(1);
@@ -119,6 +131,10 @@ int main(int argc, char** argv)
 	int l = sizeof(uah)/sizeof(ua_handler_t);
 	ua_register(uah, l);
 
-	while (1) { pause(); }
+	while(!stop) {sleep(1);};
+
+	ua_unregister(uah, l);
+
+	ua_stop();
 
 }
