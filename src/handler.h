@@ -175,6 +175,13 @@ typedef enum update_rollback {
 
 } update_rollback_t;
 
+typedef struct comp_sequence {
+    char* type;
+    int   num;
+    UT_hash_handle hh;
+
+}comp_sequence_t;
+
 typedef struct ua_component_context {
 	char* type; //Registered hanlder type.
 	json_object* cur_msg;
@@ -189,8 +196,9 @@ typedef struct ua_component_context {
 	char* update_manifest;
 	char* backup_manifest;
 	char* record_file;
-	int seq_num_in;
-	int seq_num_out;
+	comp_sequence_t* seq_in;
+	comp_sequence_t* seq_out;
+	
 } ua_component_context_t;
 
 
