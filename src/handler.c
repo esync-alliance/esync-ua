@@ -585,6 +585,7 @@ int get_local_next_rollback_version(char* manifest, char* currentVer, char** nex
 	return err;
 }
 
+#if 0
 static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
 {
 	int num            = 0;
@@ -605,6 +606,7 @@ static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
 
 	return num;
 }
+#endif 
 
 static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
 {
@@ -613,7 +615,7 @@ static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
 
 	HASH_FIND_STR(*seq, type, s);
 	if (s) {
-		DBG("found %s in seq num: %d", s->type, s->num);
+		//DBG("found %s in seq num: %d", s->type, s->num);
 		if (s->num >= num) {
 			DBG("Got outdated command sequence number : %d for %s", seq, type);
 			outdated = 1;
@@ -1353,7 +1355,7 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	}
 
 	json_object* bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
+	//json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1378,7 +1380,7 @@ static void send_download_status(ua_component_context_t* uacc, download_state_t 
 	json_object_object_add(pkgObject, "status", json_object_new_string(download_state_string(state)));
 
 	json_object* bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
+	//json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1401,7 +1403,7 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 	json_object_object_add(pkgObject, "status", json_object_new_string("CURRENT_REPORT"));
 
 	json_object* bodyObject = json_object_new_object();
-	json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
+	//json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
