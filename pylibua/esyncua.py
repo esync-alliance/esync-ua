@@ -23,7 +23,8 @@ class eSyncUA:
                  delta_cap='A:3;B:3;C100',
                  enable_delta=True,
                  reboot_support=False,
-                 debug=False):
+                 debug=False,
+                 ready_download=False):
         """Class Constructor 
         Args:
             cert_dir(str): Top directory of UA certificates.
@@ -72,11 +73,12 @@ class eSyncUA:
             cb.ua_dmc_presence = "do_dmc_presence"
         if self.do_message.__code__ is not eSyncUA.do_message.__code__:
             cb.ua_on_message = "do_message"
+        if (ready_download or self.do_confirm_download.__code__ is not eSyncUA.do_confirm_download.__code__):
+            cb.ua_prepare_download = "do_confirm_download"
 
         cb.ua_get_version = "do_get_version"
         cb.ua_set_version = "do_set_version"
         cb.ua_install = "do_install"
-        cb.ua_prepare_download = "do_confirm_download"
         libuamodule.pua_set_callbacks(self, cb)
 
     def run_forever(self):

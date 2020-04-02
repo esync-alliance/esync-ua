@@ -47,7 +47,7 @@ class TestUA(eSyncUA):
     def do_install(self, version, packageFile):
         print("PUA: do_install version: %s with %s" % (version, packageFile))
         if(self.mode == 1):
-            test_ua.install_state =  'INSTALL_FAILED'
+            test_ua.install_state = 'INSTALL_FAILED'
         elif(self.mode == 2):
             if(test_ua.install_state == 'INSTALL_COMPLETED'):
                 test_ua.install_state = 'INSTALL_FAILED'
@@ -62,7 +62,8 @@ class TestUA(eSyncUA):
         else:
             test_ua.install_state = 'INSTALL_COMPLETED'
 
-        print("PUA: test mode %d: returns %s" % (test_ua.mode, test_ua.install_state))
+        print("PUA: test mode %d: returns %s" %
+              (test_ua.mode, test_ua.install_state))
         return test_ua.install_state
 
 
@@ -90,19 +91,22 @@ if __name__ == "__main__":
                       dest="mode", default=0, help="update mode: 0: success(default); 1: fail; 2: toggle(fail/success); 3: rollback; 4: prepare-update failed", metavar="MODE")
     parser.add_option("-r", "--rver", type='string', action="store",
                       dest="rb_ver", help="rollback test version string", metavar="RVER")
+    parser.add_option('-l', '--load', default=False, action='store_true', dest="ready_download",
+                      help="enable  DOWNLOAD_CONSENT to ready-download")
     parser.add_option('-D', '--delta', default=False, action='store_true', dest="disable_delta",
-                    help="disable delta")
+                      help="disable delta")
     parser.add_option('-d', '--debug', default=False, action='store_true',
-                    help="show debug messages")
+                      help="show debug messages")
     (options, args) = parser.parse_args()
 
     host_p = 'tcp://' + options.host + ':' + str(options.port)
     test_ua = TestUA(cert_dir=options.cert_dir,
-                       ua_nodeType=options.node_type,
-                       host_port=host_p,
-                       delta_cap=options.cap,
-                       enable_delta=(options.disable_delta is False),
-                       debug=options.debug)
+                     ua_nodeType=options.node_type,
+                     host_port=host_p,
+                     delta_cap=options.cap,
+                     enable_delta=(options.disable_delta is False),
+                     debug=options.debug,
+                     ready_download=options.ready_download)
 
     test_ua.ssh_host = options.host
     test_ua.ssh_user = options.ssh_user

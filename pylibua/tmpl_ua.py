@@ -14,7 +14,8 @@ class SampleUA(eSyncUA):
         return eSyncUA.do_get_version(self, packageName)
 
     def do_prepare_install(self, packageName, version, packageFile):
-        print("PUA: do_prepare_install %s:%s:%s" % (packageName, version, packageFile))
+        print("PUA: do_prepare_install %s:%s:%s" %
+              (packageName, version, packageFile))
         try:
             self.newFile = self.cache + os.sep + os.path.basename(packageFile)
             try:
@@ -75,19 +76,22 @@ if __name__ == "__main__":
                       help="delta capability ", metavar=" CAP")
     parser.add_option("-c", "--temp", default='/tmp', type='string', action="store",
                       dest="cache", help="cache directory ", metavar="TEMP")
+    parser.add_option('-l', '--load', default=False, action='store_true', dest="ready_download",
+                      help="enable  DOWNLOAD_CONSENT to ready-download")
     parser.add_option('-D', '--delta', default=False, action='store_true', dest="disable_delta",
-                    help="disable delta")
+                      help="disable delta")
     parser.add_option('-d', '--debug', default=False, action='store_true',
-                    help="show debug messages")
+                      help="show debug messages")
     (options, args) = parser.parse_args()
 
     host_p = 'tcp://' + options.host + ':' + str(options.port)
     sample_ua = SampleUA(cert_dir=options.cert_dir,
-                       ua_nodeType=options.node_type,
-                       host_port=host_p,
-                       delta_cap=options.cap,
-                       enable_delta=(options.disable_delta is False),
-                       debug=options.debug)
+                         ua_nodeType=options.node_type,
+                         host_port=host_p,
+                         delta_cap=options.cap,
+                         enable_delta=(options.disable_delta is False),
+                         debug=options.debug,
+                         ready_download=options.ready_download)
 
     sample_ua.ssh_host = options.host
     sample_ua.ssh_user = options.ssh_user
