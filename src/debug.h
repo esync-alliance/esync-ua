@@ -68,7 +68,18 @@ extern ua_log_handler_f ua_log_handler;
 
 #else
 
-#define DBG(a,b ...)     do { if (ua_debug) { \
+#define A_ERROR_MSG(a,b ...) do { if (ua_debug == 2 || ua_debug == 5) { \
+				      int _errno = errno; \
+				      _ltime_; \
+				      char* _str = f_asprintf("[%s] %s:%d error %s(%d): " a, __now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
+				      if (_str) { \
+					      printf("%s\n", _str); \
+					      fflush(stdout); \
+					      free(_str); \
+				      } \
+			      } } while (0)
+
+#define A_WARN_MSG(a,b ...)     do { if (ua_debug == 3 || ua_debug == 5) { \
 				      _ltime_; \
 				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 				      if (_str) { \
@@ -78,10 +89,19 @@ extern ua_log_handler_f ua_log_handler;
 				      } \
 			      } } while (0)
 
-#define DBG_SYS(a,b ...) do { if (ua_debug) { \
-				      int _errno = errno; \
+#define A_INFO_MSG(a,b ...)     do { if (ua_debug == 4 || ua_debug == 5) { \
 				      _ltime_; \
-				      char* _str = f_asprintf("[%s] %s:%d error %s(%d): " a, __now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
+				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
+				      if (_str) { \
+					      printf("%s\n", _str); \
+					      fflush(stdout); \
+					      free(_str); \
+				      } \
+			      } } while (0)
+
+#define A_DEBUG_MSG(a,b ...)     do { if (ua_debug == 5) { \
+				      _ltime_; \
+				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 				      if (_str) { \
 					      printf("%s\n", _str); \
 					      fflush(stdout); \
@@ -93,7 +113,7 @@ extern ua_log_handler_f ua_log_handler;
 
 #define BOLT_MEM(a) if (!(a)) { \
 		err = E_UA_MEMORY; \
-		DBG("out of memory"); \
+		A_INFO_MSG("out of memory"); \
 		break; \
 } do {} while (0)
 
@@ -103,16 +123,16 @@ extern ua_log_handler_f ua_log_handler;
 #define BOLT_REALLOC(ptr,type,size,newsize) { \
 		int __size  = size; \
 		void* __aux = realloc(ptr, (__size)*sizeof(type)); \
-		if (!__aux) { err = E_UA_MEMORY; DBG("out of memory, realloc %d", __size); break; } \
+		if (!__aux) { err = E_UA_MEMORY; A_INFO_MSG("out of memory, realloc %d", __size); break; } \
 		ptr     = (type*)__aux; \
 		newsize = __size; \
 } do {} while (0)
 
 
-#define BOLT(why)                        err = (why); DBG("setting err %d", err); break; do {} while (0)
-#define BOLT_SAY(__err, msg, x ...)      {err = (__err); DBG(msg ", setting err %d", ## x, err); break;}
-#define BOLT_IF(cond, __err, msg, x ...) if ((cond)) { err = (__err); DBG(msg ", setting err %d", ## x, err); break; } do {} while (0)
-#define BOLT_SYS(a, m, x ...)            { if ((a)) { DBG_SYS(m, ## x); err = E_UA_SYS; break; } }
+#define BOLT(why)                        err = (why); A_ERROR_MSG("setting err %d", err); break; do {} while (0)
+#define BOLT_SAY(__err, msg, x ...)      {err = (__err); A_ERROR_MSG(msg ", setting err %d", ## x, err); break;}
+#define BOLT_IF(cond, __err, msg, x ...) if ((cond)) { err = (__err); A_ERROR_MSG(msg ", setting err %d", ## x, err); break; } do {} while (0)
+#define BOLT_SYS(a, m, x ...)            { if ((a)) { A_ERROR_MSG(m, ## x); err = E_UA_SYS; break; } }
 #define BOLT_SUB(a)                      { err = (a); if (err != E_UA_OK) { BOLT_SAY(err, # a); }} do {} while (0)
 #define BOLT_MALLOC(var, how_much)       { if (!((var) = f_malloc(how_much))) { BOLT_SAY(E_UA_MEMORY, "failed to alloc %d for %s", how_much, # var); } } do {} while (0)
 

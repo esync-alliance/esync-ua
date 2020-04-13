@@ -22,20 +22,20 @@ int xl4_run_cmd(char* argv[])
 		pid_t pid=fork();
 
 		if ( pid == -1) {
-			DBG("fork failed: %s", strerror(errno));
+			A_ERROR_MSG("fork failed: %s", strerror(errno));
 			rc = E_UA_SYS;
 		}else if ( pid == 0) {
 			execvp(cmd, argv);
-			DBG("execvp %s failed: %s", cmd, strerror(errno));
+			A_ERROR_MSG("execvp %s failed: %s", cmd, strerror(errno));
 			rc = E_UA_SYS;
 		}else {
 			if (waitpid(pid, &status, 0) == -1) {
-				DBG("waitpid failed: %s", strerror(errno));
+				A_ERROR_MSG("waitpid failed: %s", strerror(errno));
 				rc = E_UA_SYS;
 			}else {
 				rc = WEXITSTATUS(status);
 				if(rc)
-					DBG("command(%s) exited with status: %d", cmd, rc);
+					A_ERROR_MSG("command(%s) exited with status: %d", cmd, rc);
 			}
 		}
 	}else{
@@ -57,7 +57,7 @@ scp_info_t* scp_init(scp_info_t* scp)
 
 		char* argv[] = {"mkdir", "-p", scp->local_dir, NULL};
 		if (xl4_run_cmd(argv) != E_UA_OK)
-			DBG("Failed to create scp dir %s", scp->local_dir)
+			A_ERROR_MSG("Failed to create scp dir %s", scp->local_dir)
 			return &ua_scp_info;
 	}
 	return NULL;
@@ -71,14 +71,14 @@ char* scp_get_file(scp_info_t* scp, char* remote_path)
 
 	if (scp && scp->url && scp->user && scp->local_dir && remote_path) {
 		if (snprintf(full_scp_path, sizeof(full_scp_path) - 1, "%s@%s:%s", scp->user, scp->url, remote_path) <= 0) {
-			DBG("Error creating full_scp_path");
+			A_ERROR_MSG("Error creating full_scp_path");
 			err = E_UA_ERR;
 		}
 
 		if (err == E_UA_OK) {
 			char* basec = strdup(remote_path);
 			if (snprintf(scp->dest_path, sizeof(scp->dest_path)- 1, "%s/%s", scp->local_dir, basename(basec)) <= 0) {
-				DBG("Error creating dest_path");
+				A_ERROR_MSG("Error creating dest_path");
 				err = E_UA_ERR;
 			}
 			if (basec)
@@ -108,7 +108,7 @@ char* scp_get_file(scp_info_t* scp, char* remote_path)
 		}
 
 	} else {
-		DBG("scp info is not set.");
+		A_ERROR_MSG("scp info is not set.");
 	}
 
 	return NULL;
@@ -129,7 +129,7 @@ int do_transfer_file(const char* type, const char* pkgName, const char* version,
 		if ((*newFile = scp_get_file(scp, (char*)pkgFile)) == NULL)
 			rc = E_UA_ERR;
 	} else {
-		DBG("SCP url is not set, not transferring file remotely.")
+		A_WARN_MSG("SCP url is not set, not transferring file remotely.")
 	}
 
 	return rc;
