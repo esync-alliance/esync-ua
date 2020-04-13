@@ -49,7 +49,7 @@ static void _help(const char* app)
 
 int main(int argc, char** argv)
 {
-	A_INFO_MSG("updateagent %s, xl4bus %s\n", ua_get_updateagent_version(), ua_get_xl4bus_version());
+	printf("updateagent %s, xl4bus %s\n", ua_get_updateagent_version(), ua_get_xl4bus_version());
 
 	int c = 0;
 	ua_cfg_t cfg;
@@ -104,7 +104,7 @@ int main(int argc, char** argv)
 				scpi.local_dir = optarg;
 				break;
 #endif
-			case 'd':
+			case 'e':
 				cfg.debug = 1;
 				break;
 			case 'w':
