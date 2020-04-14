@@ -1094,9 +1094,14 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
 	    !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
 	    !get_total_bytes_from_json(jsonObj, &totalBytes)) {
-		A_INFO_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
+		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
+		if (downloadedBytes == 0){
+			A_INFO_MSG("Download started for: %s %s", pkgInfo.name, pkgInfo.version);
+			A_INFO_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
+		} 
 		if (downloadedBytes == totalBytes){
-			A_INFO_MSG("Download completed for %s %s", pkgInfo.name, pkgInfo.version);
+			A_INFO_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
+			A_INFO_MSG("Download completed for: %s %s", pkgInfo.name, pkgInfo.version);
 		}
 
 	}	
