@@ -161,15 +161,15 @@ typedef struct ua_cfg {
 	//0 = default, ua implements its own reboot/resume support.
 	//1 = ua uses libary's reboot/resume support.
 	int reboot_support;
-	
+
 	// specifies which source package file used for backup,
 	// when  delta reconstruction is triggered.
-	// 0 = Use the actual full path used for installation, this is default. 
-	// 1 = Use the full path resulted from delta reconstruction. 
-	// Both may or may not be the same full path. 
+	// 0 = Use the actual full path used for installation, this is default.
+	// 1 = Use the full path resulted from delta reconstruction.
+	// Both may or may not be the same full path.
 	int backup_source;
 
-	//Indicate whether to disable sha verification of downloaded package. 
+	//Indicate whether to disable sha verification of downloaded package.
 	//0 = default, verify downloaded package against sha256
 	//1 = disable, do not verify downloaded package against sha256
 	int package_verification_disabled;
@@ -253,6 +253,23 @@ typedef struct log_data {
 XL4_PUB int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata);
 
 #endif /* _json_h_ */
+
+XL4_PUB
+/**
+ * Check if rollback has been disabled for pkgNmae.
+ * @param pkgName package name of update component.
+ * @return !0 = disabled, 0 = enabled
+ */
+int ua_rollback_disabled(const char* pkgName);
+
+XL4_PUB
+/**
+ * Disable/enable rollback for pkgNmae.
+ * @param pkgName package name of update component.
+ * @param disable, 1 = disable rollback, 0 = enable rollback
+ * @return none
+ */
+void ua_rollback_control(const char* pkgName, int disable);
 
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
