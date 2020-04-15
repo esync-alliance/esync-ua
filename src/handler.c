@@ -606,7 +606,7 @@ static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
 
 	return num;
 }
-#endif 
+#endif
 
 static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
 {
@@ -788,12 +788,11 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				pkg_file_t* pf, * aux, * pkgFile = NULL;
 				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
-				if (backup_manifest != NULL) {
+				if ( !ua_rollback_disabled(pkgInfo.name) && backup_manifest != NULL) {
 					json_object* verListObject = json_object_new_object();
+					json_object* rbVersArray   = json_object_new_array();
 
 					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
-						json_object* rbVersArray = json_object_new_array();
-
 						DL_FOREACH_SAFE(pkgFile, pf, aux) {
 							json_object* versionObject = json_object_new_object();
 
@@ -822,11 +821,19 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 						}
 
 					} else if (delta_use_external_algo() && installedVer) {
+						// E115-417: return fake rollback versions info.
+
 						json_object* versionObject = json_object_new_object();
+						json_object_object_add(versionObject, "file", json_object_new_string(""));
 						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
+						json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
 						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
 						json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
+
+						json_object_array_add(rbVersArray, json_object_new_string(installedVer));
+
 						json_object_object_add(pkgObject, "version-list", verListObject);
+						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 
 					}
 
@@ -977,6 +984,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 		}else {
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
+			    !ua_rollback_disabled(uacc->update_pkg.name) &&
 			    uacc->rb_type >= URB_UA_INITIATED) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
@@ -987,7 +995,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			}
 		}
 
-		if (update_sts == INSTALL_COMPLETED) {
+		if (update_sts == INSTALL_COMPLETED && !ua_rollback_disabled(uacc->update_pkg.name)) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 		uacc->cur_msg = NULL;
@@ -1684,6 +1692,44 @@ int ua_backup_package(char* type, char* pkgName, char* version)
 void handler_set_internal_state(ua_internal_state_t st)
 {
 	ua_intl.state = st;
+}
+
+int ua_rollback_disabled(const char* pkgName)
+{
+	rollback_crtl_t* rbc = NULL;
+
+	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
+	if (rbc) {
+		DBG("rollback for %s is enabled (%d)", rbc->pkg_name, rbc->rb_disable);
+		return rbc->rb_disable;
+	}
+
+	return 0;
+}
+
+void ua_rollback_control(const char* pkgName, int disable)
+{
+	rollback_crtl_t* rbc = NULL;
+
+	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
+	if (rbc) {
+		if (!disable) {
+			DBG("Re-enable rollback for %s", rbc->pkg_name);
+			HASH_DEL(ua_intl.rb_crtl, rbc);
+			f_free(rbc->pkg_name);
+			free(rbc);
+		}
+
+	} else {
+		if (disable) {
+			DBG("Disable rollback for %s", pkgName);
+			rbc             = (rollback_crtl_t*)malloc(sizeof(rollback_crtl_t));
+			rbc->pkg_name   = f_strdup(pkgName);;
+			rbc->rb_disable = disable;
+			HASH_ADD_KEYPTR( hh, ua_intl.rb_crtl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
+		}
+	}
+
 }
 
 #ifdef SUPPORT_UA_DOWNLOAD

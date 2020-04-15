@@ -363,7 +363,11 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			update_sts = INSTALL_COMPLETED;
 			send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
 
-		}else{
+		}else if (delta_use_external_algo()) {
+			//E115-417: No rollback is available when standalone delta is used.
+			DBG("Rollback is not avaialbe when standalone delta is enabled, returning INSTALL_FAILED");
+			update_sts = INSTALL_FAILED;
+		}else {
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
 				DBG("Rollback package found, rollback installation starts now.");
 

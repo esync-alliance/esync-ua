@@ -125,6 +125,14 @@ typedef enum ua_internal_state {
 
 }ua_internal_state_t;
 
+
+typedef struct rollback_crtl {
+	char* pkg_name;
+	int rb_disable;
+	UT_hash_handle hh;
+
+}rollback_crtl_t;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 #define MAX_VERIFY_CA_COUNT 5
 #endif
@@ -142,7 +150,7 @@ typedef struct ua_internal {
 
 	uint32_t backup_source;
 	pthread_mutex_t backup_lock;
-
+	rollback_crtl_t* rb_crtl;
 #ifdef SUPPORT_UA_DOWNLOAD
 	int ua_download_required;
 	char* ua_downloaded_filename;
@@ -176,9 +184,9 @@ typedef enum update_rollback {
 } update_rollback_t;
 
 typedef struct comp_sequence {
-    char* type;
-    int   num;
-    UT_hash_handle hh;
+	char* type;
+	int num;
+	UT_hash_handle hh;
 
 }comp_sequence_t;
 
@@ -198,7 +206,7 @@ typedef struct ua_component_context {
 	char* record_file;
 	comp_sequence_t* seq_in;
 	comp_sequence_t* seq_out;
-	
+
 } ua_component_context_t;
 
 
