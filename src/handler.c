@@ -1725,11 +1725,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
 	if (rbc) {
 		if (!disable) {
-		A_INFO_MSG("Re-enable rollback for %s", rbc->pkg_name);
 			HASH_DEL(ua_intl.rb_crtl, rbc);
-			f_free(rbc->pkg_name);
-			free(rbc);
-		}
 
 	} else {
 		if (disable) {
