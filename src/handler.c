@@ -773,7 +773,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
 
 			if (ua_intl.delta) {
-				A_INFO_MSG("Delta capability supported : %s\n", get_delta_capability());
+				A_INFO_MSG("Delta capability supported : %s", get_delta_capability());
 				json_object_object_add(pkgObject, "delta-cap", S(get_delta_capability()) ? json_object_new_string(get_delta_capability()) : NULL);
 			}
 
@@ -1036,9 +1036,9 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 	    delta_reconstruct(pkgFile->file, diffFile, newFile)) {
 		err = E_UA_ERR;	
 		if (err) {
-			A_INFO_MSG("Delta reconstruction failed!\n");
+			A_INFO_MSG("Delta reconstruction failed!");
 		} else {
-			A_INFO_MSG("Delta reconstruction success!\n");
+			A_INFO_MSG("Delta reconstruction success!");
 		}
 
 	}
