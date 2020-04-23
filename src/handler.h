@@ -4,9 +4,7 @@
 
 #ifndef UA_HANDLER_H_
 #define UA_HANDLER_H_
-
 #include "misc.h"
-#include "json-c-rename.h"
 #include <json.h>
 #include "xl4ua.h"
 #include "uthash.h"

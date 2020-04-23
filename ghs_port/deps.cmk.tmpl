@@ -1,0 +1,6 @@
+include(${CMAKE_CURRENT_SOURCE_DIR}/ghs_port/integrity.cmake)
+
+add_custom_target(tmpl-updateagent ALL
+  COMMAND ${BUILD_TOOL} -top default.gpj
+  DEPENDS ${CMAKE_BINARY_DIR}/ua_version.h
+)

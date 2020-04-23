@@ -37,7 +37,6 @@ int sha256cmp(struct sha256_list* a, struct sha256_list* b)
 uint64_t currentms(void)
 {
 	struct timespec tp;
-
 	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
 
 	return ((uint64_t)tp.tv_sec) * 1000ULL +
@@ -170,6 +169,7 @@ int newdirp(const char* path, int umask)
 	return rc;
 }
 
+#ifndef SHELL_COMMAND_DISABLE
 int run_cmd(char* cmd, char* argv[])
 {
 	int rc     = E_UA_OK;
@@ -200,6 +200,7 @@ int run_cmd(char* cmd, char* argv[])
 
 	return rc;
 }
+#endif
 
 static char* libzip_get_error(int ze)
 {
@@ -217,7 +218,6 @@ static char* libzip_get_error(int ze)
 	return f_strdup(buf);
 
 }
-
 
 static int libzip_unzip(const char* archive, const char* path)
 {
@@ -278,6 +278,7 @@ static int libzip_unzip(const char* archive, const char* path)
 	return err;
 }
 
+#ifndef SHELL_COMMAND_DISABLE
 static int zip_unzip(const char* archive, const char* path)
 {
 	int err = E_UA_OK;
@@ -297,11 +298,15 @@ static int zip_unzip(const char* archive, const char* path)
 
 	return err;
 }
+#endif
 
 int unzip(const char* archive, const char* path)
 {
+#ifndef SHELL_COMMAND_DISABLE
 	int err = zip_unzip(archive, path);
-
+#else
+	int err = E_UA_ERR;
+#endif
 	if (err != E_UA_OK) {
 		err = libzip_unzip(archive, path);
 	}
@@ -335,9 +340,11 @@ static int libzip_zip(const char* archive, const char* path)
 		if (aux) free(aux);
 		if (za) zip_discard(za);
 	}
+
 	return err;
 }
 
+#ifndef SHELL_COMMAND_DISABLE
 static int zip_zip(const char* archive, const char* path)
 {
 	DBG("zipping(zip) %s to %s", path, archive);
@@ -356,13 +363,17 @@ static int zip_zip(const char* archive, const char* path)
 		} while (0);
 
 	}
-
 	return err;
 }
+#endif
 
 int zip(const char* archive, const char* path)
 {
+#ifndef SHELL_COMMAND_DISABLE
 	int err = zip_zip(archive, path);
+#else
+	int err = E_UA_ERR;
+#endif
 
 	if (err != E_UA_OK)
 		err = libzip_zip(archive, path);
@@ -695,6 +706,31 @@ int verify_file_hash_b64(const char* file, const char* sha256_b64)
 			err = E_UA_ERR;
 		}
 
+	}
+
+	return err;
+
+}
+
+int NGverify_file_hash_b64(const char* file, const char* sha256_b64)
+{
+	int err = E_UA_ERR;
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	char b64buff[SHA256_B64_LENGTH];
+
+	if (!(err = calc_sha256(file, hash))) {
+		if (base64_encode(hash, b64buff) == E_UA_OK) {
+			if (!strncmp(b64buff, sha256_b64, sizeof(b64buff) - 1)) {
+				DBG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+				err = E_UA_OK;
+
+			} else {
+				DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+				err = E_UA_ERR;
+			}
+
+		}
+
 	} else {
 		DBG("SHA256 Hash calculation failed : %s", file);
 	}
@@ -715,6 +751,7 @@ int sha256xcmp(const char* archive, char b64[SHA256_B64_LENGTH])
 
 }
 
+#ifndef SHELL_COMMAND_DISABLE
 int is_cmd_runnable(const char* cmd)
 {
 	int err    = E_UA_OK;
@@ -741,7 +778,7 @@ int is_cmd_runnable(const char* cmd)
 	if (path) free(path);
 	return err;
 }
-
+#endif
 
 char* randstring(int length)
 {

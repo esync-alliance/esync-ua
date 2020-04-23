@@ -4,10 +4,8 @@
 
 #ifndef UA_UTILS_H_
 #define UA_UTILS_H_
-
-#include "json-c-rename.h"
-#include <json.h>
 #include "misc.h"
+#include <json.h>
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #include "eua_json.h"

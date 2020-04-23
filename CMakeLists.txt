@@ -5,6 +5,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 
+set(TARGET $ENV{PORT})
+
 function(set_empty OUTPUT VAL)
     if ((NOT DEFINED ${OUTPUT}) OR "${${OUTPUT}}" STREQUAL "")
         set(${OUTPUT} "${VAL}" PARENT_SCOPE)
@@ -34,9 +36,7 @@ function(targets_link_libraries)
     message("end targets_link_libraries")
 endfunction(targets_link_libraries)
 
-if ("${CMAKE_SYSTEM_NAME}" STREQUAL "QNX")
-    set(TARGET "qnx_port")
-else()
+if ("${TARGET}" STREQUAL "")
     set(TARGET "linux_port")
 endif()
 
@@ -75,13 +75,14 @@ set_empty(XL4_SUPPORT_THREADS 1)
 set_empty(XL4_PROVIDE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_STD_MALLOC 1)
+set_empty(HAVE_LIMITS_H 1)
 
 set(BCH ${CMAKE_BINARY_DIR}/build_config.h)
-
 configure_file(${CMAKE_SOURCE_DIR}/build_config.h.in ${BCH})
 configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
 
 add_custom_command(OUTPUT PHONY ${CMAKE_BINARY_DIR}/ua_version.h COMMAND ${CMAKE_SOURCE_DIR}/make_version.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_definitions(-D_GNU_SOURCE)
 
 set(LIB_SOURCE ${LIB_SOURCE}
     PHONY
@@ -120,6 +121,14 @@ if (SUPPORT_UA_DOWNLOAD)
         src/ua_download.h
         src/eua_json.h
     )
+endif()
+
+if (SHELL_COMMAND_DISABLE)
+    set(LIB_SOURCE ${LIB_SOURCE}
+        src/delta_utils/delta_utils.h
+        src/delta_utils/xzdec.c
+        src/delta_utils/espatch.c
+        )
 endif()
 
 if (XL4_PROVIDE_THREADS)
@@ -175,7 +184,6 @@ if (BUILD_BINS)
         )
     endif()
     add_executable(tmpl-updateagent ${TMPL_UA_SOURCE})
-
     targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
 
     if (XL4_PROVIDE_THREADS)
@@ -191,7 +199,7 @@ install(FILES src/include/xl4ua.h  DESTINATION include)
 
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
-    add_executable(	ut_test ${LIB_SOURCE}
+    add_executable(ut_test ${LIB_SOURCE}
                     unit_tests/ut_updateagent.c
                     unit_tests/ut_updateagent.h
                     unit_tests/test_setup.c
@@ -202,7 +210,6 @@ if(UNIT_TEST)
     target_compile_definitions(ut_test PRIVATE WITH_UNIT_TEST)
     target_compile_options(ut_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
     target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${APP_DEPS})
-
 endif()
 
 

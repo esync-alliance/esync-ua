@@ -1,8 +1,10 @@
-
 #include "delta.h"
 #include "xml.h"
 #include "utlist.h"
 #include "debug.h"
+#ifdef SHELL_COMMAND_DISABLE
+#include "delta_utils.h"
+#endif
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
@@ -15,14 +17,18 @@ static int verify_file(const char* file, const char* sha256);
 delta_stg_t delta_stg = {0};
 
 const delta_tool_t deflt_patch_tools[] = {
+#ifndef SHELL_COMMAND_DISABLE
 	{"bsdiff", "bspatch", OFA " "NFA " "PFA, 1},
 	{"rfc3284", "xdelta3", "-D -d -s "OFA " "PFA " "NFA, 0},
+#endif
 	{"esdiff", "espatch", OFA " "NFA " "PFA, 1}
 };
 
 const delta_tool_t deflt_decomp_tools[] = {
+#ifndef SHELL_COMMAND_DISABLE
 	{"gzip", "gzip", "-cd "OFA " > "NFA, 0},
 	{"bzip2", "bzip2", "-cd "OFA " > "NFA, 0},
+#endif
 	{"xz", "xz", "-cd "OFA " > "NFA, 0}
 };
 
@@ -35,7 +41,6 @@ int delta_init(char* cacheDir, delta_cfg_t* deltaConfig)
 		memset(&delta_stg, 0, sizeof(delta_stg_t));
 
 		BOLT_IF(!S(cacheDir) || chkdirp(delta_stg.cache_dir = cacheDir), E_UA_ARG, "cache directory invalid");
-
 		BOLT_IF(add_delta_tool(&delta_stg.patch_tool, deflt_patch_tools, sizeof(deflt_patch_tools)/sizeof(deflt_patch_tools[0]), 1), E_UA_ERR, "default patch tools adding failed");
 		BOLT_IF(add_delta_tool(&delta_stg.decomp_tool, deflt_decomp_tools, sizeof(deflt_decomp_tools)/sizeof(deflt_decomp_tools[0]), 0), E_UA_ERR, "default decompression tools adding failed");
 
@@ -44,7 +49,6 @@ int delta_init(char* cacheDir, delta_cfg_t* deltaConfig)
 
 		delta_stg.delta_cap = (deltaConfig && S(deltaConfig->delta_cap)) ? get_config_delta_cap(deltaConfig->delta_cap) :
 		                      get_deflt_delta_cap(delta_stg.patch_tool, delta_stg.decomp_tool);
-
 		BOLT_IF((delta_stg.delta_cap == NULL), E_UA_ERR, "delta_cap is NULL");
 
 	} while (0);
@@ -193,14 +197,15 @@ static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int 
 
 	for (i = 0; i < count; i++) {
 		if (S((tool + i)->algo) && S((tool + i)->path) && S((tool + i)->args) &&
+#ifndef SHELL_COMMAND_DISABLE
 		    !is_cmd_runnable((tool + i)->path) &&
+#endif
 		    (SUBSTRCNT((tool + i)->args, OFA) == 1) && (SUBSTRCNT((tool + i)->args, NFA) == 1) && (SUBSTRCNT((tool + i)->args, PFA) == (isPatchTool ? 1 : 0))) {
 			dth            = f_malloc(sizeof(delta_tool_hh_t));
 			dth->tool.algo = STRLWR(f_strdup((tool + i)->algo));
 			dth->tool.path = f_strdup((tool + i)->path);
 			dth->tool.args = f_strdup((tool + i)->args);
 			dth->tool.intl = (tool + i)->intl;
-
 			HASH_FIND_STR(*hash, dth->tool.algo, aux);
 			if (!aux) {
 				HASH_ADD_STR(*hash, tool.algo, dth);
@@ -239,6 +244,7 @@ static int get_espatch_version(char* ver, int len)
 	int rc = E_UA_OK;
 
 	if (ver) {
+#ifndef SHELL_COMMAND_DISABLE
 		char output[64];
 		FILE* pf;
 
@@ -267,9 +273,15 @@ static int get_espatch_version(char* ver, int len)
 			}
 
 			pclose(pf);
-
 		}
-
+#else
+		rc = E_UA_ERR;
+		const char *version = espatch_get_version();
+		if (version) {
+			strncpy(ver, version, strlen(version));
+			rc = E_UA_OK;
+		}
+#endif
 	}
 
 	return rc;
@@ -355,7 +367,7 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 }
 
 
-static char* expand_tool_args(const char* args, const char* old, const char* new, const char* diff)
+__attribute__((unused)) static char* expand_tool_args(const char* args, const char* old, const char* new, const char* diff)
 {
 	int i = 0;
 	const char* rp, * ex, * s = args;
@@ -379,26 +391,27 @@ static char* expand_tool_args(const char* args, const char* old, const char* new
 	return res;
 }
 
-
-
 static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, const char* diff)
 {
 	int err     = E_UA_OK;
-	char* cmd   = 0;
 	char* diffp = 0;
+#ifndef SHELL_COMMAND_DISABLE
 	char* targs;
+	char* cmd   = 0;
+#endif
 	delta_tool_hh_t* decompdth, * patchdth = 0;
 
 	do {
+#ifndef SHELL_COMMAND_DISABLE
 #define TOOL_EXEC(_t, _o, _n, _p) { \
 		targs = expand_tool_args(_t->tool.args, _o, _n, _p); \
 		cmd   = f_asprintf("%s %s", _t->tool.path, targs); \
-		DBG("Executing: %s", cmd); \
+		DBG("Executing: %s", cmd);                         \
 		if (system(cmd)) err = E_UA_SYS; \
 		free(targs); \
 		free(cmd); \
 } do {} while (0)
-
+#endif
 		if (strcmp(diffInfo->format, "none")) {
 			HASH_FIND_STR(delta_stg.patch_tool, diffInfo->format, patchdth);
 			BOLT_IF(!patchdth, E_UA_ERR, "Diff format %s not found", diffInfo->format);
@@ -407,22 +420,29 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 		if (strcmp(diffInfo->compression, "none") && !(patchdth && patchdth->tool.intl)) {
 			HASH_FIND_STR(delta_stg.decomp_tool, diffInfo->compression, decompdth);
 			BOLT_IF(!decompdth, E_UA_ERR, "Decompression %s not found", diffInfo->compression);
-
 			diffp = f_asprintf("%s%s", diff, ".z");
+#ifndef SHELL_COMMAND_DISABLE
 			TOOL_EXEC(decompdth, diff, diffp, 0);
+#else
+			err = xzdec(diff, diffp);
+#endif
 			if (err) { DBG_SYS("Decompression failed"); break; }
 		}
 
 		if (patchdth) {
 			chkdirp(new);
+#ifndef SHELL_COMMAND_DISABLE
 			TOOL_EXEC(patchdth, old, new, diffp ? diffp : diff);
+#else
+			err = espatch(old, new, diffp? diffp: diff);
+#endif
 			if (err) { DBG_SYS("Patching failed"); break; }
 		} else {
 			BOLT_SUB(copy_file(diffp ? diffp : diff, new));
 		}
-
+#ifndef SHELL_COMMAND_DISABLE
 #undef TOOL_EXEC
-
+#endif
 	} while (0);
 
 	if (diffp) free(diffp);

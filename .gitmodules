@@ -8,3 +8,15 @@
 [submodule "libxml2"]
 	path = libxml2
 	url = https://github.com/GNOME/libxml2.git
+[submodule "zlib"]
+	path = zlib
+	url = https://github.com/madler/zlib.git
+	branch = master
+[submodule "esdiff"]
+	path = esdiff
+	url = git@gitlab.excelfore.com:esync/esdiff.git
+	branch = master
+[submodule "xz"]
+	path = xz
+	url = https://github.com/xz-mirror/xz.git
+	branch = master

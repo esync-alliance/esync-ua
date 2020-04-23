@@ -1,0 +1,35 @@
+# Input File for the Integrate utility for use with the INTEGRITY real-time
+#  operating system by Green Hills Software.
+# Before editing this file, refer to the Integrate Reference Manual.
+
+Variables
+	__VFS_MEMSIZE	4M
+EndVariables
+
+Kernel
+	Filename		esync_ghs_kernel
+	MemoryPoolSize		$__INTEGRITY_KERNEL_MinimumMemoryPoolSize
+EndKernel
+
+AddressSpace			esync_ivfsserver_module
+	Filename		esync_ivfsserver_module
+	MemoryPoolSize		0x40000 + 0x100P + $__VFS_MEMSIZE
+	Language		C
+	HeapSize		16M
+	Task			Initial
+		StartIt	true
+	EndTask
+EndAddressSpace
+
+%include "$__OS_DIR/modules/ghs/ghnet2/source/kernel/integrity/ip46server/ip46server_module.int"
+
+AddressSpace			deltapatcher
+	Filename		deltapatcher
+	Language		C
+	Heapsize		16M
+	Task 			Initial
+	StackLength		0x8000
+		StartIt 	True
+	EndTask
+	Arguments -c /sdcard/delta -a "A:3;B:3;C:10" /sdcard/GHS-ECU-TEST-ghs_0d11.x /sdcard/GHS-ECU-TEST-ghs_0d12.x /sdcard/new_construct_fw.x
+EndAddressSpace

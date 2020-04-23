@@ -58,8 +58,8 @@ typedef struct delta_stg {
 
 
 int delta_init(char* cacheDir, delta_cfg_t* deltaConfig);
-void delta_stop();
-const char* get_delta_capability();
+void delta_stop(void);
+const char* get_delta_capability(void);
 int is_delta_package(const char* pkgFile);
 int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const char* newPkgFile);
 int delta_use_external_algo(void);

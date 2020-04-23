@@ -5,6 +5,7 @@ Please following steps to build libua for QNX based platforms
    # git submodule update
 
 2) Set location of the XL4BUS library build directory in config.cmk.tmpl
+   export PORT=qnx_port
   
 3) Set target build version 
    # export XL4_TARGET_OS=qnx660 or

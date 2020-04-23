@@ -1,0 +1,12 @@
+#!gbuild
+[Program]
+    -c99
+	:optionsFile=${__OPTIONDEFS}/kernel_program.opt
+	-delete
+	-lres
+	-lcore
+	-lload
+    -lposix
+    -lsocket
+
+$__SRC_DIR/ghs_port/kernel_main.c

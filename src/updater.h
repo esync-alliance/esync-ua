@@ -35,6 +35,4 @@ char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_v
 
 void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* ri_tree);
 
-
-
 #endif //UPDATER_H_

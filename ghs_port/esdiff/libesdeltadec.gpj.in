@@ -1,0 +1,25 @@
+#!gbuild
+
+macro __LIB_ESDELTADEC_DIR=@LIB_ESDELTADEC_DIR@
+macro __LIB_ESDELTADEC_BUILD_DIR=@LIB_ESDELTADEC_BUILD_DIR@
+
+[Library]
+	-object_dir=objs/libesdeltadec
+	-c99 -g
+	-I$__LIB_ESDELTADEC_DIR
+    -I$__LIB_ESDELTADEC_DIR/xz
+    -I$__LIB_ESDELTADEC_DIR/sha256
+    -I$__LIB_ESDELTADEC_DIR/strlib
+	-I$__LIB_ESDELTADEC_BUILD_DIR
+	-D__GHS__
+
+$__LIB_ESDELTADEC_DIR/esdeltadec.c
+$__LIB_ESDELTADEC_DIR/varicodec.c
+$__LIB_ESDELTADEC_DIR/xz/xz_crc32.c
+$__LIB_ESDELTADEC_DIR/xz/xz_dec_bcj.c
+$__LIB_ESDELTADEC_DIR/xz/xz_dec_lzma2.c
+$__LIB_ESDELTADEC_DIR/xz/xz_dec_stream.c
+$__LIB_ESDELTADEC_DIR/sha256/sha256.c
+$__LIB_ESDELTADEC_DIR/strlib/strlib.c
+$__LIB_ESDELTADEC_DIR/strlib/examples/format.c
+$__LIB_ESDELTADEC_DIR/strlib/examples/append.c

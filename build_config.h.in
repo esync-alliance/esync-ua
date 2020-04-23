@@ -9,55 +9,14 @@
 #ifndef _UA_BUILD_CONFIG_H_
 #define _UA_BUILD_CONFIG_H_
 
-/*
- * XL4_PROVIDE_XXX - the library will compile the code
- * to provide a specific function.
- * XL4_SUPPORT_XXX - the library can use a specific functionality
- * that is otherwise provided by the platform (directly or through porting layer)
- * XL4_HAVE_XXX - the library can use a specific functionality if it is available
- * but if it is not, an alternative will not be used.
- */
-
 /**
- * If 1, turns on internal thread support for the library.
- * This is used for when library can launch its own threads.
- * ::XL4_SUPPORT_THREADS must be enabled.
- * @see ::XL4_SUPPORT_THREADS
- */
-#cmakedefine01 XL4_PROVIDE_THREADS
-
-/**
- * If 1, then the library is compiled with the debug support.
- */
-#cmakedefine01 XL4_PROVIDE_DEBUG
-
-/**
- * If 1, then the library provides its own implementation of `printf` functionality.
- * This is only needed on embedded systems that don't have `printf` in their base library.
- */
-#cmakedefine01 XL4_PROVIDE_PRINTF
-
-/**
- * Enables threading support. This simply enables multi-threading
- * operations in the client, if this is turned off, then the
- * client can not be used by more than one thread.
- */
-#cmakedefine01 XL4_SUPPORT_THREADS
-
-/**
- * The library can use `gettimeofday` call.
- */
-#cmakedefine01 XL4_HAVE_GETTIMEOFDAY
-
-/**
- * The library can use standard memory allocation functions
- * such as `malloc`, `free` and `realloc`.
- */
-#cmakedefine01 XL4_HAVE_STD_MALLOC
-
-/**
- *  Support scp file transfer in on_transfer_file of tmpl-updateagent
+ * Support scp file transfer in on_transfer_file of tmpl-updateagent
  */
 #cmakedefine01 TMPL_UA_SUPPORT_SCP_TRANSFER
+
+/**
+ * Support limits.h in target os
+ */
+#cmakedefine01 HAVE_LIMITS_H
 
 #endif

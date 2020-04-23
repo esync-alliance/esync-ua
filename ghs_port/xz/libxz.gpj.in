@@ -1,0 +1,142 @@
+#!gbuild
+
+
+macro __LIB_XZ_BUILD_DIR=@LIB_XZ_BUILD_DIR@
+macro __LIB_XZ_DIR=@LIB_XZ_DIR@
+
+[Library]
+	-object_dir=objs/libxz
+	-c99 -g
+	-I$__LIB_XZ_DIR/src/xz
+	-I$__LIB_XZ_DIR/src/liblzma/api
+    -I$__LIB_XZ_DIR/src/liblzma/check
+    -I$__LIB_XZ_DIR/src/liblzma/lzma
+    -I$__LIB_XZ_DIR/src/liblzma/common
+    -I$__LIB_XZ_DIR/src/liblzma/rangecoder
+    -I$__LIB_XZ_DIR/src/liblzma/simple
+   	-I$__LIB_XZ_DIR/src/liblzma/api/lzma
+	-I$__LIB_XZ_DIR/src/liblzma/delta
+    -I$__LIB_XZ_DIR/src/liblzma/lz
+	-I$__LIB_XZ_DIR/src/common
+	-I$__LIB_XZ_BUILD_DIR
+	-D__GHS__
+    -DCLOCK_MONOTONIC=CLOCK_REALTIME
+	-DHAVE_STDINT_H
+	-DHAVE__BOOL
+	-DHAVE_CONFIG_H
+
+$__LIB_XZ_DIR/src/xz/coder.c
+$__LIB_XZ_DIR/src/xz/coder.h
+$__LIB_XZ_DIR/src/xz/file_io.c
+$__LIB_XZ_DIR/src/xz/file_io.h
+$__LIB_XZ_DIR/src/xz/list.c
+$__LIB_XZ_DIR/src/xz/list.h
+$__LIB_XZ_DIR/src/xz/main.c
+$__LIB_XZ_DIR/src/xz/main.h
+$__LIB_XZ_DIR/src/xz/mytime.c
+$__LIB_XZ_DIR/src/xz/mytime.h
+$__LIB_XZ_DIR/src/xz/options.c
+$__LIB_XZ_DIR/src/xz/options.h
+$__LIB_XZ_DIR/src/xz/private.h
+$__LIB_XZ_DIR/src/xz/signals.c
+$__LIB_XZ_DIR/src/xz/signals.h
+$__LIB_XZ_DIR/src/xz/suffix.c
+$__LIB_XZ_DIR/src/xz/suffix.h
+$__LIB_XZ_DIR/src/xz/util.c
+$__LIB_XZ_DIR/src/xz/util.h
+#$__LIB_XZ_DIR/src/common/mythread.h
+#$__LIB_XZ_DIR/src/common/sysdefs.h
+#$__LIB_XZ_DIR/src/common/tuklib_common.h
+#$__LIB_XZ_DIR/src/common/tuklib_config.h
+#$__LIB_XZ_DIR/src/common/tuklib_cpucores.c
+#$__LIB_XZ_DIR/src/common/tuklib_cpucores.h
+#$__LIB_XZ_DIR/src/common/tuklib_exit.c
+#$__LIB_XZ_DIR/src/common/tuklib_exit.h
+#$__LIB_XZ_DIR/src/common/tuklib_gettext.h
+#$__LIB_XZ_DIR/src/common/tuklib_integer.h
+#$__LIB_XZ_DIR/src/common/tuklib_mbstr.h
+#$__LIB_XZ_DIR/src/common/tuklib_mbstr_fw.c
+#$__LIB_XZ_DIR/src/common/tuklib_mbstr_width.c
+#$__LIB_XZ_DIR/src/common/tuklib_open_stdxxx.c
+#$__LIB_XZ_DIR/src/common/tuklib_open_stdxxx.h
+#$__LIB_XZ_DIR/src/common/tuklib_physmem.c
+#$__LIB_XZ_DIR/src/common/tuklib_physmem.h
+#$__LIB_XZ_DIR/src/common/tuklib_progname.c
+#$__LIB_XZ_DIR/src/common/tuklib_progname.h
+
+$__LIB_XZ_DIR/src/liblzma/lzma/fastpos_table.c
+$__LIB_XZ_DIR/src/liblzma/lzma/fastpos_tablegen.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma2_decoder.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma2_encoder.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma_decoder.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma_encoder.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma_encoder_optimum_fast.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma_encoder_optimum_normal.c
+$__LIB_XZ_DIR/src/liblzma/lzma/lzma_encoder_presets.c
+
+$__LIB_XZ_DIR/src/liblzma/check/check.c
+$__LIB_XZ_DIR/src/liblzma/check/crc32_fast.c
+#$__LIB_XZ_DIR/src/liblzma/check/crc32_small.c
+$__LIB_XZ_DIR/src/liblzma/check/crc32_table.c
+$__LIB_XZ_DIR/src/liblzma/check/crc32_tablegen.c
+$__LIB_XZ_DIR/src/liblzma/check/crc64_fast.c
+$__LIB_XZ_DIR/src/liblzma/check/crc64_small.c
+$__LIB_XZ_DIR/src/liblzma/check/crc64_table.c
+$__LIB_XZ_DIR/src/liblzma/check/crc64_tablegen.c
+$__LIB_XZ_DIR/src/liblzma/check/sha256.c
+
+$__LIB_XZ_DIR/src/liblzma/common/alone_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/alone_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/auto_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_buffer_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_buffer_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_header_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_header_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/block_util.c
+$__LIB_XZ_DIR/src/liblzma/common/common.c
+$__LIB_XZ_DIR/src/liblzma/common/easy_buffer_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/easy_decoder_memusage.c
+$__LIB_XZ_DIR/src/liblzma/common/easy_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/easy_encoder_memusage.c
+$__LIB_XZ_DIR/src/liblzma/common/easy_preset.c
+$__LIB_XZ_DIR/src/liblzma/common/file_info.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_buffer_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_buffer_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_common.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_flags_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/filter_flags_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/hardware_cputhreads.c
+$__LIB_XZ_DIR/src/liblzma/common/hardware_physmem.c
+$__LIB_XZ_DIR/src/liblzma/common/index.c
+$__LIB_XZ_DIR/src/liblzma/common/index_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/index_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/index_hash.c
+$__LIB_XZ_DIR/src/liblzma/common/outqueue.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_buffer_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_buffer_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_encoder_mt.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_flags_common.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_flags_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/stream_flags_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/vli_decoder.c
+$__LIB_XZ_DIR/src/liblzma/common/vli_encoder.c
+$__LIB_XZ_DIR/src/liblzma/common/vli_size.c
+
+$__LIB_XZ_DIR/src/liblzma/simple/arm.c
+$__LIB_XZ_DIR/src/liblzma/simple/simple_coder.c
+$__LIB_XZ_DIR/src/liblzma/simple/simple_decoder.c
+$__LIB_XZ_DIR/src/liblzma/simple/simple_encoder.c
+
+$__LIB_XZ_DIR/src/liblzma/delta/delta_common.c
+$__LIB_XZ_DIR/src/liblzma/delta/delta_decoder.c
+$__LIB_XZ_DIR/src/liblzma/delta/delta_encoder.c
+
+$__LIB_XZ_DIR/src/liblzma/lz/lz_decoder.c
+$__LIB_XZ_DIR/src/liblzma/lz/lz_encoder.c
+$__LIB_XZ_DIR/src/liblzma/lz/lz_encoder_mf.c
