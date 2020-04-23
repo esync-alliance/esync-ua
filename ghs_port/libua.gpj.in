@@ -1,0 +1,61 @@
+#!gbuild
+
+[Library]
+	-object_dir=objs/libua
+	-c99
+	-DPATH_MAX=256
+	-I./
+	-I${__LIB_UA_DIR}/src
+	-I${__LIB_UA_DIR}/src/delta_utils
+	-I${__LIB_UA_DIR}/src/include
+	-I${__LIB_UA_BUILD_DIR}
+	-I${__LIB_XL4BUS_BUILD_DIR}/include
+	-I${__LIB_XL4BUS_DIR}/src/include
+	-I${__LIB_XL4BUS_DIR}/build/include
+	-I${__LIB_XML2_DIR}/include
+	-I${__LIB_JSONC_DIR}
+	-I${__LIB_JSONC_BUILD_DIR}
+	-I${__LIB_ZIP_DIR}/lib
+	-I${__LIB_ZIP_DIR}/xcode
+	-I${__LIB_GHS_MISC_DIR}
+	-I${__LIB_OPENSSL_DIR}/include
+	-I${__LIB_XZ_DIR}/src/liblzma/api
+	-I${__LIB_ESDELTADEC_DIR}
+
+	--include ${__LIB_XL4BUS_DIR}/json-c-rename.h
+	--include ${__LIB_GHS_MISC_DIR}/ghs_misc.h
+	--include stdint.h
+	-D__GHS__
+	-Df_asprintf=ua_f_asprintf
+	-DCLOCK_MONOTONIC_RAW=CLOCK_REALTIME
+	-DNO_DECLTYPE
+	-DDISABLE_JSONC_RENAME
+	-DSHELL_COMMAND_DISABLE
+
+${__LIB_UA_DIR}/src/Crc32.c
+${__LIB_UA_DIR}/src/Crc32.h
+${__LIB_UA_DIR}/src/common.c
+${__LIB_UA_DIR}/src/common.h
+${__LIB_UA_DIR}/src/debug.h
+${__LIB_UA_DIR}/src/delta.c
+${__LIB_UA_DIR}/src/delta.h
+${__LIB_UA_DIR}/src/eua_json.h
+${__LIB_UA_DIR}/src/handler.c
+${__LIB_UA_DIR}/src/handler.h
+${__LIB_UA_DIR}/src/misc.c
+${__LIB_UA_DIR}/src/misc.h
+${__LIB_UA_DIR}/src/patcher.c
+${__LIB_UA_DIR}/src/porting.h
+${__LIB_UA_DIR}/src/updater.c
+${__LIB_UA_DIR}/src/updater.h
+${__LIB_UA_DIR}/src/utarray.h
+${__LIB_UA_DIR}/src/uthash.h
+${__LIB_UA_DIR}/src/utils.c
+${__LIB_UA_DIR}/src/utils.h
+${__LIB_UA_DIR}/src/utlist.h
+${__LIB_UA_DIR}/src/xl4busclient.c
+${__LIB_UA_DIR}/src/xl4busclient.h
+${__LIB_UA_DIR}/src/xml.c
+${__LIB_UA_DIR}/src/xml.h
+${__LIB_UA_DIR}/src/delta_utils/espatch.c
+${__LIB_UA_DIR}/src/delta_utils/xzdec.c

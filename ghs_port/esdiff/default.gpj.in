@@ -1,0 +1,21 @@
+#!gbuild
+macro __ARCH_NAME=arm64
+macro __BSP_NAME=devtree-arm64
+macro __BUILD_DIR=%expand_path(.)
+macro __OS_DIR=@GHS_OS_DIR@
+macro __TGT_DIR=@GHS_TGT_DIR@
+
+defineConfig ("Debug" "DEBUG" "${__TGT_DIR}/npw_dbg.gpc")
+defineConfig ("Checked" "CHECKED" "${__TGT_DIR}/npw_chk.gpc")
+defineConfig ("Release" "RELEASE" "${__TGT_DIR}/npw_rel.gpc")
+defineConfig ("Coverage" "COVERAGE" "${__TGT_DIR}/npw_cov.gpc")
+primaryTarget=arm64_integrity.tgt
+customization=${__OS_DIR}/target/integrity.bod
+#component top_level_project
+[Project]
+	-bsp devtree-arm64
+	:sourceDir=.
+	-os_dir ${__OS_DIR}
+	-Itgt
+libesdeltadec.gpj		[Library]
+resources.gpj		[Project]

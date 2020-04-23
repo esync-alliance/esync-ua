@@ -50,7 +50,9 @@ int xl4bus_client_init(char* url, char* cert_dir)
 		BOLT_IF(xl4bus_init_ll(&ll_cfg), E_UA_ERR, "failed to initialize xl4bus");
 
 		memset(&m_xl4bus_clt, 0, sizeof(xl4bus_client_t));
+#if XL4_PROVIDE_THREADS
 		m_xl4bus_clt.use_internal_thread = 1;
+#endif
 		m_xl4bus_clt.on_status           = on_xl4bus_status;
 		m_xl4bus_clt.on_delivered        = on_xl4bus_delivered;
 		m_xl4bus_clt.on_message          = on_xl4bus_message;
@@ -380,7 +382,7 @@ static xl4bus_asn1_t* load_full(char* path)
 		}
 
 		buf->buf.len = (size_t) (size + 1);
-		void* ptr = buf->buf.data = f_malloc(buf->buf.len);
+		uint8_t* ptr = buf->buf.data = f_malloc(buf->buf.len);
 		while (size) {
 			ssize_t rd = read(fd, ptr, (size_t) size);
 			if (rd < 0) {
@@ -389,7 +391,7 @@ static xl4bus_asn1_t* load_full(char* path)
 			}
 			if (!rd) {
 				DBG("Premature EOF reading %d, file declared %d bytes, read %d bytes, remaining %d bytes",
-				    path, buf->buf.len-1, ptr-(void*)buf->buf.data, size);
+				    path, buf->buf.len-1, ptr-buf->buf.data, size);
 				break;
 			}
 			size -= rd;

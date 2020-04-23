@@ -1,0 +1,13 @@
+#!gbuild
+macro __TGT_DIR=@GHS_TGT_DIR@
+#component target_resources
+[Project]
+${__TGT_DIR}/default.ld
+${__TGT_DIR}/INTEGRITY.ld
+${__TGT_DIR}/default.bsp
+${__TGT_DIR}/npw_dbg.gpc
+${__TGT_DIR}/npw_chk.gpc
+${__TGT_DIR}/npw_rel.gpc
+${__TGT_DIR}/npw_cov.gpc
+${__TGT_DIR}/devtree-arm64.notes
+$__BSP_DIR/default.con

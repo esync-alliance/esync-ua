@@ -43,6 +43,22 @@ if (SUPPORT_UA_DOWNLOAD)
 set(CURL_LIB -lcurl)
 endif()
 
+if (SHELL_COMMAND_DISABLE)
+include(FindXZ.cmake)
+include_directories(SYSTEM ${XZ_INCLUDE_DIR})
+if (NOT ESDIFF)
+   set(ESDIFF ${CMAKE_SOURCE_DIR}/esdiff-build)
+endif()
+get_filename_component(ESDIFF_LIB ${ESDIFF}/.libs/libesdeltadec.so REALPATH)
+if (NOT EXISTS ${ESDIFF_LIB})
+    message(FATAL_ERROR "Not found libesdeltadec.so in build folder, you should build libesdeltadec.so first!")
+endif()
+set(ESDIFF_LIB -lesdeltadec)
+set(LZMA_LIB -llzma)
+include_directories(SYSTEM ${ESDIFF})
+include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/delta_utils)
+endif()
+
 # Set include path
 include_directories(SYSTEM ${JSON_C})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/include)
@@ -51,5 +67,9 @@ include_directories(${CMAKE_BINARY_DIR})
 
 # Set linker flags
 set(COMMON_DEPS ${XL4BUS_LIB} ${DMCLIENT_LIB} ${CURL_LIB} -Wl,-Bdynamic ${LIBZIP_LIBRARY} -lxml2 -lssl -lcrypto -lm -lz)
+if (SHELL_COMMAND_DISABLE)
+set(COMMON_DEPS ${COMMON_DEPS} ${ESDIFF_LIB} ${LZMA_LIB})
+endif()
+
 set(SHARED_DEPS ${JSON_C_LIB} ${COMMON_DEPS})
 set(APP_DEPS ${JSON_C_LIB} ${COMMON_DEPS})

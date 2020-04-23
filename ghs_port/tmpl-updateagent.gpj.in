@@ -1,0 +1,17 @@
+#!gbuild
+#component integrity_monolith
+macro __TOOL_DIR=@BUILD_TOOL_DIR@
+
+[INTEGRITY Application]
+    	-non_shared
+        # The ip46server is mandatory for using TCP/IP
+        :sourceDir=$__OS_DIR/modules/ghs/ghnet2/source/kernel/integrity/ip46server
+	    --no_quit_after_warnings
+	    :outputDir=$(__BUILD_DIR)/work/tmpl-updateagent
+	    {isdefined(USE_KERNEL_SDIO_MMC)} -DUSE_KERNEL_SDIO_MMC
+        
+tmpl-updateagent.int
+esync_ghs_kernel.gpj                    [Program]
+esync_ivfsserver_module.gpj		        [Program]
+ip46server_module.gpj                   [Program]
+updateagent.gpj                         [Program]

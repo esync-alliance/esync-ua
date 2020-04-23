@@ -351,9 +351,11 @@ void handle_status(int status)
 		"CONNECTION_FAILED",
 		"REGISTRATION_FAILED",
 		"CONNECTION_BROKE",
+		"CLIENT_STOPPED",
+		"CLIENT_START"
 	};
 
-	DBG("eSync Bus Status (%d): %s", status, status < sizeof(sts_str)/sizeof(sts_str[0]) ? sts_str[status] : NULL);
+	DBG("eSync Bus Status (%d): %s", status, status < sizeof(sts_str)/sizeof(sts_str[0]) ? sts_str[status] : "NULL");
 	ua_intl.esync_bus_conn_status = status;
 }
 
@@ -928,7 +930,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 		} else {
 			DBG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
-			send_install_status(uacc, INSTALL_FAILED, 0, 0);
+			send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 
 		}
 
@@ -1284,7 +1286,7 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 
 	}
 
-	send_install_status(uacc, state, 0, 0);
+	send_install_status(uacc, state, 0, UE_NONE);
 
 	return state;
 }
@@ -1307,7 +1309,7 @@ install_state_t update_action(ua_component_context_t* uacc)
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-			send_install_status(uacc, state, 0, 0);
+			send_install_status(uacc, state, 0, UE_NONE);
 		}
 	}
 	return state;

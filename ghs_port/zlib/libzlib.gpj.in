@@ -1,0 +1,34 @@
+#!gbuild
+macro __LIB_ZLIB_DIR=@LIB_ZLIB_DIR@
+
+[Library]
+	-object_dir=objs/libzlib
+	-c99 -g
+	-I$__LIB_ZLIB_DIR
+	
+$__LIB_ZLIB_DIR/adler32.c
+$__LIB_ZLIB_DIR/compress.c
+$__LIB_ZLIB_DIR/crc32.c
+$__LIB_ZLIB_DIR/crc32.h
+$__LIB_ZLIB_DIR/deflate.c
+$__LIB_ZLIB_DIR/deflate.h
+$__LIB_ZLIB_DIR/gzclose.c
+$__LIB_ZLIB_DIR/gzguts.h
+$__LIB_ZLIB_DIR/gzlib.c
+$__LIB_ZLIB_DIR/gzread.c
+$__LIB_ZLIB_DIR/gzwrite.c
+$__LIB_ZLIB_DIR/infback.c
+$__LIB_ZLIB_DIR/inffast.c
+$__LIB_ZLIB_DIR/inffast.h
+$__LIB_ZLIB_DIR/inffixed.h
+$__LIB_ZLIB_DIR/inflate.c
+$__LIB_ZLIB_DIR/inflate.h
+$__LIB_ZLIB_DIR/inftrees.c
+$__LIB_ZLIB_DIR/inftrees.h
+$__LIB_ZLIB_DIR/trees.c
+$__LIB_ZLIB_DIR/trees.h
+$__LIB_ZLIB_DIR/uncompr.c
+$__LIB_ZLIB_DIR/zconf.h
+$__LIB_ZLIB_DIR/zlib.h
+$__LIB_ZLIB_DIR/zutil.c
+$__LIB_ZLIB_DIR/zutil.h

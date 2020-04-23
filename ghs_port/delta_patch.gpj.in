@@ -1,0 +1,16 @@
+#!gbuild
+#component integrity_dynamic_download
+[INTEGRITY Application]
+	-non_shared
+	# The ip46server is mandatory for using TCP/IP
+	:sourceDir=$__OS_DIR/modules/ghs/ghnet2/source/kernel/integrity/ip46server
+	--no_quit_after_warnings
+	:outputDir=$(__BUILD_DIR)/work/delta_patch
+	:postExecSafe="$(__TOOL_DIR)/gmemfile $(__BUILD_DIR)/dbg/bin/delta_patch -o $(__BUILD_DIR)/deltapatch.bin"
+	{isdefined(USE_KERNEL_SDIO_MMC)} -DUSE_KERNEL_SDIO_MMC
+
+delta_patch.int
+esync_ghs_kernel.gpj		[Program]
+esync_ivfsserver_module.gpj	[Program]
+ip46server_module.gpj		[Program]
+deltapatcher.gpj		[Program]

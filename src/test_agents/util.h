@@ -8,7 +8,10 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include "build_config.h"
+#if HAVE_LIMITS_H
 #include <linux/limits.h>
+#endif
 
 #define _ltime_ \
         char __now[24]; \

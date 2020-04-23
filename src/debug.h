@@ -110,9 +110,9 @@ extern ua_log_handler_f ua_log_handler;
 
 
 #define BOLT(why)                        err = (why); DBG("setting err %d", err); break; do {} while (0)
-#define BOLT_SAY(__err, msg, x ...)      err = (__err); DBG(msg ", setting err %d", ## x, err); break; do {} while (0)
+#define BOLT_SAY(__err, msg, x ...)      {err = (__err); DBG(msg ", setting err %d", ## x, err); break;}
 #define BOLT_IF(cond, __err, msg, x ...) if ((cond)) { err = (__err); DBG(msg ", setting err %d", ## x, err); break; } do {} while (0)
-#define BOLT_SYS(a, m, x ...)            if ((a)) { DBG_SYS(m, ## x); err = E_UA_SYS; break; } do {} while (0)
+#define BOLT_SYS(a, m, x ...)            { if ((a)) { DBG_SYS(m, ## x); err = E_UA_SYS; break; } }
 #define BOLT_SUB(a)                      { err = (a); if (err != E_UA_OK) { BOLT_SAY(err, # a); }} do {} while (0)
 #define BOLT_MALLOC(var, how_much)       { if (!((var) = f_malloc(how_much))) { BOLT_SAY(E_UA_MEMORY, "failed to alloc %d for %s", how_much, # var); } } do {} while (0)
 

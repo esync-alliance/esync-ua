@@ -6,6 +6,7 @@
 #define XL4UA_H_
 
 #include <libxl4bus/types.h>
+#include <libxl4bus/build_config.h>
 
 typedef enum install_state {
 	INSTALL_READY,
@@ -192,12 +193,12 @@ typedef struct ua_handler {
 
 } ua_handler_t;
 
-
-#ifndef XL4_PUB
-/**
- * Used to indicate that the library symbol is properly exported.
- */
-#define XL4_PUB __attribute__((visibility ("default")))
+#if XL4_SYMBOL_VISIBILITY_SUPPORTED
+	#ifndef XL4_PUB
+	#define XL4_PUB __attribute__((visibility ("default")))
+	#endif
+#else
+	#define XL4_PUB
 #endif
 
 XL4_PUB

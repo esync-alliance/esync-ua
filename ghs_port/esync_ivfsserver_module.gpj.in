@@ -1,0 +1,31 @@
+#!gbuild
+#component integrity_os_modules_file_system_dist
+[Program]
+	-I.
+	-intex_var __VFS_MEMSIZE=4M
+	:sourceDir=.
+	-DVFS_NO_MAP
+	-I../../ghs/ffs
+	:sourceDir=../../ghs/ffs
+	-I$__OS_DIR/modules/ghs/bspsrc
+	-livfsserver
+	-llegacyatapi
+	-lramdisk
+	-lffs
+	-liso9660
+	-lmsdosfs
+	-lnfs
+	-lrpc
+	-lsocket
+	-lnet
+	-lblockdriver
+	-lfsck_ffs
+	-lfsck_msdos
+	-lstorage-core
+	-lstorage-driver-pseudo
+	{!isdefined(USE_KERNEL_SDIO_MMC)}-lvirt_iodevice_interface
+	{!isdefined(USE_KERNEL_SDIO_MMC)}-lstorage-driver-sdio-mmc
+	{!isdefined(USE_KERNEL_SDIO_MMC)}-lsdhi_mmc_rcar_gen3
+	{isdefined(USE_KERNEL_SDIO_MMC)}-lstorage-driver-iodevice
+${__SRC_DIR}/ghs_port/esync_vfs_main.c
+${__SRC_DIR}/ghs_port/esync_ivfsserver_mounttable.c

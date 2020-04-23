@@ -75,3 +75,10 @@ ESYNC-4021:
 The template update agent reads the installed version from the version file and write the update version to the file. 
 This file is created in the back-up directory for every package. The file has only the version number written to it.
 After the successful update, if the update agent is stopped and rerun for a new campaign, the  template update agent does not return "NULL" for the installed version. Instead, the installed version is read from the file and returned to the dmclient in the query-package reply message. 
+
+#######################################################################
+
+** Building for INTEGRITY OS **
+  Following instruction at ghs_port/README.md
+
+#######################################################################

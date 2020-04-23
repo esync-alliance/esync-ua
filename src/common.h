@@ -5,8 +5,6 @@
 #ifndef UA_COMMON_H_
 #define UA_COMMON_H_
 
-#define _GNU_SOURCE
-
 #include <stddef.h>
 #include "porting.h"
 

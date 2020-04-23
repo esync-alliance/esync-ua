@@ -33,7 +33,7 @@ json_object* update_get_pkg_info_jo(pkg_info_t* pkg)
 
 int update_set_pkg_info(json_object* jo_pkg, pkg_info_t* pkg)
 {
-	int err = E_UA_OK;
+	int err = E_UA_ERR;
 
 	if (jo_pkg && pkg) {
 		err = json_get_property(jo_pkg, json_type_string, &pkg->type, "package", "type", NULL);
@@ -195,7 +195,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	DBG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
 	if (!uacc->update_pkg.rollback_version && update_installed_version_same(uacc, uacc->update_pkg.version)) {
 		DBG("Found installed version is same as requested target version.");
-		send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
+		send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 		update_sts = INSTALL_COMPLETED;
 	}else {
 		if (reboot_support)
@@ -361,7 +361,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			send_install_status(uacc, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 			DBG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
-			send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
+			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else if (delta_use_external_algo()) {
 			//E115-417: No rollback is available when standalone delta is used.
@@ -437,7 +437,7 @@ void* update_resume_from_reboot(void* arg)
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			DBG("Resume: update installation was successful.");
 			post_update_action(uacc);
-			send_install_status(uacc, INSTALL_COMPLETED, 0, 0);
+			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else {
 			if (uacc->rb_type != URB_NONE) {
@@ -451,7 +451,7 @@ void* update_resume_from_reboot(void* arg)
 
 			}else {
 				DBG("Resume: update installation has failed, informing eSync client.");
-				send_install_status(uacc, INSTALL_FAILED, 0, 0);
+				send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 			}
 		}
 
@@ -597,8 +597,25 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 							#endif
 
 							uacc->update_file_info.version = f_strdup(version_to_update);
+							// If the firmware file indicated by json is not available
+							if (access(uacc->update_file_info.file, F_OK) == -1) {
+								char *new_file = NULL;
+								ua_routine_t *uar = uacc->uar;
+								if (uar->on_transfer_file) {
+									int ret = (*uar->on_transfer_file)(uacc->update_pkg.type,
+																	   uacc->update_pkg.name,
+																	   uacc->update_pkg.version,
+																	   uacc->update_file_info.file,
+																	   &new_file);
+									if (ret) err = E_UA_ERR;
+								}
+								if (new_file) {
+									f_free(uacc->update_file_info.file);
+									uacc->update_file_info.file = new_file;
+								}
+							}
 
-							if (!calc_sha256_x(uacc->update_file_info.file, uacc->update_file_info.sha_of_sha)) {
+							if (!calc_sha256_x(uacc->update_file_info.file, uacc->update_file_info.sha_of_sha) && err == E_UA_OK) {
 								add_pkg_file_manifest(uacc->update_manifest, &uacc->update_file_info);
 								err = E_UA_OK;
 							} else {

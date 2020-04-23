@@ -1,0 +1,58 @@
+#!gbuild
+macro __ARCH_NAME=arm64
+macro __BSP_NAME=devtree-arm64
+macro __BUILD_DIR=%expand_path(.)
+macro __SRC_DIR=${__BUILD_DIR}/..
+macro __OS_DIR=@GHS_OS_DIR@
+macro __TGT_DIR=@GHS_TGT_DIR@
+macro __TOOL_DIR=@BUILD_TOOL_DIR@
+
+macro __LIB_XL4BUS_DIR=@LIB_XL4BUS_DIR@
+macro __LIB_UA_DIR=@LIB_UA_DIR@
+macro __LIB_UA_BUILD_DIR=@LIB_UA_BUILD_DIR@
+
+macro __LIB_JANSSON_DIR=@LIB_JANSSON_DIR@
+macro __LIB_CARES_DIR=@LIB_CARES_DIR@
+macro __LIB_CJOSE_DIR=@LIB_CJOSE_DIR@
+macro __LIB_OPENSSL_DIR=@LIB_OPENSSL_DIR@
+macro __LIB_MBEDTLS_DIR=@LIB_MBEDTLS_DIR@
+
+macro __LIB_JANSSON_BUILD_DIR=@LIB_JANSSON_BUILD_DIR@
+macro __LIB_OPENSSL_BUILD_DIR=@LIB_OPENSSL_BUILD_DIR@
+macro __LIB_XML2_BUILD_DIR=@LIB_XML2_BUILD_DIR@
+macro __LIB_XL4BUS_BUILD_DIR=@LIB_XL4BUS_BUILD_DIR@
+macro __LIB_MBEDTLS_BUILD_DIR=@LIB_MBEDTLS_BUILD_DIR@
+macro __LIB_CJOSE_BUILD_DIR=@LIB_CJOSE_BUILD_DIR@
+
+macro __LIB_XML2_DIR=@LIB_XML2_DIR@
+macro __LIB_JSONC_DIR=@LIB_JSONC_DIR@
+macro __LIB_JSONC_BUILD_DIR=@LIB_JSONC_BUILD_DIR@
+macro __LIB_ZIP_DIR=@LIB_ZIP_DIR@
+macro __LIB_GHS_MISC_DIR=@LIB_GHS_MISC_DIR@
+macro __LIB_ESDELTADEC_DIR=@LIB_ESDELTADEC_DIR@
+macro __LIB_XZ_DIR=@LIB_XZ_DIR@
+
+macro __LIB_ZIP_BUILD_DIR=@LIB_ZIP_BUILD_DIR@
+macro __LIB_ZLIB_BUILD_DIR=@LIB_ZLIB_BUILD_DIR@
+macro __LIB_CARES_BUILD_DIR=@LIB_CARES_BUILD_DIR@
+macro __LIB_GHS_MISC_BUILD_DIR=@LIB_GHS_MISC_BUILD_DIR@
+macro __LIB_ESDELTADEC_BUILD_DIR=@LIB_ESDELTADEC_BUILD_DIR@
+macro __LIB_XZ_BUILD_DIR=@LIB_XZ_BUILD_DIR@
+
+defineConfig ("Debug" "DEBUG" "${__TGT_DIR}/npw_dbg.gpc")
+defineConfig ("Checked" "CHECKED" "${__TGT_DIR}/npw_chk.gpc")
+defineConfig ("Release" "RELEASE" "${__TGT_DIR}/npw_rel.gpc")
+defineConfig ("Coverage" "COVERAGE" "${__TGT_DIR}/npw_cov.gpc")
+primaryTarget=arm64_integrity.tgt
+customization=${__OS_DIR}/target/integrity.bod
+#component top_level_project
+[Project]
+	-bsp devtree-arm64
+	:sourceDir=.
+	-os_dir ${__OS_DIR}
+	-Itgt
+
+libua.gpj			[Library]
+tmpl-updateagent.gpj		[INTEGRITY Application]
+delta_patch.gpj 		[INTEGRITY Application]
+resources.gpj			[Project]

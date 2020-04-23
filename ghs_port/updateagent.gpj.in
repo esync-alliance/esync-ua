@@ -1,0 +1,35 @@
+#!gbuild
+
+[Program]
+        -g -c99
+        -I${__LIB_UA_DIR}/src
+        -I${__LIB_UA_DIR}/src/include
+        -I${__LIB_XL4BUS_DIR}
+        -I${__LIB_XL4BUS_BUILD_DIR}/include
+        -I${__LIB_XL4BUS_DIR}/src/include
+        -I${__LIB_XL4BUS_DIR}/build/include
+        -D__GHS__
+        -DPATH_MAX=256
+
+        -lposix_sys_client -lsocket -lnet -livfs -lposix_authclient
+        -lnet_server_commands -lnet_server 
+        -L${__LIB_JSONC_BUILD_DIR}/dbg/bin -ljsonc
+        -L${__LIB_CJOSE_BUILD_DIR}/dbg/bin -lcjose
+        -L${__LIB_JANSSON_BUILD_DIR}/dbg/bin -ljansson
+        -L${__LIB_OPENSSL_BUILD_DIR}/dbg/bin -lcrypto -lssl
+        -L${__LIB_UA_DIR}/build/dbg/bin -lua
+        -L${__LIB_XML2_BUILD_DIR}/dbg/bin -lxml2
+        -L${__LIB_XL4BUS_BUILD_DIR}/dbg/bin -lxl4bus
+        -L${__LIB_MBEDTLS_BUILD_DIR}/dbg/bin -lmbedtls
+        -L${__LIB_ZIP_BUILD_DIR}/dbg/bin -lzip
+        -L${__LIB_ZLIB_BUILD_DIR}/dbg/bin -lzlib
+        -L${__LIB_CARES_BUILD_DIR}/dbg/bin -lcares
+        -L${__LIB_GHS_MISC_BUILD_DIR}/dbg/bin -lghs_misc
+        -L${__LIB_ESDELTADEC_BUILD_DIR}/dbg/bin -lesdeltadec
+        -L${__LIB_XZ_BUILD_DIR}/dbg/bin -lxz
+
+${__LIB_UA_DIR}/src/test_agents/main_updateagent.c
+${__LIB_UA_DIR}/src/test_agents/tmpl_updateagent.c
+${__LIB_UA_DIR}/src/test_agents/tmpl_updateagent.h
+${__LIB_UA_DIR}/src/test_agents/util.c
+${__LIB_UA_DIR}/src/test_agents/util.h
