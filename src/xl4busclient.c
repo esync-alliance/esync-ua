@@ -14,8 +14,6 @@
 #include "handler.h"
 #include "debug.h"
 
-#define DEBUG 5
-
 static void on_xl4bus_message(struct xl4bus_client* client, xl4bus_message_t* msg);
 static void on_xl4bus_status(struct xl4bus_client* client, xl4bus_client_condition_t cond);
 static void on_xl4bus_delivered(struct xl4bus_client* client, xl4bus_message_t* msg, void* arg, int ok);
@@ -33,7 +31,7 @@ static char* m_xl4bus_url = NULL;
 
 void debug_print(const char* msg)
 {
-	if (ua_debug == DEBUG)
+	if (ua_debug > 1)
 		printf("%s\n", msg);
 
 }
@@ -72,7 +70,7 @@ int xl4bus_client_init(char* url, char* cert_dir)
 		m_xl4bus_clt.identity.trust.update_agent = cfg->ua_type;
 #else
 
-		A_INFO_MSG("Loading x509 credentials from : %s", cert_dir);
+		DBG("Loading x509 credentials from : %s", cert_dir);
 		BOLT_IF(load_xl4_x509_creds(&m_xl4bus_clt.identity, cert_dir), E_UA_ERR, "x509 credentials load failed!");
 
 #endif
@@ -124,7 +122,7 @@ int xl4bus_client_send_msg(const char* message)
 
 	if (err != E_XL4BUS_OK) {
 		xl4bus_free_address(addr, 1);
-		A_ERROR_MSG("Error sending message: %s", message);
+		DBG("Error sending message: %s", message);
 	}
 
 	return err;
@@ -153,7 +151,7 @@ int xl4bus_client_send_msg_to_addr(const char* message, xl4bus_address_t* xl4_ad
 
 	if (err != E_XL4BUS_OK) {
 		xl4bus_free_address(xl4_address, 1);
-		A_ERROR_MSG("Error sending message: %s", message);
+		DBG("Error sending message: %s", message);
 	}
 
 	return err;
@@ -192,7 +190,7 @@ static void on_xl4bus_message(xl4bus_client_t* client, xl4bus_message_t* msg)
 	if (msg && msg->data) {
 		if (!strcmp(msg->content_type, "application/json")) {
 			if (msg->data_len <= 0) {
-				A_INFO_MSG("Empty incoming message (%d)?", msg->data_len);
+				DBG("Empty incoming message (%d)?", msg->data_len);
 			} else {
 				for (xl4bus_address_t* a = msg->address; a; a=a->next) {
 					if (a->type == XL4BAT_UPDATE_AGENT)
@@ -200,7 +198,7 @@ static void on_xl4bus_message(xl4bus_client_t* client, xl4bus_message_t* msg)
 				}
 			}
 		} else {
-			A_INFO_MSG("Skipping message with an unsupported content type %s", NULL_STR(msg->content_type));
+			DBG("Skipping message with an unsupported content type %s", NULL_STR(msg->content_type));
 		}
 	}
 
@@ -240,7 +238,7 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	 */
 	for (xl4bus_address_t* a = connected; a; a=a->next) {
 		as = addr_to_string(a);
-		A_INFO_MSG("CONNECTED: %s", as);
+		DBG("CONNECTED: %s", as);
 		num_connected++;
 		free(as);
 		if (a->type == XL4BAT_SPECIAL) {
@@ -255,7 +253,7 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 
 	for (xl4bus_address_t* a = disconnected; a; a=a->next) {
 		as = addr_to_string(a);
-		A_INFO_MSG("DISCONNECTED: %s", as);
+		DBG("DISCONNECTED: %s", as);
 		num_disconnected++;
 		free(as);
 		if (a->type == XL4BAT_SPECIAL) {
@@ -365,7 +363,7 @@ static xl4bus_asn1_t* load_full(char* path)
 	int ok = 0;
 
 	if (fd < 0) {
-		A_ERROR_MSG("Failed to open %s", path);
+		DBG_SYS("Failed to open %s", path);
 		return 0;
 	}
 
@@ -375,11 +373,11 @@ static xl4bus_asn1_t* load_full(char* path)
 	do {
 		off_t size = lseek(fd, 0, SEEK_END);
 		if (size == (off_t)-1) {
-			A_ERROR_MSG("Failed to seek %s", path);
+			DBG_SYS("Failed to seek %s", path);
 			break;
 		}
 		if (lseek(fd, 0, SEEK_SET) == (off_t)-1) {
-			A_ERROR_MSG("Failed to rewind %s", path);
+			DBG_SYS("Failed to rewind %s", path);
 			break;
 		}
 
@@ -388,11 +386,11 @@ static xl4bus_asn1_t* load_full(char* path)
 		while (size) {
 			ssize_t rd = read(fd, ptr, (size_t) size);
 			if (rd < 0) {
-				A_ERROR_MSG("Failed to read from %s", path);
+				DBG_SYS("Failed to read from %s", path);
 				break;
 			}
 			if (!rd) {
-				A_INFO_MSG("Premature EOF reading %d, file declared %d bytes, read %d bytes, remaining %d bytes",
+				DBG("Premature EOF reading %d, file declared %d bytes, read %d bytes, remaining %d bytes",
 				    path, buf->buf.len-1, ptr-buf->buf.data, size);
 				break;
 			}

@@ -57,7 +57,7 @@ void* f_malloc(size_t t)
 	void* r = malloc(t);
 
 	if (!r) {
-		A_ERROR_MSG("Failed to malloc %ld bytes", t);
+		DBG("Failed to malloc %ld bytes", t);
 		abort();
 	}
 
@@ -72,7 +72,7 @@ void* f_realloc(void* m, size_t t)
 	void* r = realloc(m, t);
 
 	if (!r) {
-		A_ERROR_MSG("Failed to realloc %p to %ld bytes", m, t);
+		DBG("Failed to realloc %p to %ld bytes", m, t);
 		abort();
 	}
 

@@ -18,7 +18,6 @@
 #include "xl4ua.h"
 #include "debug.h"
 
-
 static int libzip_archive_add_file(struct zip* za, const char* path, const char* base);
 static int libzip_archive_add_dir(struct zip* za, const char* path, const char* base);
 static char* libzip_get_error(int ze);
@@ -98,7 +97,7 @@ int rmdirp(const char* path)
 	struct dirent* entry;
 	char* filepath;
 
-	A_INFO_MSG("removing dir %s", path);
+	DBG("removing dir %s", path);
 
 	do {
 		BOLT_SYS(!(dir = opendir(path)), "failed to open directory %s", path);
@@ -118,7 +117,7 @@ int rmdirp(const char* path)
 		#endif
 				if (remove(filepath) < 0) {
 					err = E_UA_SYS;
-					A_ERROR_MSG("error removing file: %s", filepath);
+					DBG_SYS("error removing file: %s", filepath);
 				}
 			} else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
 				err = rmdirp(filepath);
@@ -180,12 +179,12 @@ int run_cmd(char* cmd, char* argv[])
 		pid_t pid=fork();
 
 		if ( pid == -1) {
-			A_ERROR_MSG("fork failed");
+			DBG("fork failed");
 			rc = E_UA_SYS;
 
 		}else if ( pid == 0) {
 			execvp(cmd, argv);
-			A_ERROR_MSG("execv %s failed", cmd);
+			DBG("execv %s failed", cmd);
 			rc = E_UA_SYS;
 
 		}else {
@@ -231,7 +230,7 @@ static int libzip_unzip(const char* archive, const char* path)
 	struct zip_file* zf;
 	struct zip_stat sb;
 
-	A_INFO_MSG("unzipping(libzip) archive %s to %s", archive, path);
+	DBG("unzipping(libzip) archive %s to %s", archive, path);
 
 	do {
 		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
@@ -269,7 +268,7 @@ static int libzip_unzip(const char* archive, const char* path)
 	} while (0);
 
 	if (buf) free(buf);
-	if (za && zip_close(za)) { err = E_UA_ERR;  A_ERROR_MSG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
 	if (err) {
 		if (aux) free(aux);
@@ -284,7 +283,7 @@ static int zip_unzip(const char* archive, const char* path)
 {
 	int err = E_UA_OK;
 
-	A_INFO_MSG("unzipping(zip) archive %s to %s", archive, path);
+	DBG("unzipping(zip) archive %s to %s", archive, path);
 	if (archive && path) {
 		do {
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
@@ -322,7 +321,7 @@ static int libzip_zip(const char* archive, const char* path)
 	struct stat path_stat;
 	struct zip* za = 0;
 
-	A_INFO_MSG("zipping(libzip) %s to %s", path, archive);
+	DBG("zipping(libzip) %s to %s", path, archive);
 
 	do {
 		BOLT_SYS(stat(path, &path_stat), "failed to get path status: %s", path);
@@ -335,7 +334,7 @@ static int libzip_zip(const char* archive, const char* path)
 
 	} while (0);
 
-	if (za && zip_close(za)) { err = E_UA_ERR;  A_ERROR_MSG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
 	if (err) {
 		if (aux) free(aux);
@@ -348,7 +347,7 @@ static int libzip_zip(const char* archive, const char* path)
 #ifndef SHELL_COMMAND_DISABLE
 static int zip_zip(const char* archive, const char* path)
 {
-	A_INFO_MSG("zipping(zip) %s to %s", path, archive);
+	DBG("zipping(zip) %s to %s", path, archive);
 
 	int err = E_UA_OK;
 
@@ -388,7 +387,7 @@ static int libzip_archive_add_file(struct zip* za, const char* path, const char*
 	zip_source_t* s;
 	char* file;
 
-	A_INFO_MSG("adding file %s to zip", path);
+	DBG("adding file %s to zip", path);
 
 	do {
 		char* bname = f_basename(path);
@@ -417,7 +416,7 @@ static int libzip_archive_add_dir(struct zip* za, const char* path, const char* 
 	char* filepath;
 	char* basepath;
 
-	A_INFO_MSG("adding directory %s to zip", path);
+	DBG("adding directory %s to zip", path);
 
 	do {
 		BOLT_IF (!(dir = opendir(path)), E_UA_ERR, "failed to open directory %s", path);
@@ -431,7 +430,7 @@ static int libzip_archive_add_dir(struct zip* za, const char* path, const char* 
 
 			} else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
 				if (zip_add_dir(za, basepath) < 0) {
-					A_ERROR_MSG("error adding directory: %s", basepath);
+					DBG("error adding directory: %s", basepath);
 					err = E_UA_ERR;
 				} else {
 					libzip_archive_add_dir(za, filepath, basepath);
@@ -463,16 +462,16 @@ int libzip_find_file(const char* archive, const char* path)
 		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
 		        "failed to open file as zip %s : %s", archive, aux = libzip_get_error(zerr));
 		if (zip_name_locate(za, path, 0) < 0) {
-			A_ERROR_MSG("file: %s not found in zip: %s", path, archive);
+			DBG("file: %s not found in zip: %s", path, archive);
 			err = E_UA_ERR;
 		} else {
-			A_ERROR_MSG("file: %s found in zip: %s", path, archive);
+			DBG("file: %s found in zip: %s", path, archive);
 			err = E_UA_OK;
 		}
 
 	} while (0);
 
-	if (za && zip_close(za)) { err = E_UA_ERR;  A_ERROR_MSG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
 	if (err) {
 		if (aux) free(aux);
@@ -491,7 +490,7 @@ int copy_file(const char* from, const char* to)
 	char* buf = 0;
 	size_t nread;
 
-	A_INFO_MSG("copying file from %s to %s", from, to);
+	DBG("copying file from %s to %s", from, to);
 
 	do {
 		BOLT_SYS(!(in = fopen(from, "r")), "opening file: %s", from);
@@ -509,8 +508,8 @@ int copy_file(const char* from, const char* to)
 	} while (0);
 
 	if (buf) free(buf);
-	if (in && fclose(in)) A_ERROR_MSG("closing file: %s", from);
-	if (out && fclose(out)) A_ERROR_MSG("closing file: %s", to);
+	if (in && fclose(in)) DBG_SYS("closing file: %s", from);
+	if (out && fclose(out)) DBG_SYS("closing file: %s", to);
 
 	return err;
 }
@@ -520,7 +519,7 @@ int make_file_hard_link(const char* from, const char* to)
 	int err = E_UA_OK;
 
 	do {
-		A_INFO_MSG("Making hardlink from %s to %s", from, to);
+		DBG("Making hardlink from %s to %s", from, to);
 		BOLT_SYS(chkdirp(to), "Error making directory path for %s", to);
 		BOLT_SYS(link(from, to), "Error creating hard link from %s to %s", from, to);
 	} while (0);
@@ -641,7 +640,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	} while (0);
 
 	if (buf) free(buf);
-	if (za && zip_close(za)) { err = E_UA_ERR;  A_ERROR_MSG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
+	if (za && zip_close(za)) { err = E_UA_ERR;  DBG("failed to close zip archive %s : %s", archive, zip_strerror(za)); }
 
 	LL_FOREACH_SAFE(sha256List, sl, aux) {
 		LL_DELETE(sha256List, sl);
@@ -685,7 +684,7 @@ int calculate_sha256_b64(const char* file, char b64buff[SHA256_B64_LENGTH])
 			err = base64_encode(hash, b64buff);
 
 	} else {
-		A_ERROR_MSG("SHA256 Hash calculation failed : %s", file);
+		DBG("SHA256 Hash calculation failed : %s", file);
 	}
 
 	return err;
@@ -699,11 +698,11 @@ int verify_file_hash_b64(const char* file, const char* sha256_b64)
 
 	if (file && sha256_b64 && !(err = calculate_sha256_b64(file, b64buff))) {
 		if (!strncmp(b64buff, sha256_b64, sizeof(b64buff) - 1)) {
-			A_INFO_MSG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+			DBG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
 			err = E_UA_OK;
 
 		} else {
-			A_ERROR_MSG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+			DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
 			err = E_UA_ERR;
 		}
 
@@ -722,18 +721,18 @@ int NGverify_file_hash_b64(const char* file, const char* sha256_b64)
 	if (!(err = calc_sha256(file, hash))) {
 		if (base64_encode(hash, b64buff) == E_UA_OK) {
 			if (!strncmp(b64buff, sha256_b64, sizeof(b64buff) - 1)) {
-				A_INFO_MSG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+				DBG("SHA256 Hash matched %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
 				err = E_UA_OK;
 
 			} else {
-				A_ERROR_MSG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
+				DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256_b64, b64buff);
 				err = E_UA_ERR;
 			}
 
 		}
 
 	} else {
-		A_ERROR_MSG("SHA256 Hash calculation failed : %s", file);
+		DBG("SHA256 Hash calculation failed : %s", file);
 	}
 
 	return err;

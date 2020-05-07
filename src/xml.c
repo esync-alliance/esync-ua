@@ -94,7 +94,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 
 	if (!S(diffInfo->name) ||
 	    (xmlStrEqual(ptr->parent->name, XMLT "changed") && (!S(diffInfo->format) || !S(diffInfo->compression)))) {
-		A_INFO_MSG("Incomplete diff node");
+		DBG("Incomplete diff node");
 		free_diff_info(diffInfo);
 		diffInfo = NULL;
 	}
@@ -123,7 +123,7 @@ int parse_diff_manifest(char* xmlFile, diff_info_t** diffInfo)
 	xmlDocPtr doc = NULL;
 	xmlNodePtr root, node, fnode = NULL;
 
-	A_INFO_MSG("parsing diff manifest: %s", xmlFile);
+	DBG("parsing diff manifest: %s", xmlFile);
 
 	do {
 		BOLT_IF(!xmlFile || access(xmlFile, R_OK), E_UA_ERR, "diff manifest not available %s", xmlFile);
@@ -224,7 +224,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 	}
 
 	if (!S(pkgFile->file) || !S(pkgFile->version) || !S(pkgFile->sha256b64)) {
-		A_INFO_MSG("Incomplete pkg node");
+		DBG("Incomplete pkg node");
 		Z_FREE(pkgFile->file);
 		Z_FREE(pkgFile->version);
 		Z_FREE(pkgFile);
@@ -242,7 +242,7 @@ int parse_pkg_manifest(char* xmlFile, pkg_file_t** pkgFile)
 	xmlDocPtr doc = NULL;
 	xmlNodePtr root, aux, node = NULL;
 
-	A_INFO_MSG("parsing pkg manifest: %s", xmlFile);
+	DBG("parsing pkg manifest: %s", xmlFile);
 
 	do {
 		BOLT_IF(!xmlFile || access(xmlFile, R_OK), E_UA_ERR, "pkg manifest not available %s", xmlFile);
@@ -282,7 +282,7 @@ int remove_old_backup(char* xmlFile, char* version)
 	char* tmp_dir;
 
 	do {
-		A_INFO_MSG("Cleaning up backup after installing version: %s in %s", version, xmlFile);
+		DBG("Cleaning up backup after installing version: %s in %s", version, xmlFile);
 		if (!access(xmlFile, W_OK)) {
 			BOLT_SYS(!(doc = xmlReadFile(xmlFile, NULL, 0)), "Could not read xml file %s", xmlFile);
 			root = xmlDocGetRootElement(doc);
@@ -297,7 +297,7 @@ int remove_old_backup(char* xmlFile, char* version)
 			if ((n = get_xml_child(node, XMLT "version"))) {
 				if ((c = xmlNodeGetContent(n))) {
 					if (!xmlStrEqual(c, XMLT version)) {
-						A_INFO_MSG("Removing pkg entry for version: %s in %s", c, xmlFile);
+						DBG("Removing pkg entry for version: %s in %s", c, xmlFile);
 						if ((n = get_xml_child(node, XMLT "file"))) {
 							if ((backpath = xmlNodeGetContent(n))) {
 								tmp_dir = f_dirname((const char*)backpath);
@@ -360,7 +360,7 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 			if ((n = get_xml_child(node, XMLT "version"))) {
 				if ((c = xmlNodeGetContent(n))) {
 					if (xmlStrEqual(c, XMLT pkgFile->version)) {
-						A_INFO_MSG("Removing pkg entry for version: %s in %s", pkgFile->version, xmlFile);
+						DBG("Removing pkg entry for version: %s in %s", pkgFile->version, xmlFile);
 						xmlUnlinkNode(node);
 						xmlFreeNode(node);
 					}
@@ -381,7 +381,7 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 		}
 
 		if (!sha256xcmp(pkgFile->file, pkgFile->sha_of_sha)) {
-			A_INFO_MSG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
+			DBG("Adding pkg entry for version: %s in %s", pkgFile->version, xmlFile);
 
 			node = xmlNewChild(root, NULL, XMLT "package", NULL);
 			xmlNewChild(node, NULL, XMLT "version", XMLT pkgFile->version);
@@ -395,8 +395,8 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 			BOLT_IF((xmlSaveFormatFileEnc(xmlFile, doc, "UTF-8", 1) < 0), E_UA_ERR, "failed to save pkg manifest");
 
 		} else {
-			A_INFO_MSG("Skipping pkg entry for version: %s in %s", pkgFile->version, xmlFile);
-			A_INFO_MSG("Possibly corrupted package file (%s), not matched with exptected sha value (%s)", pkgFile->file, pkgFile->sha256b64);
+			DBG("Skipping pkg entry for version: %s in %s", pkgFile->version, xmlFile);
+			DBG("Possibly corrupted package file (%s), not matched with exptected sha value (%s)", pkgFile->file, pkgFile->sha256b64);
 		}
 
 	} while (0);
@@ -440,7 +440,7 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 	pkg_file_t* pf  = NULL;
 
 	if (!xmlFile || !version || !pkgFile) {
-		A_ERROR_MSG("Got null pointer(s) xmlFile(%p), version(%p), pkgFile(%p)", xmlFile, version, pkgFile);
+		DBG("Got null pointer(s) xmlFile(%p), version(%p), pkgFile(%p)", xmlFile, version, pkgFile);
 		return E_UA_ERR;
 	}
 
