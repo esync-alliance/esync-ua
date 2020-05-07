@@ -28,7 +28,10 @@ static void _help(const char* app)
 	       "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
 	       "  -b <path>  : path to backup directory (default: \"/data/sota/esync/\")\n"
 	       "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
-	       "  -d         : enable verbose\n"
+	       "  -e         : enable error msg\n"
+	       "  -w         : enable warning msg\n"
+	       "  -i         : enable information msg\n"
+	       "  -d         : enable all debug msg\n"
 	       "  -D         : disable delta reconstruction\n"
 	       "  -a <cap>   : delta capability\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
@@ -67,7 +70,7 @@ int main(int argc, char** argv)
 	scpi.sshpass_bin = "sshpass";
 #endif
 
-	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:dDh")) != -1) {
+	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:ewidDh")) != -1) {
 		switch (c) {
 			case 'k':
 				cfg.cert_dir = optarg;
@@ -101,8 +104,17 @@ int main(int argc, char** argv)
 				scpi.local_dir = optarg;
 				break;
 #endif
-			case 'd':
+			case 'e':
 				cfg.debug = 1;
+				break;
+			case 'w':
+				cfg.debug = 2;
+				break;
+			case 'i':
+				cfg.debug = 3;
+				break;
+			case 'd':
+				cfg.debug = 4;
 				break;
 			case 'D':
 				cfg.delta = 0;
