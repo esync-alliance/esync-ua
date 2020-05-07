@@ -175,7 +175,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	} while (0);
 
 #define DTR_RM(type) \
-	if ((type ## Path) ) { if (!access(type ## Path, F_OK) && rmdirp(type ## Path)) A_ERROR_MSG("error removing directory %s", type ## Path); free(type ## Path); } \
+	if ((type ## Path) ) { if (!access(type ## Path, F_OK) && rmdirp(type ## Path)) DBG("error removing directory %s", type ## Path); free(type ## Path); } \
 	Z_FREE(manifest_ ## type); do { } while (0)
 
 	DTR_RM(old);
@@ -214,7 +214,7 @@ static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int 
 				free_delta_tool_hh(aux);
 			}
 		} else if (tool != deflt_patch_tools && tool != deflt_decomp_tools) {
-			A_ERROR_MSG("failed to add %s tool: %s %s", (isPatchTool ? "patch" : "diff"), SAFE_STR((tool + i)->algo), SAFE_STR((tool + i)->path));
+			DBG("failed to add %s tool: %s %s", (isPatchTool ? "patch" : "diff"), SAFE_STR((tool + i)->algo), SAFE_STR((tool + i)->path));
 			err = E_UA_ERR;
 			break;
 		}
@@ -250,7 +250,7 @@ static int get_espatch_version(char* ver, int len)
 
 		pf = popen("espatch -v", "r");
 		if (!pf) {
-			A_ERROR_MSG("Could not run espatch to determine its version, using default V2.5.");
+			DBG("Could not run espatch to determine its version, using default V2.5.");
 			rc = E_UA_ERR;
 
 		}else {
@@ -261,14 +261,14 @@ static int get_espatch_version(char* ver, int len)
 				if (tmp && (strlen(tmp)- strlen("version: ") < len-1)) {
 					memset(ver, 0, len);
 					strncpy(ver, tmp+strlen("version: "), len-1);
-					A_INFO_MSG("espatch outputs version: %s", ver);
+					DBG("espatch outputs version: %s", ver);
 				} else {
-					A_ERROR_MSG("error: could not parse version from espatch output: %s.", output);
+					DBG("error: could not parse version from espatch output: %s.", output);
 					rc = E_UA_ERR;
 				}
 
 			} else {
-				A_ERROR_MSG("error: espatch has no output.");
+				DBG("error: espatch has no output.");
 				rc = E_UA_ERR;
 			}
 
@@ -406,7 +406,7 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 #define TOOL_EXEC(_t, _o, _n, _p) { \
 		targs = expand_tool_args(_t->tool.args, _o, _n, _p); \
 		cmd   = f_asprintf("%s %s", _t->tool.path, targs); \
-		A_INFO_MSG("Executing: %s", cmd);                         \
+		DBG("Executing: %s", cmd);                         \
 		if (system(cmd)) err = E_UA_SYS; \
 		free(targs); \
 		free(cmd); \
@@ -426,7 +426,7 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 #else
 			err = xzdec(diff, diffp);
 #endif
-			if (err) { A_INFO_MSG("Decompression failed"); break; }
+			if (err) { DBG_SYS("Decompression failed"); break; }
 		}
 
 		if (patchdth) {
@@ -436,7 +436,7 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 #else
 			err = espatch(old, new, diffp? diffp: diff);
 #endif
-			if (err) { A_INFO_MSG("Patching failed"); break; }
+			if (err) { DBG_SYS("Patching failed"); break; }
 		} else {
 			BOLT_SUB(copy_file(diffp ? diffp : diff, new));
 		}
@@ -459,11 +459,11 @@ static int verify_file(const char* file, const char* sha256)
 	if (!(err = calc_sha256_hex(file, hash))) {
 		if (strncmp(hash, sha256, SHA256_HEX_LENGTH - 1)) {
 			err = E_UA_ERR;
-			A_INFO_MSG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
+			DBG("SHA256 Hash mismatch %s : Expected: %s  Calculated: %s", file, sha256, hash);
 		}
 
 	} else {
-		A_ERROR_MSG("SHA256 Hash calculation failed : %s", file);
+		DBG("SHA256 Hash calculation failed : %s", file);
 	}
 
 	return err;

@@ -139,7 +139,7 @@ int update_record_save(ua_component_context_t* uacc)
 		json_object_put(jo_rec);
 
 	}else{
-		A_ERROR_MSG("Error save update record %s", NULL_STR(uacc->record_file));
+		DBG("Error save update record %s", NULL_STR(uacc->record_file));
 		err = E_UA_ERR;
 	}
 
@@ -168,7 +168,7 @@ char* update_record_load(char* record_file)
 		fclose(fd);
 
 	}else{
-		A_ERROR_MSG("Could not open update record file %s", NULL_STR(record_file));
+		DBG("Could not open update record file %s", NULL_STR(record_file));
 
 	}
 
@@ -182,7 +182,7 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 	if (E_UA_OK != (uacc->uar->on_get_version)(uacc->update_pkg.type,
 	                                           uacc->update_pkg.name,
 	                                           &install_version))
-		A_ERROR_MSG("Error get version for %s.", uacc->update_pkg.name);
+		DBG("Error get version for %s.", uacc->update_pkg.name);
 
 	return (S(install_version) && !strcmp(target_version, install_version));
 
@@ -192,9 +192,9 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 {
 	install_state_t update_sts;
 
-	A_INFO_MSG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
+	DBG("Start installation of %s for version %s.", uacc->update_pkg.name, uacc->update_file_info.version);
 	if (!uacc->update_pkg.rollback_version && update_installed_version_same(uacc, uacc->update_pkg.version)) {
-		A_INFO_MSG("Found installed version is same as requested target version.");
+		DBG("Found installed version is same as requested target version.");
 		send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 		update_sts = INSTALL_COMPLETED;
 	}else {
@@ -213,9 +213,9 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 			remove(uacc->record_file);
 	}
 	if (update_sts == INSTALL_COMPLETED)
-		A_INFO_MSG("Installation of %s for version %s has completed successfully.", uacc->update_pkg.name, uacc->update_file_info.version);
+		DBG("Installation of %s for version %s has completed successfully.", uacc->update_pkg.name, uacc->update_file_info.version);
 	else
-		A_INFO_MSG("Installation of %s for version %s did not succeed.", uacc->update_pkg.name, uacc->update_file_info.version);
+		DBG("Installation of %s for version %s did not succeed.", uacc->update_pkg.name, uacc->update_file_info.version);
 	return update_sts;
 }
 
@@ -243,10 +243,10 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 				}
 
 				if (json_object_array_length(uacc->update_pkg.rollback_versions) > 0) {
-					A_INFO_MSG("Found local backup available for rollback");
+					DBG("Found local backup available for rollback");
 					uacc->rb_type = URB_UA_LOCAL_BACKUP;
 				}else {
-					A_INFO_MSG("No local backup available for rollback");
+					DBG("No local backup available for rollback");
 					json_object_put(uacc->update_pkg.rollback_versions);
 					uacc->update_pkg.rollback_versions = NULL;
 
@@ -284,7 +284,7 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 	int rc = E_UA_ERR;
 
 	if (uacc->rb_type == URB_NONE) {
-		A_ERROR_MSG("Error: rollback type is none, why asked for rollback package?");
+		DBG("Error: rollback type is none, why asked for rollback package?");
 		rc = E_UA_ERR;
 	}else {
 		if (rb_file_info && rb_version) {
@@ -293,7 +293,7 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 			    && rb_file_info->downloaded
 			    && !get_pkg_sha256_from_json(uacc->cur_msg, rb_version, rb_file_info->sha256b64)
 			    && !get_pkg_file_from_json(uacc->cur_msg, rb_version, &filepath)) {
-				A_INFO_MSG("RB info available from ready-update package.");
+				DBG("RB info available from ready-update package.");
 
 				rb_file_info->file    = f_strdup(filepath);
 				rb_file_info->version = f_strdup(rb_version);
@@ -304,7 +304,7 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 					free(rb_file_info->version);
 				}
 			} else {
-				A_INFO_MSG("Getting RB info from backup manifest.");
+				DBG("Getting RB info from backup manifest.");
 				if (E_UA_OK == get_pkg_file_manifest(uacc->backup_manifest, rb_version, rb_file_info)) {
 					if (update_package_available(rb_file_info, rb_version))
 						rc = E_UA_OK;
@@ -350,7 +350,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	pkg_file_t tmp_rb_file_info = {0};
 
 	if (uacc && rb_version ) {
-		A_INFO_MSG("Starting rollback type(%d) to version(%s)", uacc->rb_type, next_rb_version);
+		DBG("Starting rollback type(%d) to version(%s)", uacc->rb_type, next_rb_version);
 		Z_FREE(uacc->update_file_info.version);
 		Z_FREE(uacc->update_file_info.file);
 		uacc->update_pkg.rollback_version = next_rb_version;
@@ -359,17 +359,17 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			uacc->update_file_info.version = f_strdup(next_rb_version);
 			uacc->update_file_info.file    = NULL;
 			send_install_status(uacc, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
-			A_INFO_MSG("Found installed version is same as requested rollback version.");
+			DBG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else if (delta_use_external_algo()) {
 			//E115-417: No rollback is available when standalone delta is used.
-			A_INFO_MSG("Rollback is not avaialbe when standalone delta is enabled, returning INSTALL_FAILED");
+			DBG("Rollback is not avaialbe when standalone delta is enabled, returning INSTALL_FAILED");
 			update_sts = INSTALL_FAILED;
 		}else {
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
-				A_INFO_MSG("Rollback package found, rollback installation starts now.");
+				DBG("Rollback package found, rollback installation starts now.");
 
 				update_sts = prepare_install_action(uacc, &tmp_rb_file_info, 0,
 				                                    &uacc->update_file_info, &uacc->update_error);
@@ -383,21 +383,21 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				Z_FREE(tmp_rb_file_info.file);
 
 				if (update_sts != INSTALL_COMPLETED) {
-					A_INFO_MSG("Rollback to version(%s) was not successful", next_rb_version);
+					DBG("Rollback to version(%s) was not successful", next_rb_version);
 					tmp_cur_version = next_rb_version;
 					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
 					if (next_rb_version) {
-						A_INFO_MSG("Rollback will try the next version(%s).", next_rb_version);
+						DBG("Rollback will try the next version(%s).", next_rb_version);
 						update_sts = INSTALL_ROLLBACK;
 						update_send_rollback_status(uacc, next_rb_version);
 
 					}
 					else
-						A_INFO_MSG("No more rollback version.");
+						DBG("No more rollback version.");
 				}
 
 			} else {
-				A_INFO_MSG("Rollback package file is not available locally, asking eSync client to download it.");
+				DBG("Rollback package file is not available locally, asking eSync client to download it.");
 				update_send_rollback_status(uacc, next_rb_version);
 				tmp_cur_version = next_rb_version;
 				next_rb_version = NULL;
@@ -408,17 +408,17 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 		}
 
 		if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {
-			A_INFO_MSG("Removing temp manifest, RB version was %s.", tmp_cur_version);
+			DBG("Removing temp manifest, RB version was %s.", tmp_cur_version);
 			remove(uacc->update_manifest);
 		}
 
 	};
 
 	if (update_sts == INSTALL_COMPLETED) {
-		A_INFO_MSG("Rollback to version %s has succeeded.", uacc->update_file_info.version);
+		DBG("Rollback to version %s has succeeded.", uacc->update_file_info.version);
 
 	} else if (update_sts == INSTALL_FAILED) {
-		A_INFO_MSG("Rollback has exhausted all available versions, informing terminal-failure.");
+		DBG("Rollback has exhausted all available versions, informing terminal-failure.");
 		uacc->update_error = UE_TERMINAL_FAILURE;
 		send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 
@@ -435,13 +435,13 @@ void* update_resume_from_reboot(void* arg)
 	if (uacc) {
 		uacc->worker.worker_running = 1;
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
-			A_INFO_MSG("Resume: update installation was successful.");
+			DBG("Resume: update installation was successful.");
 			post_update_action(uacc);
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else {
 			if (uacc->rb_type != URB_NONE) {
-				A_INFO_MSG("Resume: update installation failed, continue next rollback action.");
+				DBG("Resume: update installation failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL)
 					update_start_rollback_operations(uacc, rb_version, 1);
@@ -450,7 +450,7 @@ void* update_resume_from_reboot(void* arg)
 					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
 
 			}else {
-				A_ERROR_MSG("Resume: update installation has failed, informing eSync client.");
+				DBG("Resume: update installation has failed, informing eSync client.");
 				send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 			}
 		}
@@ -458,7 +458,7 @@ void* update_resume_from_reboot(void* arg)
 		remove(uacc->record_file);
 		json_object_put(t_arg->jo_update_rec);
 		Z_FREE(t_arg);
-		A_INFO_MSG("Resume operations after reboot have completed");
+		DBG("Resume operations after reboot have completed");
 		handler_set_internal_state(UAI_STATE_RESUME_DONE);
 		uacc->worker.worker_running = 0;
 
@@ -473,7 +473,7 @@ char* update_record_get_type(json_object* jo_cc)
 	pkg_info_t update_pkg = {0};
 
 	if (E_UA_OK == update_set_pkg_info(jo_cc, &update_pkg)) {
-		A_INFO_MSG("Resume record for type %s.", update_pkg.type);
+		DBG("Resume record for type %s.", update_pkg.type);
 		type = f_strdup(update_pkg.type);
 	}
 
@@ -491,7 +491,7 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 
 	handler_set_internal_state(UAI_STATE_RESUME_STARTED);
 	if (rec_string != NULL) {
-		A_INFO_MSG("Starting resume operations after reboot.");
+		DBG("Starting resume operations after reboot.");
 		enum json_tokener_error jerr;
 		jo_update_rec = json_tokener_parse_verbose(rec_string, &jerr);
 		type          = update_record_get_type(jo_update_rec);
@@ -509,19 +509,19 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 					thread_arg->jo_update_rec = jo_update_rec;
 					thread_arg->uacc          = uacc;
 					if (pthread_create(&thread_resume, 0, update_resume_from_reboot, thread_arg)) {
-						A_ERROR_MSG("Failed to spawn a resume thread.");
+						DBG("Failed to spawn a resume thread.");
 						json_object_put(jo_update_rec);
 						Z_FREE(thread_arg);
 						err = E_UA_ERR;
 					}
 				} else
 				{
-					A_ERROR_MSG("Error setting component context for resume.");
+					DBG("Error setting component context for resume.");
 				}
 
 
 			}else {
-				A_ERROR_MSG("Error: Could not find registered type of %s", type);
+				DBG("Error: Could not find registered type of %s", type);
 				err = E_UA_ERR;
 
 			}
@@ -529,12 +529,12 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 			free(type);
 
 		}else {
-			A_ERROR_MSG("Error getting type from resume record.");
+			DBG("Error getting type from resume record.");
 
 		}
 		free(rec_string);
 		if (err == E_UA_ERR)
-			A_ERROR_MSG("Resume operations after reboot have concluded with error, discarding resume record.");
+			DBG("Resume operations after reboot have concluded with error, discarding resume record.");
 
 	}else {
 		err = E_UA_ERR;
@@ -573,7 +573,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 			if ((E_UA_OK != get_pkg_file_manifest(uacc->update_manifest, version_to_update, &uacc->update_file_info)))
 			{
-				A_ERROR_MSG("Could not load temp update manifest, getting info from json package object instead.");
+				DBG("Could not load temp update manifest, getting info from json package object instead.");
 				char* update_file_name = NULL;
 				if (!get_pkg_downloaded_from_json(jsonObj, version_to_update, &uacc->update_file_info.downloaded)) {
 					if (uacc->update_file_info.downloaded) {
@@ -619,11 +619,11 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 								add_pkg_file_manifest(uacc->update_manifest, &uacc->update_file_info);
 								err = E_UA_OK;
 							} else {
-								A_ERROR_MSG("Error in calculating sha_of_sha.");
+								DBG("Error in calculating sha_of_sha.");
 								err = E_UA_ERR;
 							}
 						} else {
-							A_INFO_MSG("Getting filepath from backup manifest.");
+							DBG("Getting filepath from backup manifest.");
 							err = get_pkg_file_manifest(uacc->backup_manifest, version_to_update, &uacc->update_file_info);
 						}
 					}

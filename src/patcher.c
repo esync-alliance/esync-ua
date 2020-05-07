@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include "delta.h"
 #include "ua_version.h"
-#include "debug.h"
 
 int ua_debug;
 
@@ -21,7 +20,7 @@ static void _help(const char* app)
 
 int main(int argc, char** argv)
 {
-	A_INFO_MSG("Delta Patcher %s\n", BUILD_VERSION);
+	printf("Delta Patcher %s\n", BUILD_VERSION);
 
 	int err = E_UA_OK;
 	int c   = 0;
@@ -65,17 +64,17 @@ int main(int argc, char** argv)
 			break;
 		}
 
-		A_INFO_MSG("Delta capability supported : %s\n", get_delta_capability());
+		printf("Delta capability supported : %s\n", get_delta_capability());
 
 		if (!is_delta_package(difffile)) {
-			A_INFO_MSG("%s is not a delta file\n", difffile);
+			printf("%s is not a delta file\n", difffile);
 			err = E_UA_ARG; break;
 		}
 
 		if ((err = delta_reconstruct(oldfile, difffile, newfile))) {
-			A_INFO_MSG("Delta reconstruction failed!\n");
+			printf("Delta reconstruction failed!\n");
 		} else {
-			A_INFO_MSG("Delta reconstruction success!\n");
+			printf("Delta reconstruction success!\n");
 		}
 
 	} while (0);
