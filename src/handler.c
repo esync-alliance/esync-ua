@@ -827,7 +827,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 						json_object* versionObject = json_object_new_object();
 						json_object_object_add(versionObject, "file", json_object_new_string(""));
-						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
+						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
 						json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
 						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
 						json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
@@ -1004,7 +1004,9 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			}
 		}
 
-		if (update_sts == INSTALL_COMPLETED && !ua_rollback_disabled(uacc->update_pkg.name)) {
+		if (update_sts == INSTALL_COMPLETED && 
+			!ua_rollback_disabled(uacc->update_pkg.name) && 
+			!delta_use_external_algo()) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 		uacc->cur_msg = NULL;
