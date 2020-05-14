@@ -791,10 +791,11 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 				if ( !ua_rollback_disabled(pkgInfo.name) && backup_manifest != NULL) {
-					json_object* verListObject = json_object_new_object();
-					json_object* rbVersArray   = json_object_new_array();
 
 					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
+						json_object* verListObject = json_object_new_object();
+						json_object* rbVersArray   = json_object_new_array();
+
 						DL_FOREACH_SAFE(pkgFile, pf, aux) {
 							json_object* versionObject = json_object_new_object();
 
@@ -823,11 +824,13 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 						}
 
 					} else if (delta_use_external_algo() && installedVer) {
+						json_object* verListObject = json_object_new_object();
+						json_object* rbVersArray   = json_object_new_array();
 						// E115-417: return fake rollback versions info.
 
 						json_object* versionObject = json_object_new_object();
 						json_object_object_add(versionObject, "file", json_object_new_string(""));
-						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(0));
+						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
 						json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
 						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
 						json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
@@ -921,11 +924,16 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			#endif
 
 			uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
-			state                 = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
-			send_install_status(uacc, state, &pkgFile, updateErr);
 
-			Z_FREE(updateFile.version);
-			Z_FREE(updateFile.file);
+			if (access(uacc->update_manifest, F_OK)) {
+				state = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
+
+				send_install_status(uacc, state, &pkgFile, updateErr);
+
+				Z_FREE(updateFile.version);
+				Z_FREE(updateFile.file);
+			}
+
 			Z_FREE(uacc->update_manifest);
 
 		} else {
@@ -990,6 +998,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			    uacc->rb_type >= URB_UA_INITIATED) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
+					DBG("Removing temp manifest %s", uacc->update_manifest);
+					remove(uacc->update_manifest);
 					update_sts = INSTALL_ROLLBACK;
 					update_send_rollback_status(uacc, rb_version);
 				}
@@ -997,7 +1007,9 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			}
 		}
 
-		if (update_sts == INSTALL_COMPLETED && !ua_rollback_disabled(uacc->update_pkg.name)) {
+		if (update_sts == INSTALL_COMPLETED && 
+			!ua_rollback_disabled(uacc->update_pkg.name) && 
+			!delta_use_external_algo()) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 		uacc->cur_msg = NULL;
@@ -1141,13 +1153,13 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 
 	updateFile->version = f_strdup(pkgFile->version);
 
-	if (!bck && uar->on_transfer_file && access(uacc->update_manifest, F_OK)) {
+	if (!bck && uar->on_transfer_file) {
 		err = transfer_file_action(uacc, pkgInfo, pkgFile);
 		if (err == E_UA_ERR)
 			DBG("UA:on_transfer_file returned error");
 	}
 
-	if (err == E_UA_OK && !ua_intl.package_verification_disabled && access(uacc->update_manifest, F_OK)) {
+	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
 		if (S(pkgFile->delta_sha256b64))
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->delta_sha256b64);
 		else
@@ -1180,15 +1192,12 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 	}
 
 	if (err == E_UA_OK) {
-		//Only call UA's on_prepare_install if no temp manifest file.
-		if (access(uacc->update_manifest, F_OK)) {
-			if (uar->on_prepare_install) {
-				state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
-				if (S(newFile)) {
-					DBG("UA indicated to update using this new file: %s", newFile);
-					free(updateFile->file);
-					updateFile->file = f_strdup(newFile);
-				}
+		if (uar->on_prepare_install) {
+			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
+			if (S(newFile)) {
+				DBG("UA indicated to update using this new file: %s", newFile);
+				free(updateFile->file);
+				updateFile->file = f_strdup(newFile);
 			}
 		}
 
