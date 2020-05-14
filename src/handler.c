@@ -791,10 +791,11 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 				if ( !ua_rollback_disabled(pkgInfo.name) && backup_manifest != NULL) {
-					json_object* verListObject = json_object_new_object();
-					json_object* rbVersArray   = json_object_new_array();
 
 					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
+						json_object* verListObject = json_object_new_object();
+						json_object* rbVersArray   = json_object_new_array();
+
 						DL_FOREACH_SAFE(pkgFile, pf, aux) {
 							json_object* versionObject = json_object_new_object();
 
@@ -823,6 +824,8 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 						}
 
 					} else if (delta_use_external_algo() && installedVer) {
+						json_object* verListObject = json_object_new_object();
+						json_object* rbVersArray   = json_object_new_array();
 						// E115-417: return fake rollback versions info.
 
 						json_object* versionObject = json_object_new_object();
