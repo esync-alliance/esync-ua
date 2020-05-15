@@ -952,41 +952,15 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	}
 }
 
-static void set_flashing_time_log_data(log_data_t* ld, double time, char* pkg_name, install_state_t state)
-{
-	if (ld) {
-		json_object* msg_obj = json_object_new_object();
-		char tmp_str[64];
-		snprintf(tmp_str, sizeof(tmp_str), "%f", time);
-		ld->compound  = 1;
-		ld->binary    = NULL;
-		ld->timestamp = NULL;
-		ld->message   = msg_obj;
-
-		if (msg_obj) {
-			json_object_object_add(msg_obj, "units", json_object_new_string("seconds"));
-			json_object_object_add(msg_obj, "code", json_object_new_string("9000"));
-			json_object_object_add(msg_obj, "value", json_object_new_string(tmp_str));
-			json_object_object_add(msg_obj, "moduleID", S(pkg_name) ? json_object_new_string(pkg_name) : NULL);
-			json_object_object_add(msg_obj, "status", json_object_new_string(install_state_string(state)));
-
-		}
-	}
-
-}
-
 static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	install_state_t update_sts = INSTALL_READY;
 	json_object* jo            = json_object_get(jsonObj);
 
 	uacc->cur_msg = jo;
-	clock_t start_time;
-	double flashing_time;
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
 		uacc->state = UA_STATE_READY_UPDATE_STARTED;
-		start_time  = clock();
 		update_set_rollback_info(uacc);
 
 		if (uacc->rb_type == URB_DMC_INITIATED) {
@@ -1019,13 +993,6 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		Z_FREE(uacc->backup_manifest);
 		Z_FREE(uacc->update_manifest);
 
-		log_data_t ld;
-		flashing_time = (double)(clock()-start_time) / CLOCKS_PER_SEC;
-		set_flashing_time_log_data(&ld, flashing_time, uacc->update_pkg.name, update_sts);
-		ua_send_log_report(uacc->update_pkg.type, LOG_INFO, &ld);
-		if (ld.message)
-			json_object_put(ld.message);
-
 		update_release_comp_context(uacc);
 	}else {
 		if (uacc == NULL || jsonObj == NULL)
@@ -1036,6 +1003,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}
 	}
 }
+
 
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
