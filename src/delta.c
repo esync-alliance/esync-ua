@@ -104,18 +104,20 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	char* oldFile, * diffFile, * newFile;
 	char* oldPath       = 0, * diffPath = 0, * newPath = 0;
 	char* diff_manifest = 0, * manifest_old = 0, * manifest_diff = 0, * manifest_new = 0;
-	char* top_delta_dir = 0;
+	char* top_delta_dir = 0, * pkg_dir = 0, * p = 0;
 
 	do {
+		pkg_dir = f_basename(diffPkgFile);
+		if ((p =strrchr(pkg_dir, '.'))) *p = 0;
+
 		top_delta_dir = JOIN(delta_stg.cache_dir, "delta");
 		if (top_delta_dir) {
 			if (!access(top_delta_dir, W_OK))
 				rmdirp(top_delta_dir);
-			free(top_delta_dir);
 		}
 
 #define DTR_MK(type) \
-	BOLT_SYS(newdirp(type ## Path = JOIN(delta_stg.cache_dir, "delta", # type), 0755) && (errno != EEXIST), "failed to make directory %s", type ## Path); \
+	BOLT_SYS(newdirp(type ## Path = JOIN(top_delta_dir, pkg_dir, # type), 0755) && (errno != EEXIST), "failed to make directory %s", type ## Path); \
 	manifest_ ## type = JOIN(type ## Path, MANIFEST); do { \
 	} while (0)
 
@@ -183,7 +185,11 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	DTR_RM(new);
 
 #undef DTR_RM
-
+	p = JOIN(top_delta_dir, pkg_dir);
+	rmdir(p);
+	f_free(p);
+	f_free(pkg_dir);
+	f_free(top_delta_dir);
 	Z_FREE(diff_manifest);
 
 	return err;
@@ -276,7 +282,7 @@ static int get_espatch_version(char* ver, int len)
 		}
 #else
 		rc = E_UA_ERR;
-		const char *version = espatch_get_version();
+		const char* version = espatch_get_version();
 		if (version) {
 			strncpy(ver, version, strlen(version));
 			rc = E_UA_OK;
@@ -395,9 +401,10 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 {
 	int err     = E_UA_OK;
 	char* diffp = 0;
+
 #ifndef SHELL_COMMAND_DISABLE
 	char* targs;
-	char* cmd   = 0;
+	char* cmd = 0;
 #endif
 	delta_tool_hh_t* decompdth, * patchdth = 0;
 
@@ -434,7 +441,7 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 #ifndef SHELL_COMMAND_DISABLE
 			TOOL_EXEC(patchdth, old, new, diffp ? diffp : diff);
 #else
-			err = espatch(old, new, diffp? diffp: diff);
+			err = espatch(old, new, diffp ? diffp : diff);
 #endif
 			if (err) { DBG_SYS("Patching failed"); break; }
 		} else {
