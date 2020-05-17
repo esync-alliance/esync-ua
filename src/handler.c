@@ -974,12 +974,14 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			    uacc->rb_type >= URB_UA_INITIATED) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
-					DBG("Removing temp manifest %s", uacc->update_manifest);
-					remove(uacc->update_manifest);
 					update_sts = INSTALL_ROLLBACK;
 					update_send_rollback_status(uacc, rb_version);
 				}
+			}
 
+			if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {
+				DBG("Removing temp manifest %s", uacc->update_manifest);
+				remove(uacc->update_manifest);
 			}
 		}
 
@@ -1288,6 +1290,7 @@ install_state_t update_action(ua_component_context_t* uacc)
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+			DBG("VVV: status: %s rb: %s", install_state_string(state),  (pkgInfo->rollback_versions));
 			send_install_status(uacc, state, 0, UE_NONE);
 		}
 	}
