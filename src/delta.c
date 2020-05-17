@@ -5,6 +5,7 @@
 #ifdef SHELL_COMMAND_DISABLE
 #include "delta_utils.h"
 #endif
+#include <zip.h>
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
@@ -90,6 +91,43 @@ const char* get_delta_capability()
 int is_delta_package(const char* pkgFile)
 {
 	return !libzip_find_file(pkgFile, MANIFEST_DIFF);
+}
+
+int is_prepared_delta_package(char* archive)
+{
+	int err               = E_UA_ERR;
+	int is_prepared_delta = 0;
+	zip_t* zt = NULL;
+	zip_file_t* zf = NULL;
+	char* buf = NULL;
+
+	do {
+		int errorp;
+		BOLT_IF(!archive, E_UA_ERR, "archive is NULL");
+
+		BOLT_IF(!(zt= zip_open(archive, ZIP_RDONLY,&errorp)), E_UA_ERR, "failed to open archive %s", archive);
+
+		zip_stat_t zsb;
+		BOLT_IF(!(zf = zip_fopen(zt, MANIFEST_DIFF, 0)), E_UA_ERR, "failed to open file %s", MANIFEST_DIFF);
+
+		BOLT_IF((zip_stat(zt, MANIFEST_DIFF, 0, &zsb) == -1), E_UA_ERR, "failed to stat file %s", MANIFEST_DIFF);
+		DBG("size of %s is %d", MANIFEST_DIFF, zsb.size);
+
+		BOLT_MALLOC(buf, zsb.size +1);
+		BOLT_IF((zip_fread(zf, buf, zsb.size) == -1), E_UA_ERR, "failed to stat file %s", MANIFEST_DIFF);
+
+		if (strstr(buf, "<prepared>") && strstr(buf, "</prepared>")) {
+			DBG("Found prepared delta package");
+			is_prepared_delta = 1;
+		}
+
+	} while (0);
+
+	if (zf) zip_fclose(zf);
+	if (zt) zip_close(zt);
+	f_free(buf);
+
+	return is_prepared_delta;
 }
 
 int delta_use_external_algo(void)

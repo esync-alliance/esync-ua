@@ -61,6 +61,7 @@ int delta_init(char* cacheDir, delta_cfg_t* deltaConfig);
 void delta_stop(void);
 const char* get_delta_capability(void);
 int is_delta_package(const char* pkgFile);
+int is_prepared_delta_package(char* archive);
 int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const char* newPkgFile);
 int delta_use_external_algo(void);
 void free_diff_info(diff_info_t* di);

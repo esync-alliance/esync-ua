@@ -363,10 +363,6 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			update_sts = INSTALL_COMPLETED;
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
-		}else if (delta_use_external_algo()) {
-			//E115-417: No rollback is available when standalone delta is used.
-			DBG("Rollback is not avaialbe when standalone delta is enabled, returning INSTALL_FAILED");
-			update_sts = INSTALL_FAILED;
 		}else {
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
 				DBG("Rollback package found, rollback installation starts now.");
@@ -374,27 +370,34 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				update_sts = prepare_install_action(uacc, &tmp_rb_file_info, 0,
 				                                    &uacc->update_file_info, &uacc->update_error);
 
-				if (update_sts == INSTALL_READY) {
-					uacc->update_pkg.rollback_version = uacc->update_file_info.version;
-					update_sts                        = update_start_install_operations(uacc, reboot_support);
+				if (is_prepared_delta_package(uacc->update_file_info.file)) {
+					//E115-417: No rollback is available when standalone delta is used.
+					DBG("package %s is for preprared delta, rollback is not avaialbe, returning INSTALL_FAILED", uacc->update_file_info.file);
+					update_sts = INSTALL_FAILED;
+
+				} else {
+					if (update_sts == INSTALL_READY) {
+						uacc->update_pkg.rollback_version = uacc->update_file_info.version;
+						update_sts                        = update_start_install_operations(uacc, reboot_support);
+					}
+
+					if (update_sts != INSTALL_COMPLETED) {
+						DBG("Rollback to version(%s) was not successful", next_rb_version);
+						tmp_cur_version = next_rb_version;
+						next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
+						if (next_rb_version) {
+							DBG("Rollback will try the next version(%s).", next_rb_version);
+							update_sts = INSTALL_ROLLBACK;
+							update_send_rollback_status(uacc, next_rb_version);
+
+						}
+						else
+							DBG("No more rollback version.");
+					}
 				}
 
 				Z_FREE(tmp_rb_file_info.version);
 				Z_FREE(tmp_rb_file_info.file);
-
-				if (update_sts != INSTALL_COMPLETED) {
-					DBG("Rollback to version(%s) was not successful", next_rb_version);
-					tmp_cur_version = next_rb_version;
-					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
-					if (next_rb_version) {
-						DBG("Rollback will try the next version(%s).", next_rb_version);
-						update_sts = INSTALL_ROLLBACK;
-						update_send_rollback_status(uacc, next_rb_version);
-
-					}
-					else
-						DBG("No more rollback version.");
-				}
 
 			} else {
 				DBG("Rollback package file is not available locally, asking eSync client to download it.");
@@ -599,14 +602,14 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 							uacc->update_file_info.version = f_strdup(version_to_update);
 							// If the firmware file indicated by json is not available
 							if (access(uacc->update_file_info.file, F_OK) == -1) {
-								char *new_file = NULL;
-								ua_routine_t *uar = uacc->uar;
+								char* new_file    = NULL;
+								ua_routine_t* uar = uacc->uar;
 								if (uar->on_transfer_file) {
 									int ret = (*uar->on_transfer_file)(uacc->update_pkg.type,
-																	   uacc->update_pkg.name,
-																	   uacc->update_pkg.version,
-																	   uacc->update_file_info.file,
-																	   &new_file);
+									                                   uacc->update_pkg.name,
+									                                   uacc->update_pkg.version,
+									                                   uacc->update_file_info.file,
+									                                   &new_file);
 									if (ret) err = E_UA_ERR;
 								}
 								if (new_file) {

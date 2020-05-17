@@ -791,7 +791,6 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 				if ( !ua_rollback_disabled(pkgInfo.name) && backup_manifest != NULL) {
-
 					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
 						json_object* verListObject = json_object_new_object();
 						json_object* rbVersArray   = json_object_new_array();
@@ -821,6 +820,9 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 						if (json_object_array_length(rbVersArray) > 0) {
 							json_object_object_add(pkgObject, "version-list", verListObject);
 							json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+						} else {
+							json_object_put(verListObject);
+							json_object_put(rbVersArray);
 						}
 
 					} else if (delta_use_external_algo() && installedVer) {
@@ -981,9 +983,9 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			}
 		}
 
-		if (update_sts == INSTALL_COMPLETED && 
-			!ua_rollback_disabled(uacc->update_pkg.name) && 
-			!delta_use_external_algo()) {
+		if ( update_sts == INSTALL_COMPLETED &&
+		     !ua_rollback_disabled(uacc->update_pkg.name) &&
+		     !is_prepared_delta_package(uacc->update_file_info.file) ) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 		uacc->cur_msg = NULL;
@@ -1134,7 +1136,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->sha256b64);
 	}
 
-	if (err == E_UA_OK && ua_intl.delta && !delta_use_external_algo() && is_delta_package(pkgFile->file)) {
+	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file) && !is_prepared_delta_package(pkgFile->file)) {
 		char* bname = f_basename(pkgFile->file);
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
