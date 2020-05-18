@@ -26,6 +26,7 @@
 #define LOG_REPORT      "xl4.log-report"
 #define UPDATE_STATUS   "xl4.update-status"
 #define UPDATE_REPORT   "xl4.update-report"
+#define QUERY_SEQUENCE  "xl4.sequence-info"
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #define START_DOWNLOAD "xl4.start-download"
@@ -149,6 +150,8 @@ typedef struct ua_internal {
 	uint32_t backup_source;
 	pthread_mutex_t backup_lock;
 	rollback_crtl_t* rb_crtl;
+	char* query_reply_id;
+	int seq_info_valid;
 #ifdef SUPPORT_UA_DOWNLOAD
 	int ua_download_required;
 	char* ua_downloaded_filename;
@@ -182,7 +185,7 @@ typedef enum update_rollback {
 } update_rollback_t;
 
 typedef struct comp_sequence {
-	char* type;
+	char* name;
 	int num;
 	UT_hash_handle hh;
 

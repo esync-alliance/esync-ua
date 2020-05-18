@@ -53,11 +53,11 @@ int xl4bus_client_init(char* url, char* cert_dir)
 #if XL4_PROVIDE_THREADS
 		m_xl4bus_clt.use_internal_thread = 1;
 #endif
-		m_xl4bus_clt.on_status           = on_xl4bus_status;
-		m_xl4bus_clt.on_delivered        = on_xl4bus_delivered;
-		m_xl4bus_clt.on_message          = on_xl4bus_message;
-		m_xl4bus_clt.on_presence         = on_xl4bus_presence;
-		m_xl4bus_clt.on_release          = on_xl4bus_reconnect;
+		m_xl4bus_clt.on_status    = on_xl4bus_status;
+		m_xl4bus_clt.on_delivered = on_xl4bus_delivered;
+		m_xl4bus_clt.on_message   = on_xl4bus_message;
+		m_xl4bus_clt.on_presence  = on_xl4bus_presence;
+		m_xl4bus_clt.on_release   = on_xl4bus_reconnect;
 
 #ifdef USE_XL4BUS_TRUST
 		char* groups[] = {};

@@ -96,7 +96,7 @@ static int ua_dl_calc_file_crc32(FILE* fd, int len, unsigned int* crc32)
 	fseek(fd, 0, SEEK_SET);
 	*crc32 = 0;
 
-	for (;;) {
+	for (;; ) {
 		if (remain <= 0) {
 			break;
 		}
@@ -305,7 +305,7 @@ static void print_buffer2(const void* buf, uint32_t len)
 }
 
 
-FILE* tmp_fp = 0;
+FILE* tmp_fp             = 0;
 char tmp_data[1024*1024] = {0};
 static void do_memcmp(int pos, int len, const char* data, char* name)
 {
@@ -617,9 +617,9 @@ static int ua_dl_step_verify(ua_dl_context_t* dlc)
 
 		DBG("ua_dl_setp_verify dmclient_verify_binary() cnt=%d", i);
 		if (XL4_DME_OK == dmclient_verify_binary(
-			    dlc->dl_encrytion_filename,
-			    ua_intl.verify_ca_file[i],
-			    ua_dl_dmclient_cert_ck_f, 0, 0, NULL)) {
+		            dlc->dl_encrytion_filename,
+		            ua_intl.verify_ca_file[i],
+		            ua_dl_dmclient_cert_ck_f, 0, 0, NULL)) {
 			DBG("ua_dl_setp_verify verify binary OK. cnt=%d", i);
 			dlc->dl_rec.step = UA_DL_STEP_VERIFIED;
 			if (E_UA_OK != ua_dl_save_dl_rc(dlc)) {
