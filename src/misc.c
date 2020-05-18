@@ -37,6 +37,7 @@ int sha256cmp(struct sha256_list* a, struct sha256_list* b)
 uint64_t currentms(void)
 {
 	struct timespec tp;
+
 	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
 
 	return ((uint64_t)tp.tv_sec) * 1000ULL +
@@ -289,7 +290,7 @@ static int zip_unzip(const char* archive, const char* path)
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
 
 			char cmd[]   = "unzip";
-			char* argv[] = {cmd, (char*)archive, "-d", (char*)path, NULL};
+			char* argv[] = {cmd, "-o", (char*)archive, "-d", (char*)path, NULL};
 			BOLT_SYS(run_cmd(cmd, argv), "failed to unzip files");
 
 		} while (0);

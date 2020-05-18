@@ -5,6 +5,7 @@
 #ifdef SHELL_COMMAND_DISABLE
 #include "delta_utils.h"
 #endif
+#include <zip.h>
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
@@ -92,6 +93,43 @@ int is_delta_package(const char* pkgFile)
 	return !libzip_find_file(pkgFile, MANIFEST_DIFF);
 }
 
+int is_prepared_delta_package(char* archive)
+{
+	int err               = E_UA_ERR;
+	int is_prepared_delta = 0;
+	zip_t* zt = NULL;
+	zip_file_t* zf = NULL;
+	char* buf = NULL;
+
+	do {
+		int errorp;
+		BOLT_IF(!archive, E_UA_ERR, "archive is NULL");
+
+		BOLT_IF(!(zt= zip_open(archive, ZIP_RDONLY,&errorp)), E_UA_ERR, "failed to open archive %s", archive);
+
+		zip_stat_t zsb;
+		BOLT_IF(!(zf = zip_fopen(zt, MANIFEST_DIFF, 0)), E_UA_ERR, "failed to open file %s", MANIFEST_DIFF);
+
+		BOLT_IF((zip_stat(zt, MANIFEST_DIFF, 0, &zsb) == -1), E_UA_ERR, "failed to stat file %s", MANIFEST_DIFF);
+		DBG("size of %s is %d", MANIFEST_DIFF, zsb.size);
+
+		BOLT_MALLOC(buf, zsb.size +1);
+		BOLT_IF((zip_fread(zf, buf, zsb.size) == -1), E_UA_ERR, "failed to stat file %s", MANIFEST_DIFF);
+
+		if (strstr(buf, "<prepared>") && strstr(buf, "</prepared>")) {
+			DBG("Found prepared delta package");
+			is_prepared_delta = 1;
+		}
+
+	} while (0);
+
+	if (zf) zip_fclose(zf);
+	if (zt) zip_close(zt);
+	f_free(buf);
+
+	return is_prepared_delta;
+}
+
 int delta_use_external_algo(void)
 {
 	return delta_stg.use_external_algo;
@@ -104,18 +142,20 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	char* oldFile, * diffFile, * newFile;
 	char* oldPath       = 0, * diffPath = 0, * newPath = 0;
 	char* diff_manifest = 0, * manifest_old = 0, * manifest_diff = 0, * manifest_new = 0;
-	char* top_delta_dir = 0;
+	char* top_delta_dir = 0, * pkg_dir = 0, * p = 0;
 
 	do {
+		pkg_dir = f_basename(diffPkgFile);
+		if ((p =strrchr(pkg_dir, '.'))) *p = 0;
+
 		top_delta_dir = JOIN(delta_stg.cache_dir, "delta");
 		if (top_delta_dir) {
 			if (!access(top_delta_dir, W_OK))
 				rmdirp(top_delta_dir);
-			free(top_delta_dir);
 		}
 
 #define DTR_MK(type) \
-	BOLT_SYS(newdirp(type ## Path = JOIN(delta_stg.cache_dir, "delta", # type), 0755) && (errno != EEXIST), "failed to make directory %s", type ## Path); \
+	BOLT_SYS(newdirp(type ## Path = JOIN(top_delta_dir, pkg_dir, # type), 0755) && (errno != EEXIST), "failed to make directory %s", type ## Path); \
 	manifest_ ## type = JOIN(type ## Path, MANIFEST); do { \
 	} while (0)
 
@@ -183,7 +223,11 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	DTR_RM(new);
 
 #undef DTR_RM
-
+	p = JOIN(top_delta_dir, pkg_dir);
+	rmdir(p);
+	f_free(p);
+	f_free(pkg_dir);
+	f_free(top_delta_dir);
 	Z_FREE(diff_manifest);
 
 	return err;
@@ -276,7 +320,7 @@ static int get_espatch_version(char* ver, int len)
 		}
 #else
 		rc = E_UA_ERR;
-		const char *version = espatch_get_version();
+		const char* version = espatch_get_version();
 		if (version) {
 			strncpy(ver, version, strlen(version));
 			rc = E_UA_OK;
@@ -395,9 +439,10 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 {
 	int err     = E_UA_OK;
 	char* diffp = 0;
+
 #ifndef SHELL_COMMAND_DISABLE
 	char* targs;
-	char* cmd   = 0;
+	char* cmd = 0;
 #endif
 	delta_tool_hh_t* decompdth, * patchdth = 0;
 
@@ -434,7 +479,7 @@ static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, 
 #ifndef SHELL_COMMAND_DISABLE
 			TOOL_EXEC(patchdth, old, new, diffp ? diffp : diff);
 #else
-			err = espatch(old, new, diffp? diffp: diff);
+			err = espatch(old, new, diffp ? diffp : diff);
 #endif
 			if (err) { DBG_SYS("Patching failed"); break; }
 		} else {
