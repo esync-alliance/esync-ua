@@ -976,6 +976,10 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 				if (rb_version) {
 					update_sts = INSTALL_ROLLBACK;
 					update_send_rollback_status(uacc, rb_version);
+				} else {
+					DBG("Failed to locate rollback info, informing terminal-failure.");
+					uacc->update_error = UE_TERMINAL_FAILURE;
+					send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 				}
 			}
 
@@ -1290,7 +1294,6 @@ install_state_t update_action(ua_component_context_t* uacc)
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-			DBG("VVV: status: %s rb: %s", install_state_string(state),  (pkgInfo->rollback_versions));
 			send_install_status(uacc, state, 0, UE_NONE);
 		}
 	}
