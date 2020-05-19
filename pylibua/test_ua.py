@@ -10,11 +10,17 @@ from pylibua.esyncua import eSyncUA
 class TestUA(eSyncUA):
     """Test Update Agent """
 
-    def init_version(self, version):
-        eSyncUA.do_set_version(self, '', version)
-
     def do_get_version(self, packageName):
-        return eSyncUA.do_get_version(self, packageName)
+        filename = "/data/sota/esync/backup/" + packageName + "/" + packageName + ".txt"
+        version = None
+        try:
+            with open(filename, 'r') as f:
+                version = f.readline().strip()
+        except Exception as ex:
+            print(ex)
+            return [0, None]
+        
+        return [0, version]
 
     def do_prepare_install(self, packageName, version, packageFile):
         if(self.mode == 4):
@@ -64,7 +70,20 @@ class TestUA(eSyncUA):
 
         print("PUA: test mode %d: returns %s" %
               (test_ua.mode, test_ua.install_state))
+        
+        if(test_ua.install_state == 'INSTALL_COMPLETED'):
+            self.save_version_to_file(version, packageFile)
         return test_ua.install_state
+
+    def save_version_to_file(self, version, packageFile):
+        pkg_name = packageFile[packageFile.rfind('/')+1:packageFile.rfind('-')]
+        filename = "/data/sota/esync/backup/" + pkg_name + "/" + pkg_name + ".txt"
+        try:
+            with open(filename, 'w+') as f:
+                f.write(version + os.linesep)
+        except Exception as ex:
+            print(ex)
+
 
 
 if __name__ == "__main__":
@@ -85,8 +104,6 @@ if __name__ == "__main__":
                       dest="ssh_pw", help="ssh password ", metavar="PASS")
     parser.add_option("-a", "--cap", default='A:3;B:3;C:100', type='string', action="store",
                       help="delta capability ", metavar=" CAP")
-    parser.add_option("-v", "--tver", type='string', action="store",
-                      dest="ua_ver", help="initial test UA version string", metavar="TVER")
     parser.add_option("-M", "--mode", type='int', action="store",
                       dest="mode", default=0, help="update mode: 0: success(default); 1: fail; 2: toggle(fail/success); 3: rollback; 4: prepare-update failed", metavar="MODE")
     parser.add_option("-r", "--rver", type='string', action="store",
@@ -114,7 +131,6 @@ if __name__ == "__main__":
     test_ua.mode = options.mode
     test_ua.install_state = 'INSTALL_COMPLETED'
     test_ua.rb_ver = options.rb_ver
-    test_ua.init_version(options.ua_ver)
     if(test_ua.mode == 3 and test_ua.rb_ver is None):
         print("Trying rollback test, please set final rollback version with -r option.")
         sys.exit()
