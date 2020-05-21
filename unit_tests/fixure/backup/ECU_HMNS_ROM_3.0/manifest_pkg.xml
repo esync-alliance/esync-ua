@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest_pkg>
+  <package>
+    <version>3.0</version>
+    <sha256>vFKBvvUmgRCheeVF53km0hLCXVRXMLxpJTSbOLSuudM=</sha256>
+    <sha-of-sha>XJzoGVu+mnZ+k/BUGIDE9i8g+tkHtBV2iZnuxGzqkM0=</sha-of-sha>
+    <file>/data/sota/esync/backup/ECU_HMNS_ROM/3.0/ECU_HMNS_ROM-3.0.x</file>
+    <downloaded>1</downloaded>
+    <rollback-order>0</rollback-order>
+  </package>
+</manifest_pkg>

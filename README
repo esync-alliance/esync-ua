@@ -42,42 +42,6 @@ $ rm -rf build && mkdir build && ( cd build && cmake .. && make )
 ** Building for QNX **
 Following instruction at qnx_port/README.txt
 
-#######################################################################
-
-ESYNC-4017 
-
-The template update agent provides command line options to trigger different update modes like: update_success, updaet_failure, update_rollback and update_toggle. 
-
-The command line accepts “-M” as one of the option. 
-
-M = 0 → update success; This is the default mode set when no command line option is provided.
-
-    1 → update failure; Sends INSTALL_FAILED status to the UA library.
-
-    2 → The update status toggles between success and failure for successive campaigns. For the first campaign, the status is sent as “INSTALL_COMPLETED”. For the next campaign, the status is set to “INSTALL_FAILED”
-
-    3 → update rollback; The status of the campaign is set as INSTALL_FAILED.  Depending on the availability of the installed version binary in the back-up directory, rollback is initiated. If the rollback version is same as the version provided by the user in the “/data/sota/rbConf” file, then the update status for the rollback version is set to “INSTALL_COMPLETED”; else, the update status is set to “INSTALL_FAILED”.
-
-For the update_mode_rollback, the user should provide rollback configuration file which has the package name and the version to rollback. (Sample file is attached to the ticket)
-
-If the configuration file is not available, then the rollback is not initiated. Status is set to “INSTALL_FAILED”.
-
-If the configuration file is empty, then the rollback is not initiated. Status is set to “INSTALL_FAILED”.
-
-If the package name or the version number does not match, then the rollback is not initiated. Status is set to “INSTALL_FAILED”.
-
-If the installed version binary is not available in the back-up storage, then the rollback is not initiated. Status is set to “INSTALL_FAILED”.
-
-The path for the configuration file is hard coded to “/data/sota/rbConf”. Any other name and the path needs to be set in the tmpl_updateagent.c file.  
-
-ESYNC-4021:
------------
-The template update agent reads the installed version from the version file and write the update version to the file. 
-This file is created in the back-up directory for every package. The file has only the version number written to it.
-After the successful update, if the update agent is stopped and rerun for a new campaign, the  template update agent does not return "NULL" for the installed version. Instead, the installed version is read from the file and returned to the dmclient in the query-package reply message. 
-
-#######################################################################
-
 ** Building for INTEGRITY OS **
   Following instruction at ghs_port/README.md
 

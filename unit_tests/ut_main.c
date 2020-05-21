@@ -14,15 +14,13 @@ extern char* optarg;
 char* handler_type;
 static char case_dir[PATH_MAX];
 
-static void test_from_file(char* filename)
+static void handle_messages_from_file(char* filename)
 {
 	char bus_message[2048];
 	FILE* fd = 0;
 	char fullpath[PATH_MAX];
 
 	sprintf(fullpath, "%s/%s", case_dir, filename);
-	//will_return(__wrap_get_tmpl_version, cast_ptr_to_largest_integral_type("v1.0"));
-	//will_return(__wrap_get_tmpl_version, 0);
 	test_ua_setup((void**)&handler_type);
 
 	if ((fd = fopen(fullpath, "r"))) {
@@ -38,39 +36,68 @@ static void test_from_file(char* filename)
 	test_ua_teardown((void**)&filename);
 }
 
-void test_normal_update(void** state)
+void test_normal_update_success(void** state)
 {
 	set_test_installation_mode(UPDATE_MODE_SUCCESSFUL, 0);
-	test_from_file("ut_normal_update");
+	assert_true(!system("rm -rf /data/sota/esync/backup"));
+	assert_true(!system("cp -f ../unit_tests/fixure/backup/ECU_HMNS_ROM_4.0/4.0/ECU_HMNS_ROM-4.0.x /data/sota/tmp/"));
+
+	handle_messages_from_file("ut_normal_update");
+
+	assert_true(!access("/data/sota/esync/backup/ECU_HMNS_ROM/4.0/ECU_HMNS_ROM-4.0.x", F_OK));
+	assert_true(!access("/data/sota/esync/backup/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
+	assert_true(access("/tmp/esync/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
 }
 
-void test_rollback_by_dmc(void** state)
-{
-	test_from_file("ut_rollback_by_dmc");
-}
-
-void test_rollback_ua_controlled_success(void** state)
-{
-	set_test_installation_mode(UPDATE_MODE_ALTERNATE_FAILURE_SUCCESSFUL, 0);
-	test_from_file("ut_rollback_ua_controlled");
-}
-
-void test_rollback_ua_controlled_failed(void** state)
+void test_normal_update_failure(void** state)
 {
 	set_test_installation_mode(UPDATE_MODE_FAILURE, 0);
-	test_from_file("ut_rollback_ua_controlled");
+	assert_true(!system("rm -rf /data/sota/esync/backup"));
+	assert_true(!system("cp -f ../unit_tests/fixure/backup/ECU_HMNS_ROM_4.0/4.0/ECU_HMNS_ROM-4.0.x /data/sota/tmp/"));
+
+	handle_messages_from_file("ut_normal_update_failed");
+
+	assert_true(access("/data/sota/esync/backup/ECU_HMNS_ROM/4.0/ECU_HMNS_ROM-4.0.x", F_OK));
+	assert_true(access("/data/sota/esync/backup/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
+	assert_true(access("/tmp/esync/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
+
 }
 
-void test_resume_normal_update(void** state)
+void test_rollback_by_dmc(int test_failed)
 {
-	test_from_file("ut_resume_normal_update");
+	assert_true(!system("rm -rf /data/sota/esync/backup"));
+	assert_true(!system("mkdir -p /data/sota/esync/backup/ECU_HMNS_ROM"));
+	assert_true(!system("cp -rf ../unit_tests/fixure/backup/ECU_HMNS_ROM_4.0/* /data/sota/esync/backup/ECU_HMNS_ROM/"));
+	assert_true(!system("cp -f ../unit_tests/fixure/backup/ECU_HMNS_ROM_1.0/1.0/ECU_HMNS_ROM-1.0.x /data/sota/tmp/ECU_HMNS_ROM-1.0.x"));
+	assert_true(!system("cp -f ../unit_tests/fixure/backup/ECU_HMNS_ROM-2.0.x /data/sota/tmp/ECU_HMNS_ROM-2.0.x"));
+	assert_true(!system("cp -f ../unit_tests/fixure/delta/4.0_3.0/ECU_HMNS_ROM-3.0.x /data/sota/tmp/ECU_HMNS_ROM-3.0.x"));
+	set_test_installation_mode(UPDATE_MODE_ROLLBACK, 0);
+	if (test_failed) {
+		set_rbconf_file("../unit_tests/fixure/rollback/rbFailed");
+		handle_messages_from_file("ut_rollback_by_dmc_failed");
+		assert_true(access("/data/sota/esync/backup/ECU_HMNS_ROM/1.0", F_OK));
+		assert_true(!access("/data/sota/esync/backup/ECU_HMNS_ROM/4.0", F_OK));
+
+	}else {
+		handle_messages_from_file("ut_rollback_by_dmc");
+		assert_true(!access("/data/sota/esync/backup/ECU_HMNS_ROM/1.0/ECU_HMNS_ROM-1.0.x", F_OK));
+		assert_true(!access("/data/sota/esync/backup/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
+
+	}
+
+	assert_true(access("/tmp/esync/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
 }
 
-void test_resume_rollback_update(void** state)
+void test_delta_dmc_rollback_success(void** state)
 {
-	test_from_file("ut_resume_rollback_update");
+	test_rollback_by_dmc(0);
+
 }
 
+void test_delta_dmc_rollback_failure(void** state)
+{
+	test_rollback_by_dmc(1);
+}
 
 static void _help(const char* app)
 {
@@ -104,13 +131,12 @@ int main(int argc, char** argv)
 				break;
 		}
 	}
+
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_normal_update),
-		//cmocka_unit_test(test_rollback_by_dmc),
-		//cmocka_unit_test(test_rollback_ua_controlled_success),
-		//cmocka_unit_test(test_rollback_ua_controlled_failed),
-		//cmocka_unit_test(test_resume_normal_update),
-		//cmocka_unit_test(test_resume_rollback_update),
+		cmocka_unit_test(test_normal_update_success),
+		cmocka_unit_test(test_normal_update_failure),
+		cmocka_unit_test(test_delta_dmc_rollback_success),
+		cmocka_unit_test(test_delta_dmc_rollback_failure),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
