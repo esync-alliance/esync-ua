@@ -102,7 +102,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 	return diffInfo;
 }
 
-static inline int TYPEQL(const xmlChar *a, const xmlChar *b, diff_type_t *typ)
+static inline int TYPEQL(const xmlChar* a, const xmlChar* b, diff_type_t* typ)
 {
 	if (!strcmp((const char*)b,"added"))
 		*typ = DT_ADDED;
@@ -131,8 +131,8 @@ int parse_diff_manifest(char* xmlFile, diff_info_t** diffInfo)
 		root = xmlDocGetRootElement(doc);
 
 		XMLELE_ITER(root, node) {
-			if (TYPEQL(node->name, XMLT"added", &typ) || TYPEQL(node->name, XMLT"removed", &typ)
-			    || TYPEQL(node->name, XMLT"unchanged", &typ) || TYPEQL(node->name, XMLT"changed", &typ)) {
+			if (TYPEQL(node->name, XMLT "added", &typ) || TYPEQL(node->name, XMLT "removed", &typ)
+			    || TYPEQL(node->name, XMLT "unchanged", &typ) || TYPEQL(node->name, XMLT "changed", &typ)) {
 				XMLELE_ITER_NAME(node, "file", fnode) {
 					if ((di = get_xml_diff_info(fnode))) {
 						di->type = typ;

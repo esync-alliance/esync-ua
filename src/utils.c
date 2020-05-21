@@ -20,6 +20,12 @@ int get_seq_num_from_json(json_object* jsonObj, int* value)
 
 }
 
+int get_seq_info_per_update_from_json(json_object* jsonObj, json_object** value)
+{
+	return json_get_property(jsonObj, json_type_object, value, "body", "change-notification-sequences", "per-update", NULL);
+
+}
+
 int get_replyid_from_json(json_object* jsonObj, char** value)
 {
 	return json_get_property(jsonObj, json_type_string, value, "reply-id", NULL);

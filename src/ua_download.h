@@ -18,11 +18,11 @@
 #include <dmclient/download.h>
 
 enum ua_dl_step {
-	UA_DL_STEP_NONE = 0,
+	UA_DL_STEP_NONE       = 0,
 	UA_DL_STEP_DOWNLOADED = 1,
-	UA_DL_STEP_ENCRYPTED = 2,
-	UA_DL_STEP_VERIFIED = 3,
-	UA_DL_STEP_DONE = 4
+	UA_DL_STEP_ENCRYPTED  = 2,
+	UA_DL_STEP_VERIFIED   = 3,
+	UA_DL_STEP_DONE       = 4
 };
 
 #define UA_DL_REPORT_BLK_SIZE 512*1024

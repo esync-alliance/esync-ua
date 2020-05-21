@@ -28,11 +28,13 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj);
 static download_state_t prepare_download_action(ua_component_context_t* uacc);
 static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 static void send_download_status(ua_component_context_t* uacc, download_state_t state);
 static int send_update_report(const char* pkgName, const char* version, int indeterminate, int percent, update_stage_t us);
 static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version);
+static int send_sequence_query(void);
 static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile);
 static char* install_state_string(install_state_t state);
@@ -255,6 +257,12 @@ void* ua_handle_dmc_presence(void* arg)
 
 	if (uar && uar->on_dmc_presence)
 		(*uar->on_dmc_presence)(NULL);
+
+	while (!ua_intl.seq_info_valid) {
+		send_sequence_query();
+		sleep(5);
+	}
+
 	return NULL;
 }
 
@@ -396,7 +404,7 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 			if (ua_intl.uah) {
 				for (int i = 0; i < ua_intl.n_uah; i++) {
 					ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
-					if (uar && uar->on_dmc_presence) {
+					if (uar) {
 						pthread_t thread_dmc_presence;
 						pthread_attr_t attr;
 						pthread_attr_init(&attr);
@@ -587,50 +595,48 @@ int get_local_next_rollback_version(char* manifest, char* currentVer, char** nex
 	return err;
 }
 
-#if 0
-static int update_comp_out_sequence(comp_sequence_t** seq, char* type)
+static int handler_update_outgoing_seq_num(comp_sequence_t** seq, char* name, int update_num)
 {
-	int num            = 0;
+	int num            = update_num > 0 ? update_num : 0;
 	comp_sequence_t* s = NULL;
 
-	HASH_FIND_STR(*seq, type, s);
+	HASH_FIND_STR(*seq, name, s);
 	if (s) {
-		num = s->num + 1;
+		num = update_num > 0 ? update_num : s->num + 1;
 		HASH_DEL(*seq, s);
-		f_free(s->type);
+		f_free(s->name);
 		free(s);
 	}
 
 	s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
-	s->type = f_strdup(type);
+	s->name = f_strdup(name);
 	s->num  = num;
-	HASH_ADD_KEYPTR( hh, *seq, s->type, strlen(s->type), s );
+	HASH_ADD_KEYPTR( hh, *seq, s->name, strlen(s->name), s );
 
 	return num;
 }
-#endif
 
-static int update_comp_in_sequence(comp_sequence_t** seq, char* type, int num)
+static int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, int num)
 {
 	int outdated       = 0;
 	comp_sequence_t* s = NULL;
 
-	HASH_FIND_STR(*seq, type, s);
+	HASH_FIND_STR(*seq, name, s);
 	if (s) {
-		//DBG("found %s in seq num: %d", s->type, s->num);
+		//DBG("found %s in seq num: %d", s->name, s->num);
 		if (s->num >= num) {
-			DBG("Got outdated command sequence number : %d for %s", seq, type);
+			DBG("Got outdated command sequence number : %d for %s", seq, name);
 			outdated = 1;
 		}
 		HASH_DEL(*seq, s);
-		f_free(s->type);
+		f_free(s->name);
 		free(s);
 	}
 
 	s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
-	s->type = f_strdup(type);;
+	s->name = f_strdup(name);;
 	s->num  = num;
-	HASH_ADD_KEYPTR( hh, *seq, s->type, strlen(s->type), s );
+	HASH_ADD_KEYPTR( hh, *seq, s->name, strlen(s->name), s );
 
 	return outdated;
 }
@@ -640,7 +646,7 @@ static void release_comp_sequence(comp_sequence_t* seq)
 	comp_sequence_t* cs, * tmp;
 
 	HASH_ITER(hh, seq, cs, tmp) {
-		f_free(cs->type);
+		f_free(cs->name);
 		HASH_DEL(seq, cs);
 		free(cs);
 	}
@@ -649,18 +655,20 @@ static void release_comp_sequence(comp_sequence_t* seq)
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len)
 {
 	char* type     = NULL;
-	char* pkg_type = NULL;
+	char* pkg_name = NULL;
 	enum json_tokener_error jErr;
 	int seq = -1;
 
 	json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
 
-
 	if (jErr == json_tokener_success) {
 		if ( !get_seq_num_from_json(jObj, &seq) &&
-		     !get_pkg_type_from_json(jObj, &pkg_type) ) {
-			if (update_comp_in_sequence(&uacc->seq_in, pkg_type, seq))
+		     !get_pkg_name_from_json(jObj, &pkg_name) ) {
+			if (handler_chk_incoming_seq_outdated(&uacc->seq_in, pkg_name, seq)) {
+				DBG("Skipping the installation command due to updated sequence");
+				if (!jErr) json_object_put(jObj);
 				return;
+			}
 		}
 
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
@@ -681,6 +689,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_sota_report, jObj, 0);
 				} else if (!strcmp(type, LOG_REPORT)) {
 					process_run(uacc, process_log_report, jObj, 0);
+				} else if (!strcmp(type, QUERY_SEQUENCE)) {
+					process_run(uacc, process_sequence_info, jObj, 0);
 				} else if (!strcmp(type, UPDATE_STATUS)) {
 					process_run(uacc, process_update_status, jObj, 0);
 				#ifdef SUPPORT_UA_DOWNLOAD
@@ -1096,6 +1106,35 @@ static void process_log_report(ua_component_context_t* uacc, json_object* jsonOb
 {
 }
 
+static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj)
+{
+	char* replyTo;
+
+	if (!get_replyto_from_json(jsonObj, &replyTo) &&
+	    ua_intl.query_reply_id ) {
+		if (!strcmp(replyTo, ua_intl.query_reply_id)) {
+			DBG("sequence-info with reply-id: %s", replyTo);
+			ua_intl.seq_info_valid = 1;
+			json_object* jo_seq = NULL;
+			get_seq_info_per_update_from_json(jsonObj, &jo_seq);
+			json_object_object_foreach(jo_seq, key, val) {
+				if (json_object_get_type(val) == json_type_int) {
+					int seq = json_object_get_int64(val);
+					DBG("Update component \"%s\" sequence num to %d", key, seq);
+					handler_update_outgoing_seq_num(&uacc->seq_out, key, seq);
+				} else {
+					DBG("json value is not interger");
+				}
+			}
+
+		} else {
+			DBG("sequence-info with mismatched reply id: %s, expected: %s", replyTo, ua_intl.query_reply_id);
+		}
+
+		Z_FREE(ua_intl.query_reply_id);
+	}
+}
+
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	char* replyTo;
@@ -1350,7 +1389,8 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	}
 
 	json_object* bodyObject = json_object_new_object();
-	//json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
+	if (ua_intl.seq_info_valid)
+		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&uacc->seq_out, pkgInfo->name, 0)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1375,7 +1415,8 @@ static void send_download_status(ua_component_context_t* uacc, download_state_t 
 	json_object_object_add(pkgObject, "status", json_object_new_string(download_state_string(state)));
 
 	json_object* bodyObject = json_object_new_object();
-	//json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
+	if (ua_intl.seq_info_valid)
+		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&uacc->seq_out, pkgInfo->name, 0)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1398,7 +1439,8 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 	json_object_object_add(pkgObject, "status", json_object_new_string("CURRENT_REPORT"));
 
 	json_object* bodyObject = json_object_new_object();
-	//json_object_object_add(bodyObject, "sequence", json_object_new_int(update_comp_out_sequence(&uacc->seq_out, pkgInfo->type)));
+	if (ua_intl.seq_info_valid)
+		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&uacc->seq_out, pkgInfo->name, 0)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1692,6 +1734,28 @@ int ua_rollback_disabled(const char* pkgName)
 	}
 
 	return 0;
+}
+
+static int send_sequence_query(void)
+{
+	int err                 = E_UA_OK;
+	json_object* jObject    = json_object_new_object();
+	json_object* bodyObject = json_object_new_object();
+
+	if (ua_intl.query_reply_id == NULL)
+		ua_intl.query_reply_id = randstring(REPLY_ID_STR_LEN);
+
+	if (ua_intl.query_reply_id) {
+		json_object_object_add(jObject, "type", json_object_new_string(QUERY_SEQUENCE));
+		json_object_object_add(jObject, "body", bodyObject);
+		json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.query_reply_id ));
+		json_object_object_add(bodyObject, "domain", json_object_new_string("change-notifications" ));
+		err = ua_send_message(jObject);
+	}
+
+	json_object_put(jObject);
+
+	return err;
 }
 
 void ua_rollback_control(const char* pkgName, int disable)

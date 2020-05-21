@@ -12,8 +12,8 @@
 #include <sys/types.h>
 
 #define MAX_SIZE 256
-char backupDir[256]         = "/data/sota/esync/backup/";
-char rbConfFile[256]           = "/data/sota/rbConf";
+char backupDir[256]            = "/data/sota/esync/backup/";
+char rbConfFile[256]           = "../unit_tests/fixure/rollback/rbConf";
 update_mode_t test_update_mode = 0;
 int test_reboot                = 0;
 char* instVerFile;
@@ -163,7 +163,7 @@ void set_test_installation_mode(update_mode_t mode, int reboot)
 	test_reboot      = reboot;
 }
 
-void set_rbConf_path(char * rbPath)
+void set_rbConf_path(char* rbPath)
 {
 	strcpy(rbConfFile, rbPath);
 	//printf("rbConfPath: %s\n", rbConfFile);
@@ -171,20 +171,21 @@ void set_rbConf_path(char * rbPath)
 
 //Set the backup directory to the user provided value
 //Adding "backup" to the path as the UA library will add this too
-void set_backup_dir(const char * bkpDir)
+void set_backup_dir(const char* bkpDir)
 {
 	int len;
 	char c;
+
 	if (bkpDir == NULL) {
 		printf("backup dir value provided is NULL\n");
 		return;
 	}
 	strcpy(backupDir, bkpDir);
-    len = strlen(bkpDir) -1;   //get the last character and compare if it is "/""
-    c = bkpDir[len];
-    if(c == '/') 
-    	strcat(backupDir, "backup/");
-    else
+	len = strlen(bkpDir) -1; //get the last character and compare if it is "/""
+	c   = bkpDir[len];
+	if (c == '/')
+		strcat(backupDir, "backup/");
+	else
 		strcat(backupDir, "/backup/");
 	//printf("set_backup_dir: backup Dir: %s\n", backupDir);
 }
@@ -198,7 +199,7 @@ void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName)
 	char* buff             = malloc(buff_size);
 	int i                  =0;
 
-    if (access(rbConfFile, F_OK) != -1 ) {
+	if (access(rbConfFile, F_OK) != -1 ) {
 		fp = fopen(rbConfFile, "r");
 		if (fp == NULL) {
 			printf("Rollback config file open failed\n");
@@ -252,6 +253,7 @@ void getFileName(const char* pkgName)
 void getBackupDir(const char* pkgName)
 {
 	int ret_dir;
+
 	strcpy(bkpDir, backupDir);
 	strcat(bkpDir, pkgName);
 	//printf("getBackupDir: resulting BackupDir: %s\n", bkpDir);
@@ -328,4 +330,10 @@ int setVerToFile(const char* pkgName, const char* version)
 		printf("BackupDir not accessable\n");
 		return E_UA_ERR;
 	}
+}
+
+void set_rbconf_file(char* filename)
+{
+	if (filename)
+		strcpy(rbConfFile, filename);
 }

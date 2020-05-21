@@ -97,9 +97,9 @@ int is_prepared_delta_package(char* archive)
 {
 	int err               = E_UA_ERR;
 	int is_prepared_delta = 0;
-	zip_t* zt = NULL;
-	zip_file_t* zf = NULL;
-	char* buf = NULL;
+	zip_t* zt             = NULL;
+	zip_file_t* zf        = NULL;
+	char* buf             = NULL;
 
 	do {
 		int errorp;
