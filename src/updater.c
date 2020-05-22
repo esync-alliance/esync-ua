@@ -219,7 +219,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	return update_sts;
 }
 
-
+#if 0
 void update_set_rollback_info(ua_component_context_t* uacc)
 {
 	if (uacc) {
@@ -256,6 +256,44 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 		}
 	}
 }
+#else
+void update_set_rollback_info(ua_component_context_t* uacc)
+{
+	if (uacc) {
+		uacc->rb_type = URB_NONE;
+		json_object* ua_ctrl_rb_versions = NULL;
+		pkg_file_t* pf = NULL, * aux = NULL, * pkg_file = NULL;
+		if (uacc->backup_manifest && !parse_pkg_manifest(uacc->backup_manifest, &pkg_file)) {
+
+			if (uacc->update_pkg.rollback_version)
+				uacc->rb_type = URB_DMC_INITIATED;
+
+			ua_ctrl_rb_versions = json_object_new_array();
+			DL_FOREACH_SAFE(pkg_file, pf, aux) {
+				json_object_array_add(ua_ctrl_rb_versions, json_object_new_string(pf->version));
+				
+				if(uacc->update_pkg.rollback_version) {
+					if(!strcmp(uacc->update_pkg.rollback_version, pf->version))
+						uacc->rb_type = URB_UA_INITIATED;
+				}
+
+				free_pkg_file(pf);
+			}
+
+			if (!uacc->update_pkg.rollback_version && 
+				!uacc->update_pkg.rollback_versions &&
+				json_object_array_length(ua_ctrl_rb_versions) > 0) {
+				DBG("Found local backup available for rollback");
+				uacc->rb_type = URB_UA_LOCAL_BACKUP;
+				uacc->update_pkg.rollback_versions = ua_ctrl_rb_versions;
+			}else {
+				DBG("No local backup available for rollback");
+				json_object_put(ua_ctrl_rb_versions);
+			}
+		}
+	}
+}
+#endif
 
 char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version)
 {
@@ -400,14 +438,20 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				Z_FREE(tmp_rb_file_info.file);
 
 			} else {
-				DBG("Rollback package file is not available locally, asking eSync client to download it.");
-				update_send_rollback_status(uacc, next_rb_version);
-				tmp_cur_version = next_rb_version;
-				next_rb_version = NULL;
-				update_sts      = INSTALL_ROLLBACK;
+				if( delta_use_external_algo() || uacc->rb_type == URB_UA_INITIATED ) {
+					DBG("Rollback package file cannot be located, signal INSTALL_FAILED.");
+					DBG("rollback type is %d, prepared delta flag is %d", uacc->rb_type, delta_use_external_algo() );
+					update_sts = INSTALL_FAILED;
 
+				} else {
+					DBG("Rollback package file is not available locally, asking eSync client to download it.");
+					update_send_rollback_status(uacc, next_rb_version);
+					tmp_cur_version = next_rb_version;
+					next_rb_version = NULL;
+					update_sts      = INSTALL_ROLLBACK;	
+
+				}
 			}
-
 		}
 
 		if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {

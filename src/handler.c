@@ -1333,6 +1333,8 @@ install_state_t update_action(ua_component_context_t* uacc)
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+		//FIXME! CHECK THIS CONDITION!!
+		//if (uacc->rb_type == URB_NONE && (state == INSTALL_FAILED) ) {
 			send_install_status(uacc, state, 0, UE_NONE);
 		}
 	}

@@ -178,9 +178,9 @@ typedef enum update_stage {
 
 typedef enum update_rollback {
 	URB_NONE,
-	URB_DMC_INITIATED,  /* ready-update has rollback-version. */
-	URB_UA_INITIATED,   /* ready-update has rollback-versions. */
-	URB_UA_LOCAL_BACKUP /* local backup folder supports rollback. */
+	URB_DMC_INITIATED,  	 /* ready-update has rollback-version. */
+	URB_UA_INITIATED,   	 /* ready-update has rollback-versions. */
+	URB_UA_LOCAL_BACKUP,	 /* local backup folder supports rollback. */
 
 } update_rollback_t;
 
@@ -190,6 +190,15 @@ typedef struct comp_sequence {
 	UT_hash_handle hh;
 
 }comp_sequence_t;
+
+typedef struct comp_state_info {
+	char* pkg_name;
+	ua_state_t stage;
+	update_rollback_t rb_type;
+
+	UT_hash_handle hh;
+
+}comp_state_info_t;
 
 typedef struct ua_component_context {
 	char* type; //Registered hanlder type.
@@ -207,6 +216,7 @@ typedef struct ua_component_context {
 	char* record_file;
 	comp_sequence_t* seq_in;
 	comp_sequence_t* seq_out;
+	comp_state_info_t* st_info;
 
 } ua_component_context_t;
 
