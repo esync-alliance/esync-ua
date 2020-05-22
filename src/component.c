@@ -9,15 +9,22 @@
  */
 
 #include "component.h"
+#include "debug.h"
 
 void comp_release_state_info(comp_state_info_t* cs_head)
 {
+	comp_state_info_t* cur, * tmp = NULL;
 
+	HASH_ITER(hh, cs_head, cur, tmp) {
+		HASH_DEL(cs_head,cur);
+		f_free(cur->pkg_name);
+		f_free(cur);
+	}
 }
 
 ua_state_t comp_get_update_stage(comp_state_info_t* cs_head, char* pkg_name)
 {
-	ua_state_t st = UA_STATE_UNKNOWN;
+	ua_state_t st         = UA_STATE_UNKNOWN;
 	comp_state_info_t* cs = NULL;
 
 	HASH_FIND_STR(cs_head, pkg_name, cs);
@@ -28,20 +35,20 @@ ua_state_t comp_get_update_stage(comp_state_info_t* cs_head, char* pkg_name)
 	return st;
 }
 
-int comp_set_update_stage(comp_state_info_t* cs_head, char* pkg_name, ua_state_t stage)
+int comp_set_update_stage(comp_state_info_t** cs_head, char* pkg_name, ua_state_t stage)
 {
-	int rc = E_UA_OK;
+	int rc                = E_UA_OK;
 	comp_state_info_t* cs = NULL;
 
-	HASH_FIND_STR(cs_head, pkg_name, cs);
+	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
 		cs->stage = stage;
 	} else {
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name = f_strdup(pkg_name);
-		cs->stage = stage;
-		HASH_ADD_KEYPTR( hh, cs_head, cs->pkg_name , strlen(cs->pkg_name ), cs );
+		cs->stage    = stage;
+		HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );
 	}
 
 	return rc;
@@ -56,25 +63,28 @@ update_rollback_t comp_get_rb_type(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		ret = cs->rb_type;
 	}
-
+	DBG("%s rb_type is %d", pkg_name, ret);
 	return ret;
 }
 
-int comp_set_rb_type(comp_state_info_t* cs_head, char* pkg_name, update_rollback_t rb_type)
+int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollback_t rb_type)
 {
-	int rc = E_UA_OK;
+	int rc                = E_UA_OK;
 	comp_state_info_t* cs = NULL;
 
-	HASH_FIND_STR(cs_head, pkg_name, cs);
+	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
 		cs->rb_type = rb_type;
+		DBG("init rb_type of %s  to %d", pkg_name, rb_type);
 	} else {
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name = f_strdup(pkg_name);
-		cs->rb_type = rb_type;
-		HASH_ADD_KEYPTR( hh, cs_head, cs->pkg_name , strlen(cs->pkg_name ), cs );
+		cs->rb_type  = rb_type;
+		HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );
+		DBG("change rb_type of %s to %d", pkg_name, rb_type);
 	}
+
 
 	return rc;
 }

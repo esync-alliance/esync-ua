@@ -521,7 +521,7 @@ int make_file_hard_link(const char* from, const char* to)
 
 	do {
 		DBG("Making hardlink from %s to %s", from, to);
-		if(!access(to, F_OK)) remove(to);
+		if (!access(to, F_OK)) remove(to);
 		BOLT_SYS(chkdirp(to), "Error making directory path for %s", to);
 		BOLT_SYS(link(from, to), "Error creating hard link from %s to %s", from, to);
 	} while (0);

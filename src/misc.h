@@ -15,27 +15,31 @@
 #include <stdint.h>
 #include <string.h>
 
-#define S(s)           (s && * s)
-#define SAFE_STR(s)    ((s) ? (s) : "")
-#define NULL_STR(s)    (S(s) ? (s) : "null")
+#define S(s)        (s && * s)
+#define SAFE_STR(s) ((s) ? (s) : "")
+#define NULL_STR(s) (S(s) ? (s) : "null")
 
-#define STRLWR(s) __strlwr(s)
-static inline char* __strlwr(char *s) {
+#define STRLWR(s)   __strlwr(s)
+static inline char* __strlwr(char* s)
+{
 	char* _p,* _r=s;
-	for (_p=_r; * _p; ++_p) * _p=tolower(* _p);
-	return  _r;
-}
 
-#define SUBSTRCNT(s,c) __substrcnt(s,c)
-static inline int __substrcnt(const char *s, const char *c) {
-	const char* _p=s;
-	int _l=strlen(c);
-	int _r=0;
-	while ((_p=strcasestr(_p,c))) {_p+=_l; _r ++; }
+	for (_p=_r; *_p; ++_p) *_p=tolower(*_p);
 	return _r;
 }
 
-#define JOIN(a,b ...)  (join_path(a, ## b, NULL))
+#define SUBSTRCNT(s,c) __substrcnt(s,c)
+static inline int __substrcnt(const char* s, const char* c)
+{
+	const char* _p=s;
+	int _l        =strlen(c);
+	int _r        =0;
+
+	while ((_p=strcasestr(_p,c))) {_p+=_l; _r++; }
+	return _r;
+}
+
+#define JOIN(a,b ...) (join_path(a, ## b, NULL))
 
 static inline char* join_path(const char* path, ... )
 {

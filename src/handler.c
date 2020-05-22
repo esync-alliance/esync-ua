@@ -10,6 +10,7 @@
 #include "xl4busclient.h"
 #include "ua_version.h"
 #include "updater.h"
+#include "component.h"
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>
@@ -227,6 +228,7 @@ int ua_unregister(ua_handler_t* uah, int len)
 					release_comp_sequence(ri->component.seq_in);
 					release_comp_sequence(ri->component.seq_out);
 					ri->component.record_file = NULL;
+					comp_release_state_info(ri->component.st_info);
 					Z_FREE(ri->component.update_manifest);
 					Z_FREE(ri->component.backup_manifest);
 					Z_FREE(ri->component.type);
@@ -767,11 +769,11 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_replyid_from_json(jsonObj, &replyId)) {
 		json_object* bodyObject = json_object_new_object();
-		json_object* pkgObject  = json_object_new_object();
 
 		if (uacc->state == UA_STATE_READY_UPDATE_STARTED) {
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
 		}else {
+			json_object* pkgObject = json_object_new_object();
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
 			if (uae == E_UA_OK)
 				DBG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
@@ -975,13 +977,13 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		uacc->state = UA_STATE_READY_UPDATE_STARTED;
 		update_set_rollback_info(uacc);
 
-		if (uacc->rb_type == URB_DMC_INITIATED) {
+		if (uacc->update_pkg.rollback_version) {
 			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version, ua_intl.reboot_support);
 
 		}else {
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
 			    !ua_rollback_disabled(uacc->update_pkg.name) &&
-			    uacc->rb_type >= URB_UA_INITIATED) {
+			    comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) != URB_NONE) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
 					update_sts = INSTALL_ROLLBACK;
@@ -1333,8 +1335,6 @@ install_state_t update_action(ua_component_context_t* uacc)
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
-		//FIXME! CHECK THIS CONDITION!!
-		//if (uacc->rb_type == URB_NONE && (state == INSTALL_FAILED) ) {
 			send_install_status(uacc, state, 0, UE_NONE);
 		}
 	}

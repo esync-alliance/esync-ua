@@ -14,6 +14,7 @@
 #include "utlist.h"
 #include "pthread.h"
 #include "debug.h"
+#include "component.h"
 
 extern ua_internal_t ua_intl;
 json_object* update_get_pkg_info_jo(pkg_info_t* pkg)
@@ -97,7 +98,8 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 	if (uacc) {
 		json_object_object_add(update_cc, "package", update_get_pkg_info_jo(&uacc->update_pkg));
 		json_object_object_add(update_cc, "update-file-info", update_get_update_file_info_jo(&uacc->update_file_info));
-		json_object_object_add(update_cc, "rb-type", json_object_new_int(uacc->rb_type));
+		update_rollback_t rb_type = comp_get_rb_type(uacc->st_info, uacc->update_pkg.name);
+		json_object_object_add(update_cc, "rb-type", json_object_new_int(rb_type));
 		json_object_object_add(update_cc, "update-state", json_object_new_int(uacc->state));
 		json_object_object_add(update_cc, "update-error", json_object_new_int(uacc->update_error));
 
@@ -115,7 +117,9 @@ int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc
 
 	err = update_set_update_file_info(update_cc, &uacc->update_file_info);
 	err = update_set_pkg_info(update_cc, &uacc->update_pkg);
-	err = json_get_property(update_cc, json_type_int, &uacc->rb_type, "rb-type", NULL);
+	update_rollback_t rb_type = URB_NONE;
+	err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL);
+	comp_set_rb_type(&uacc->st_info, uacc->update_pkg.name, rb_type);
 	err = json_get_property(update_cc, json_type_int, &uacc->state, "state", NULL);
 	err = json_get_property(update_cc, json_type_int, &uacc->update_error, "update-error", NULL);
 
@@ -219,81 +223,44 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	return update_sts;
 }
 
-#if 0
 void update_set_rollback_info(ua_component_context_t* uacc)
 {
 	if (uacc) {
-		uacc->rb_type = URB_NONE;
+		update_rollback_t rb_type = URB_NONE;
 
-		if (uacc->update_pkg.rollback_version != NULL) {
-			uacc->rb_type = URB_DMC_INITIATED;
-		}else if (uacc->update_pkg.rollback_versions != NULL) {
-			uacc->rb_type = URB_UA_INITIATED;
-		} else {
-			pkg_file_t* pf = NULL, * aux = NULL, * pkg_file = NULL;
-			if (uacc->update_pkg.rollback_versions &&
-			    uacc->backup_manifest &&
-			    !parse_pkg_manifest(uacc->backup_manifest, &pkg_file)) {
-				uacc->update_pkg.rollback_versions = json_object_new_array();
-				DL_FOREACH_SAFE(pkg_file, pf, aux) {
-					json_object_array_add(uacc->update_pkg.rollback_versions,
-					                      json_object_new_string(pf->version));
-					free_pkg_file(pf);
+		if (uacc->update_pkg.rollback_versions)
+			rb_type = URB_DMC_INITIATED;
 
-				}
-
-				if (json_object_array_length(uacc->update_pkg.rollback_versions) > 0) {
-					DBG("Found local backup available for rollback");
-					uacc->rb_type = URB_UA_LOCAL_BACKUP;
-				}else {
-					DBG("No local backup available for rollback");
-					json_object_put(uacc->update_pkg.rollback_versions);
-					uacc->update_pkg.rollback_versions = NULL;
-
-				}
-
-			}
-		}
-	}
-}
-#else
-void update_set_rollback_info(ua_component_context_t* uacc)
-{
-	if (uacc) {
-		uacc->rb_type = URB_NONE;
 		json_object* ua_ctrl_rb_versions = NULL;
-		pkg_file_t* pf = NULL, * aux = NULL, * pkg_file = NULL;
+		pkg_file_t* pf                   = NULL, * aux = NULL, * pkg_file = NULL;
 		if (uacc->backup_manifest && !parse_pkg_manifest(uacc->backup_manifest, &pkg_file)) {
-
-			if (uacc->update_pkg.rollback_version)
-				uacc->rb_type = URB_DMC_INITIATED;
-
 			ua_ctrl_rb_versions = json_object_new_array();
 			DL_FOREACH_SAFE(pkg_file, pf, aux) {
 				json_object_array_add(ua_ctrl_rb_versions, json_object_new_string(pf->version));
-				
-				if(uacc->update_pkg.rollback_version) {
-					if(!strcmp(uacc->update_pkg.rollback_version, pf->version))
-						uacc->rb_type = URB_UA_INITIATED;
+
+				if (uacc->update_pkg.rollback_version) {
+					if (!strcmp(uacc->update_pkg.rollback_version, pf->version) || delta_use_external_algo())
+						rb_type = URB_UA_INITIATED;
 				}
 
 				free_pkg_file(pf);
 			}
 
-			if (!uacc->update_pkg.rollback_version && 
-				!uacc->update_pkg.rollback_versions &&
-				json_object_array_length(ua_ctrl_rb_versions) > 0) {
+			if (!uacc->update_pkg.rollback_version &&
+			    !uacc->update_pkg.rollback_versions &&
+			    json_object_array_length(ua_ctrl_rb_versions) > 0) {
 				DBG("Found local backup available for rollback");
-				uacc->rb_type = URB_UA_LOCAL_BACKUP;
+				rb_type                            = URB_UA_LOCAL_BACKUP;
 				uacc->update_pkg.rollback_versions = ua_ctrl_rb_versions;
 			}else {
 				DBG("No local backup available for rollback");
 				json_object_put(ua_ctrl_rb_versions);
 			}
 		}
+
+		comp_set_rb_type(&uacc->st_info, uacc->update_pkg.name, rb_type);
 	}
 }
-#endif
 
 char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version)
 {
@@ -321,7 +288,7 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 {
 	int rc = E_UA_ERR;
 
-	if (uacc->rb_type == URB_NONE) {
+	if (comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) == URB_NONE) {
 		DBG("Error: rollback type is none, why asked for rollback package?");
 		rc = E_UA_ERR;
 	}else {
@@ -388,7 +355,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	pkg_file_t tmp_rb_file_info = {0};
 
 	if (uacc && rb_version ) {
-		DBG("Starting rollback type(%d) to version(%s)", uacc->rb_type, next_rb_version);
+		DBG("Starting rollback type(%d) to version(%s)", comp_get_rb_type(uacc->st_info, uacc->update_pkg.name), next_rb_version);
 		Z_FREE(uacc->update_file_info.version);
 		Z_FREE(uacc->update_file_info.file);
 		uacc->update_pkg.rollback_version = next_rb_version;
@@ -438,18 +405,16 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				Z_FREE(tmp_rb_file_info.file);
 
 			} else {
-				if( delta_use_external_algo() || uacc->rb_type == URB_UA_INITIATED ) {
-					DBG("Rollback package file cannot be located, signal INSTALL_FAILED.");
-					DBG("rollback type is %d, prepared delta flag is %d", uacc->rb_type, delta_use_external_algo() );
-					update_sts = INSTALL_FAILED;
-
-				} else {
+				if ( comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) == URB_DMC_INITIATED ) {
 					DBG("Rollback package file is not available locally, asking eSync client to download it.");
 					update_send_rollback_status(uacc, next_rb_version);
 					tmp_cur_version = next_rb_version;
 					next_rb_version = NULL;
-					update_sts      = INSTALL_ROLLBACK;	
+					update_sts      = INSTALL_ROLLBACK;
 
+				} else {
+					DBG("Rollback package file cannot be located, rb_type is %d, signal INSTALL_FAILED.", comp_get_rb_type(uacc->st_info, uacc->update_pkg.name));
+					update_sts = INSTALL_FAILED;
 				}
 			}
 		}
@@ -487,7 +452,7 @@ void* update_resume_from_reboot(void* arg)
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else {
-			if (uacc->rb_type != URB_NONE) {
+			if (comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) != URB_NONE) {
 				DBG("Resume: update installation failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL)
@@ -692,7 +657,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 void update_release_comp_context(ua_component_context_t* uacc)
 {
-	if (uacc->rb_type == URB_UA_LOCAL_BACKUP) {
+	if (comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) == URB_UA_LOCAL_BACKUP) {
 		if (uacc->update_pkg.rollback_versions)
 			json_object_put(uacc->update_pkg.rollback_versions);
 	}

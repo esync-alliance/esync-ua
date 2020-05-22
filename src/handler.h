@@ -178,9 +178,9 @@ typedef enum update_stage {
 
 typedef enum update_rollback {
 	URB_NONE,
-	URB_DMC_INITIATED,  	 /* ready-update has rollback-version. */
-	URB_UA_INITIATED,   	 /* ready-update has rollback-versions. */
-	URB_UA_LOCAL_BACKUP,	 /* local backup folder supports rollback. */
+	URB_DMC_INITIATED,   /* ready-update has rollback-version. */
+	URB_UA_INITIATED,    /* ready-update has rollback-versions. */
+	URB_UA_LOCAL_BACKUP, /* local backup folder supports rollback. */
 
 } update_rollback_t;
 
@@ -209,7 +209,6 @@ typedef struct ua_component_context {
 	async_update_status_t update_status_info;
 	pkg_file_t update_file_info;
 	pkg_info_t update_pkg;
-	update_rollback_t rb_type;
 	update_err_t update_error;
 	char* update_manifest;
 	char* backup_manifest;

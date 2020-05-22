@@ -14,7 +14,9 @@
 #include "handler.h"
 
 ua_state_t comp_get_update_stage(comp_state_info_t* cs_head, char* pkg_name);
-int comp_set_update_stage(comp_state_info_t* cs_head, char* pkg_name, ua_state_t stage);
+int comp_set_update_stage(comp_state_info_t** cs_head, char* pkg_name, ua_state_t stage);
 void comp_release_state_info(comp_state_info_t* cs_head);
+update_rollback_t comp_get_rb_type(comp_state_info_t* cs_head, char* pkg_name);
+int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollback_t rb_type);
 
 #endif //COMPONENT_H
