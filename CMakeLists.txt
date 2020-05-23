@@ -77,6 +77,10 @@ set_empty(XL4_HAVE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_STD_MALLOC 1)
 set_empty(HAVE_LIMITS_H 1)
 
+if (CMAKE_CROSSCOMPILING)
+    set(THREADS_PTHREAD_ARG 2)
+endif()
+
 set(BCH ${CMAKE_BINARY_DIR}/build_config.h)
 configure_file(${CMAKE_SOURCE_DIR}/build_config.h.in ${BCH})
 configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
