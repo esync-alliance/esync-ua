@@ -954,6 +954,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 		} else {
 			DBG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
+			state = INSTALL_FAILED;
 			send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 
 		}
@@ -962,8 +963,10 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
-
-		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
+		if(state == INSTALL_READY)
+			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
+		else
+			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, st);
 
 		Z_FREE(uacc->backup_manifest);
 		memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
