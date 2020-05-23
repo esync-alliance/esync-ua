@@ -10,6 +10,18 @@
 
 #include "component.h"
 #include "debug.h"
+static char* st_string[] = {
+	"UA_STATE_UNKNOWN",
+	"UA_STATE_IDLE_INIT",
+	"UA_STATE_READY_DOWNLOAD_STARTED",
+	"UA_STATE_READY_DOWNLOAD_DONE",
+	"UA_STATE_PREPARE_UPDATE_STARTED",
+	"UA_STATE_PREPARE_UPDATE_DONE",
+	"UA_STATE_READY_UPDATE_STARTED",
+	"UA_STATE_READY_UPDATE_DONE",
+	"UA_STATE_CONFIRM_UPDATE_STARTED",
+	"UA_STATE_CONFIRM_UPDATE_DONE",
+};
 
 void comp_release_state_info(comp_state_info_t* cs_head)
 {
@@ -31,7 +43,7 @@ ua_state_t comp_get_update_stage(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		st = cs->stage;
 	}
-
+	DBG("update stage of %s is %s", pkg_name, st_string[st]);
 	return st;
 }
 
@@ -42,8 +54,10 @@ int comp_set_update_stage(comp_state_info_t** cs_head, char* pkg_name, ua_state_
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
+		DBG("change update stage of %s to %s", pkg_name, st_string[stage]);
 		cs->stage = stage;
 	} else {
+		DBG("init update stage of %s  to %s", pkg_name, st_string[stage]);
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name = f_strdup(pkg_name);
@@ -74,15 +88,15 @@ int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollbac
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
+		DBG("change rb_type of %s to %d", pkg_name, rb_type);
 		cs->rb_type = rb_type;
-		DBG("init rb_type of %s  to %d", pkg_name, rb_type);
 	} else {
+		DBG("init rb_type of %s  to %d", pkg_name, rb_type);
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name = f_strdup(pkg_name);
 		cs->rb_type  = rb_type;
 		HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );
-		DBG("change rb_type of %s to %d", pkg_name, rb_type);
 	}
 
 

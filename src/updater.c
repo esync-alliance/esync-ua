@@ -98,9 +98,12 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 	if (uacc) {
 		json_object_object_add(update_cc, "package", update_get_pkg_info_jo(&uacc->update_pkg));
 		json_object_object_add(update_cc, "update-file-info", update_get_update_file_info_jo(&uacc->update_file_info));
+
 		update_rollback_t rb_type = comp_get_rb_type(uacc->st_info, uacc->update_pkg.name);
 		json_object_object_add(update_cc, "rb-type", json_object_new_int(rb_type));
-		json_object_object_add(update_cc, "update-state", json_object_new_int(uacc->state));
+
+		ua_state_t state= comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
+		json_object_object_add(update_cc, "update-state", json_object_new_int(state));
 		json_object_object_add(update_cc, "update-error", json_object_new_int(uacc->update_error));
 
 	} else {
@@ -117,10 +120,15 @@ int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc
 
 	err = update_set_update_file_info(update_cc, &uacc->update_file_info);
 	err = update_set_pkg_info(update_cc, &uacc->update_pkg);
+
 	update_rollback_t rb_type = URB_NONE;
 	err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL);
 	comp_set_rb_type(&uacc->st_info, uacc->update_pkg.name, rb_type);
-	err = json_get_property(update_cc, json_type_int, &uacc->state, "state", NULL);
+
+	ua_state_t state = UA_STATE_UNKNOWN;
+	err = json_get_property(update_cc, json_type_int, &state, "state", NULL);
+	comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, state);
+
 	err = json_get_property(update_cc, json_type_int, &uacc->update_error, "update-error", NULL);
 
 	return err;

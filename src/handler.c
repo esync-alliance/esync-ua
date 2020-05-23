@@ -172,7 +172,6 @@ int ua_register(ua_handler_t* uah, int len)
 			ri                  = f_malloc(sizeof(runner_info_t));
 			ri->component.type  = f_strdup((uah + i)->type_handler);
 			ri->component.uar   = (*(uah + i)->get_routine)();
-			ri->component.state = UA_STATE_IDLE_INIT;
 			ri->run             = 1;
 			BOLT_IF(!ri->component.uar || !ri->component.uar->on_get_version || !ri->component.uar->on_install || !S(ri->component.type), E_UA_ARG, "registration error");
 			BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
@@ -770,7 +769,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	    !get_replyid_from_json(jsonObj, &replyId)) {
 		json_object* bodyObject = json_object_new_object();
 
-		if (uacc->state == UA_STATE_READY_UPDATE_STARTED) {
+		if (comp_get_update_stage(uacc->st_info, pkgInfo.name) == UA_STATE_READY_UPDATE_STARTED) {
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
 		}else {
 			json_object* pkgObject = json_object_new_object();
@@ -902,19 +901,22 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	char tmp_filename[PATH_MAX] = {0};
 	#endif
 
-	if (uacc->state == UA_STATE_PREPARE_UPDATE_STARTED ) {
-		DBG("UA state is %d, can not process prepare-update.", uacc->state);
-		return;
-
-	}
-
 	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
 	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
 	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
+		
+		ua_state_t st = comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
+		if ( st == UA_STATE_PREPARE_UPDATE_STARTED || st == UA_STATE_PREPARE_UPDATE_DONE ) {
+			DBG("skip prepare-update.");
+			return;
+
+		}
+
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_STARTED);
+
 		get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
 		pkgFile.version       = S(uacc->update_pkg.rollback_version) ? uacc->update_pkg.rollback_version : uacc->update_pkg.version;
 		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
-		uacc->state           = UA_STATE_PREPARE_UPDATE_STARTED;
 
 		if (( (!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file)
 				#ifdef SUPPORT_UA_DOWNLOAD
@@ -939,7 +941,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 			uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
 
-			if (access(uacc->update_manifest, F_OK)) {
+			{
 				state = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
 
 				send_install_status(uacc, state, &pkgFile, updateErr);
@@ -960,9 +962,11 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
+
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
+
 		Z_FREE(uacc->backup_manifest);
 		memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
-		uacc->state = UA_STATE_PREPARE_UPDATE_DONE;
 	}
 }
 
@@ -974,7 +978,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	uacc->cur_msg = jo;
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
-		uacc->state = UA_STATE_READY_UPDATE_STARTED;
+
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
 		update_set_rollback_info(uacc);
 
 		if (uacc->update_pkg.rollback_version) {
@@ -1006,14 +1011,14 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		     !is_prepared_delta_package(uacc->update_file_info.file) ) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
+		
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_DONE);
 		uacc->cur_msg = NULL;
 		json_object_put(jo);
-		uacc->state = UA_STATE_READY_UPDATE_DONE;
-
 		Z_FREE(uacc->backup_manifest);
 		Z_FREE(uacc->update_manifest);
-
 		update_release_comp_context(uacc);
+
 	}else {
 		if (uacc == NULL || jsonObj == NULL)
 			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
@@ -1048,19 +1053,25 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	pkg_info_t pkgInfo = {0};
 	int rollback       = 0;
 
-	if (uacc->state == UA_STATE_READY_UPDATE_STARTED) {
-		DBG("Skip confirm-update, still processing ready-update");
-		return;
-	}
-
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
+
+		ua_state_t st = comp_get_update_stage(uacc->st_info, pkgInfo.name) ;
+
+		if (!(st == UA_STATE_READY_UPDATE_DONE ||  st == UA_STATE_UNKNOWN)) {
+			DBG("Skip confirm-update");
+			return;
+		}
+
 		char* update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
+
+				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_STARTED);
+
 				if (!get_body_rollback_from_json(jsonObj, &rollback)
 				    && rollback
 				    && !get_pkg_rollback_version_from_json(jsonObj, &pkgInfo.rollback_version))
@@ -1070,13 +1081,14 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 				DBG("Removing update_manifest %s", update_manifest);
 				remove(update_manifest);
-				uacc->state = UA_STATE_IDLE_INIT;
+				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
 			} else {
 				DBG("confirm-update did not find temp manifest %s", update_manifest);
 			}
 
 		}else
 			DBG("Could not form manifest file path.");
+
 		Z_FREE(backup_manifest);
 		Z_FREE(update_manifest);
 

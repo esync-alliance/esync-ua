@@ -98,6 +98,8 @@ typedef enum ua_state {
 	UA_STATE_PREPARE_UPDATE_DONE,
 	UA_STATE_READY_UPDATE_STARTED,
 	UA_STATE_READY_UPDATE_DONE,
+	UA_STATE_CONFIRM_UPDATE_STARTED,
+	UA_STATE_CONFIRM_UPDATE_DONE,
 
 }ua_state_t;
 
@@ -203,7 +205,6 @@ typedef struct comp_state_info {
 typedef struct ua_component_context {
 	char* type; //Registered hanlder type.
 	json_object* cur_msg;
-	ua_state_t state;
 	ua_routine_t* uar;
 	worker_info_t worker;
 	async_update_status_t update_status_info;
