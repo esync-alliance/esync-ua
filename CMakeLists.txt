@@ -96,6 +96,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/delta.c
     src/xml.c
     src/updater.c
+    src/component.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
@@ -104,6 +105,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/delta.h
     src/xml.h
     src/updater.h
+    src/component.h
     src/debug.h
     src/uthash.h
     src/utlist.h
