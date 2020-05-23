@@ -236,8 +236,15 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 	if (uacc) {
 		update_rollback_t rb_type = URB_NONE;
 
-		if (uacc->update_pkg.rollback_versions)
+		if (uacc->update_pkg.rollback_version) {
 			rb_type = URB_DMC_INITIATED;
+
+			char* pd_ver = comp_get_pd_version(uacc->st_info, uacc->update_pkg.name);
+			if (pd_ver && !strcmp(pd_ver, uacc->update_pkg.rollback_version)) {
+				rb_type = URB_UA_INITIATED;
+			}
+
+		}
 
 		json_object* ua_ctrl_rb_versions = NULL;
 		pkg_file_t* pf                   = NULL, * aux = NULL, * pkg_file = NULL;
@@ -247,7 +254,7 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 				json_object_array_add(ua_ctrl_rb_versions, json_object_new_string(pf->version));
 
 				if (uacc->update_pkg.rollback_version) {
-					if (!strcmp(uacc->update_pkg.rollback_version, pf->version) || delta_use_external_algo())
+					if (!strcmp(uacc->update_pkg.rollback_version, pf->version))
 						rb_type = URB_UA_INITIATED;
 				}
 
@@ -296,35 +303,30 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 {
 	int rc = E_UA_ERR;
 
-	if (comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) == URB_NONE) {
-		DBG("Error: rollback type is none, why asked for rollback package?");
-		rc = E_UA_ERR;
-	}else {
-		if (rb_file_info && rb_version) {
-			char* filepath = 0;
-			if (!get_pkg_downloaded_from_json(uacc->cur_msg, rb_version, &rb_file_info->downloaded)
-			    && rb_file_info->downloaded
-			    && !get_pkg_sha256_from_json(uacc->cur_msg, rb_version, rb_file_info->sha256b64)
-			    && !get_pkg_file_from_json(uacc->cur_msg, rb_version, &filepath)) {
-				DBG("RB info available from ready-update package.");
+	if (rb_file_info && rb_version) {
+		char* filepath = 0;
+		if (!get_pkg_downloaded_from_json(uacc->cur_msg, rb_version, &rb_file_info->downloaded)
+		    && rb_file_info->downloaded
+		    && !get_pkg_sha256_from_json(uacc->cur_msg, rb_version, rb_file_info->sha256b64)
+		    && !get_pkg_file_from_json(uacc->cur_msg, rb_version, &filepath)) {
+			DBG("RB info available from ready-update package.");
 
-				rb_file_info->file    = f_strdup(filepath);
-				rb_file_info->version = f_strdup(rb_version);
+			rb_file_info->file    = f_strdup(filepath);
+			rb_file_info->version = f_strdup(rb_version);
+			if (update_package_available(rb_file_info, rb_version))
+				rc = E_UA_OK;
+			else {
+				free(rb_file_info->file);
+				free(rb_file_info->version);
+			}
+		} else {
+			DBG("Getting RB info from backup manifest.");
+			if (E_UA_OK == get_pkg_file_manifest(uacc->backup_manifest, rb_version, rb_file_info)) {
 				if (update_package_available(rb_file_info, rb_version))
 					rc = E_UA_OK;
 				else {
 					free(rb_file_info->file);
 					free(rb_file_info->version);
-				}
-			} else {
-				DBG("Getting RB info from backup manifest.");
-				if (E_UA_OK == get_pkg_file_manifest(uacc->backup_manifest, rb_version, rb_file_info)) {
-					if (update_package_available(rb_file_info, rb_version))
-						rc = E_UA_OK;
-					else {
-						free(rb_file_info->file);
-						free(rb_file_info->version);
-					}
 				}
 			}
 		}
@@ -421,8 +423,19 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 					update_sts      = INSTALL_ROLLBACK;
 
 				} else {
-					DBG("Rollback package file cannot be located, rb_type is %d, signal INSTALL_FAILED.", comp_get_rb_type(uacc->st_info, uacc->update_pkg.name));
-					update_sts = INSTALL_FAILED;
+					DBG("Rollback package file cannot be located for %s, version: %s", uacc->update_pkg.name, next_rb_version);
+					tmp_cur_version = next_rb_version;
+					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
+					if (next_rb_version) {
+						DBG("Rollback will try the next version(%s).", next_rb_version);
+						update_sts = INSTALL_ROLLBACK;
+						update_send_rollback_status(uacc, next_rb_version);
+
+					}else {
+						DBG("No more rollback version for %s, signal INSTALL_FAILED", uacc->update_pkg.name);
+						update_sts = INSTALL_FAILED;
+
+					}
 				}
 			}
 		}

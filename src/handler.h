@@ -197,6 +197,7 @@ typedef struct comp_state_info {
 	char* pkg_name;
 	ua_state_t stage;
 	update_rollback_t rb_type;
+	char* prepared_delta_ver;
 
 	UT_hash_handle hh;
 

@@ -169,10 +169,10 @@ int ua_register(ua_handler_t* uah, int len)
 
 	for (int i = 0; i < len; i++) {
 		do {
-			ri                  = f_malloc(sizeof(runner_info_t));
-			ri->component.type  = f_strdup((uah + i)->type_handler);
-			ri->component.uar   = (*(uah + i)->get_routine)();
-			ri->run             = 1;
+			ri                 = f_malloc(sizeof(runner_info_t));
+			ri->component.type = f_strdup((uah + i)->type_handler);
+			ri->component.uar  = (*(uah + i)->get_routine)();
+			ri->run            = 1;
 			BOLT_IF(!ri->component.uar || !ri->component.uar->on_get_version || !ri->component.uar->on_install || !S(ri->component.type), E_UA_ARG, "registration error");
 			BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
 			BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
@@ -802,56 +802,59 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
 
 				if ( !ua_rollback_disabled(pkgInfo.name) && backup_manifest != NULL) {
-					if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
-						json_object* verListObject = json_object_new_object();
-						json_object* rbVersArray   = json_object_new_array();
+					if (!delta_use_external_algo()) {
+						if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
+							json_object* verListObject = json_object_new_object();
+							json_object* rbVersArray   = json_object_new_array();
 
-						DL_FOREACH_SAFE(pkgFile, pf, aux) {
-							json_object* versionObject = json_object_new_object();
+							DL_FOREACH_SAFE(pkgFile, pf, aux) {
+								json_object* versionObject = json_object_new_object();
 
-							json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
-							json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded ? 1 : 0));
-							json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
+								json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
+								json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded ? 1 : 0));
+								json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
-							if (ua_intl.delta) {
-								if (delta_use_external_algo())
-									json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
-								else
+								if (ua_intl.delta) {
 									json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
+								}
+
+								json_object_object_add(verListObject, pf->version, versionObject);
+								json_object_array_add(rbVersArray, json_object_new_string(pf->version));
+
+								DL_DELETE(pkgFile, pf);
+								free_pkg_file(pf);
+
 							}
 
-							json_object_object_add(verListObject, pf->version, versionObject);
-							json_object_array_add(rbVersArray, json_object_new_string(pf->version));
-
-							DL_DELETE(pkgFile, pf);
-							free_pkg_file(pf);
+							if (json_object_array_length(rbVersArray) > 0) {
+								json_object_object_add(pkgObject, "version-list", verListObject);
+								json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+							} else {
+								json_object_put(verListObject);
+								json_object_put(rbVersArray);
+							}
 
 						}
+					} else {
+						if ( uae == E_UA_OK) {
+							json_object* verListObject = json_object_new_object();
+							json_object* rbVersArray   = json_object_new_array();
+							// E115-417: return fake rollback versions info.
 
-						if (json_object_array_length(rbVersArray) > 0) {
+							json_object* versionObject = json_object_new_object();
+							json_object_object_add(versionObject, "file", json_object_new_string(""));
+							json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
+							json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
+							json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+							json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
+
+							json_object_array_add(rbVersArray, json_object_new_string(NULL_STR(installedVer)));
+
 							json_object_object_add(pkgObject, "version-list", verListObject);
 							json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
-						} else {
-							json_object_put(verListObject);
-							json_object_put(rbVersArray);
+
+							comp_set_pd_version(&uacc->st_info, pkgInfo.name, NULL_STR(installedVer));
 						}
-
-					} else if (delta_use_external_algo() && installedVer) {
-						json_object* verListObject = json_object_new_object();
-						json_object* rbVersArray   = json_object_new_array();
-						// E115-417: return fake rollback versions info.
-
-						json_object* versionObject = json_object_new_object();
-						json_object_object_add(versionObject, "file", json_object_new_string(""));
-						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
-						json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
-						json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
-						json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
-
-						json_object_array_add(rbVersArray, json_object_new_string(installedVer));
-
-						json_object_object_add(pkgObject, "version-list", verListObject);
-						json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 
 					}
 
@@ -904,7 +907,6 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
 	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
 	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
-		
 		ua_state_t st = comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
 		if ( st == UA_STATE_PREPARE_UPDATE_STARTED || st == UA_STATE_PREPARE_UPDATE_DONE ) {
 			DBG("skip prepare-update.");
@@ -963,7 +965,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
-		if(state == INSTALL_READY)
+		if (state == INSTALL_READY)
 			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
 		else
 			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, st);
@@ -981,7 +983,6 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 	uacc->cur_msg = jo;
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
-
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
 		update_set_rollback_info(uacc);
 
@@ -991,7 +992,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}else {
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
 			    !ua_rollback_disabled(uacc->update_pkg.name) &&
-			    comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) != URB_NONE) {
+			    uacc->update_pkg.rollback_versions) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
 					update_sts = INSTALL_ROLLBACK;
@@ -1014,7 +1015,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		     !is_prepared_delta_package(uacc->update_file_info.file) ) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
-		
+
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_DONE);
 		uacc->cur_msg = NULL;
 		json_object_put(jo);
@@ -1059,8 +1060,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-
-		ua_state_t st = comp_get_update_stage(uacc->st_info, pkgInfo.name) ;
+		ua_state_t st = comp_get_update_stage(uacc->st_info, pkgInfo.name);
 
 		if (!(st == UA_STATE_READY_UPDATE_DONE ||  st == UA_STATE_UNKNOWN)) {
 			DBG("Skip confirm-update");
@@ -1072,7 +1072,6 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
-
 				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_STARTED);
 
 				if (!get_body_rollback_from_json(jsonObj, &rollback)
@@ -1746,7 +1745,7 @@ int ua_rollback_disabled(const char* pkgName)
 
 	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
 	if (rbc) {
-		DBG("rollback for %s is enabled (%d)", rbc->pkg_name, rbc->rb_disable);
+		DBG("rollback_disabled flag for %s is set (%d)", rbc->pkg_name, rbc->rb_disable);
 		return rbc->rb_disable;
 	}
 
