@@ -18,18 +18,24 @@ ua_handler_t uah[] = {
 
 int test_ua_setup(void** state)
 {
-	ua_cfg_t cfg = {0};
+	ua_cfg_t* cfg = (ua_cfg_t*)*state;
+	ua_cfg_t dfl_cfg = {0};
 
-	cfg.debug          = 0;
-	cfg.delta          = 1;
-	cfg.reboot_support = 1;
-	cfg.cert_dir       = "/data/sota/pki/certs/ua";
-	cfg.url            = "tcp://localhost:9133";
-	cfg.cache_dir      = "/tmp/esync/";
-	cfg.backup_dir     = "/data/sota/esync/";
-	cfg.delta_config   = &(delta_cfg_t){.delta_cap = "A:3;B:3;C:10"};
+	if(!cfg) {
+		dfl_cfg.debug          = 0;
+		dfl_cfg.delta          = 1;
+		dfl_cfg.reboot_support = 1;
+		dfl_cfg.cert_dir       = "/data/sota/pki/certs/ua";
+		dfl_cfg.url            = "tcp://localhost:9133";
+		dfl_cfg.cache_dir      = "/tmp/esync/";
+		dfl_cfg.backup_dir     = "/data/sota/esync/";
+		dfl_cfg.delta_config   = &(delta_cfg_t){.delta_cap = "A:3;B:3;C:10"};
 
-	if (ua_init(&cfg)) {
+		cfg = &dfl_cfg;
+	}
+
+
+	if (ua_init(cfg)) {
 		printf("Updateagent failed!");
 		_exit(1);
 	}
