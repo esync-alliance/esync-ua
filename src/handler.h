@@ -22,21 +22,21 @@
 #include <pthread.h>
 #define MSG_TIMEOUT     10
 
-#define QUERY_PACKAGE   "xl4.query-package"
-#define READY_DOWNLOAD  "xl4.ready-download"
-#define READY_UPDATE    "xl4.ready-update"
-#define PREPARE_UPDATE  "xl4.prepare-update"
-#define CONFIRM_UPDATE  "xl4.confirm-update"
-#define DOWNLOAD_REPORT "xl4.download-report"
-#define SOTA_REPORT     "xl4.sota-report"
-#define LOG_REPORT      "xl4.log-report"
-#define UPDATE_STATUS   "xl4.update-status"
-#define UPDATE_REPORT   "xl4.update-report"
-#define QUERY_SEQUENCE  "xl4.sequence-info"
+#define QUERY_PACKAGE   "esync.query-package"
+#define READY_DOWNLOAD  "esync.ready-download"
+#define READY_UPDATE    "esync.ready-update"
+#define PREPARE_UPDATE  "esync.prepare-update"
+#define CONFIRM_UPDATE  "esync.confirm-update"
+#define DOWNLOAD_REPORT "esync.download-report"
+#define SOTA_REPORT     "esync.sota-report"
+#define LOG_REPORT      "esync.log-report"
+#define UPDATE_STATUS   "esync.update-status"
+#define UPDATE_REPORT   "esync.update-report"
+#define QUERY_SEQUENCE  "esync.sequence-info"
 
 #ifdef SUPPORT_UA_DOWNLOAD
-#define START_DOWNLOAD "xl4.start-download"
-#define QUERY_TRUST    "xl4.query-trust"
+#define START_DOWNLOAD "esync.start-download"
+#define QUERY_TRUST    "esync.query-trust"
 #endif
 
 typedef struct pkg_info {

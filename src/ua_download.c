@@ -788,7 +788,7 @@ static void trigger_session_request()
 
 	json_object_object_add(bodyObject, "server-check", json_object_new_boolean(0));
 	json_object* jObject = json_object_new_object();
-	json_object_object_add(jObject, "type", json_object_new_string("xl4.session-request"));
+	json_object_object_add(jObject, "type", json_object_new_string("esync.session-request"));
 	json_object_object_add(jObject, "body", bodyObject);
 	ua_send_message(jObject);
 	json_object_put(jObject);
