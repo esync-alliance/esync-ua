@@ -239,8 +239,8 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 		if (uacc->update_pkg.rollback_version) {
 			rb_type = URB_DMC_INITIATED;
 
-			char* pd_ver = comp_get_pd_version(uacc->st_info, uacc->update_pkg.name);
-			if (pd_ver && !strcmp(pd_ver, uacc->update_pkg.rollback_version)) {
+			char* fake_rb_ver = comp_get_fake_rb_version(uacc->st_info, uacc->update_pkg.name);
+			if (fake_rb_ver && !strcmp(fake_rb_ver, uacc->update_pkg.rollback_version)) {
 				rb_type = URB_UA_INITIATED;
 			}
 

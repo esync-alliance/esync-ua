@@ -29,7 +29,7 @@ void comp_release_state_info(comp_state_info_t* cs_head)
 
 	HASH_ITER(hh, cs_head, cur, tmp) {
 		HASH_DEL(cs_head,cur);
-		f_free(cur->prepared_delta_ver);
+		f_free(cur->fake_rb_ver);
 		f_free(cur->pkg_name);
 		f_free(cur);
 	}
@@ -104,35 +104,35 @@ int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollbac
 }
 
 
-char* comp_get_pd_version(comp_state_info_t* cs_head, char* pkg_name)
+char* comp_get_fake_rb_version(comp_state_info_t* cs_head, char* pkg_name)
 {
-	char* pd_ver          = NULL;
+	char* fake_ver          = NULL;
 	comp_state_info_t* cs = NULL;
 
 	HASH_FIND_STR(cs_head, pkg_name, cs);
 	if (cs) {
-		pd_ver = cs->prepared_delta_ver;
+		fake_ver = cs->fake_rb_ver;
 	}
-
-	return pd_ver;
+	DBG("comp_get_fake_rb_version is %s", fake_ver?fake_ver:"NIL_V");
+	return fake_ver;
 }
 
-int comp_set_pd_version(comp_state_info_t** cs_head, char* pkg_name, char* pd_ver)
+int comp_set_fake_rb_version(comp_state_info_t** cs_head, char* pkg_name, char* fake_ver)
 {
 	int rc                = E_UA_OK;
 	comp_state_info_t* cs = NULL;
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
-		DBG("change prepared delta version of %s to %s", pkg_name, pd_ver);
-		f_free(cs->prepared_delta_ver);
-		cs->prepared_delta_ver = f_strdup(pd_ver);
+		DBG("change fake rb version of %s to %s", pkg_name, fake_ver);
+		f_free(cs->fake_rb_ver);
+		cs->fake_rb_ver = f_strdup(fake_ver);
 	} else {
-		DBG("init prepared delta version of %s to %s", pkg_name, pd_ver);
+		DBG("init fake rb version of %s to %s", pkg_name, fake_ver);
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name           = f_strdup(pkg_name);
-		cs->prepared_delta_ver = f_strdup(pd_ver);
+		cs->fake_rb_ver = f_strdup(fake_ver);
 		HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );
 	}
 

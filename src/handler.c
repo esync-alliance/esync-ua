@@ -763,6 +763,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	char* installedVer = NULL;
 	char* replyId      = NULL;
 	int uae            = E_UA_OK;
+	int fake_rb_ver   = 0;
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -772,6 +773,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 		if (comp_get_update_stage(uacc->st_info, pkgInfo.name) == UA_STATE_READY_UPDATE_STARTED) {
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
 		}else {
+
 			json_object* pkgObject = json_object_new_object();
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
 			if (uae == E_UA_OK)
@@ -797,74 +799,70 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
 			}
 
-			if (S(ua_intl.backup_dir)) {
+			fake_rb_ver = delta_use_external_algo() || ua_rollback_disabled(pkgInfo.name) ;
+
+			if ( !(S(ua_intl.backup_dir) && (uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG))) ) {
+				fake_rb_ver = 1;
+			}				
+
+			if (!fake_rb_ver &&  uae == E_UA_OK ) {
 				pkg_file_t* pf, * aux, * pkgFile = NULL;
-				char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+				json_object* verListObject = json_object_new_object();
+				json_object* rbVersArray   = json_object_new_array();
 
-				if ( !ua_rollback_disabled(pkgInfo.name) && backup_manifest != NULL) {
-					if (!delta_use_external_algo()) {
-						if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
-							json_object* verListObject = json_object_new_object();
-							json_object* rbVersArray   = json_object_new_array();
+				if (!parse_pkg_manifest(uacc->backup_manifest, &pkgFile)) {
+											
+					DL_FOREACH_SAFE(pkgFile, pf, aux) {
+						json_object* versionObject = json_object_new_object();
 
-							DL_FOREACH_SAFE(pkgFile, pf, aux) {
-								json_object* versionObject = json_object_new_object();
+						json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
+						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded ? 1 : 0));
+						json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
-								json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
-								json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded ? 1 : 0));
-								json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
-
-								if (ua_intl.delta) {
-									json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
-								}
-
-								json_object_object_add(verListObject, pf->version, versionObject);
-								json_object_array_add(rbVersArray, json_object_new_string(pf->version));
-
-								DL_DELETE(pkgFile, pf);
-								free_pkg_file(pf);
-
-							}
-
-							if (json_object_array_length(rbVersArray) > 0) {
-								json_object_object_add(pkgObject, "version-list", verListObject);
-								json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
-							} else {
-								json_object_put(verListObject);
-								json_object_put(rbVersArray);
-							}
-
-						}
-					} else {
-						if ( uae == E_UA_OK) {
-							json_object* verListObject = json_object_new_object();
-							json_object* rbVersArray   = json_object_new_array();
-							// E115-417: return fake rollback versions info.
-
-							json_object* versionObject = json_object_new_object();
-							json_object_object_add(versionObject, "file", json_object_new_string(""));
-							json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
-							json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
-							json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
-							json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
-
-							json_object_array_add(rbVersArray, json_object_new_string(NULL_STR(installedVer)));
-
-							json_object_object_add(pkgObject, "version-list", verListObject);
-							json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
-
-							comp_set_pd_version(&uacc->st_info, pkgInfo.name, NULL_STR(installedVer));
+						if (ua_intl.delta) {
+							json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
 						}
 
+						json_object_object_add(verListObject, pf->version, versionObject);
+						json_object_array_add(rbVersArray, json_object_new_string(pf->version));
+
+						DL_DELETE(pkgFile, pf);
+						free_pkg_file(pf);
 					}
-
-					free(backup_manifest);
 				}
+
+				if (json_object_array_length(rbVersArray) > 0) {
+					json_object_object_add(pkgObject, "version-list", verListObject);
+					json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+				} else {
+					fake_rb_ver = 1;
+					json_object_put(verListObject);
+					json_object_put(rbVersArray);
+				}
+			}
+				
+			if(fake_rb_ver && uae == E_UA_OK ) {
+				json_object* verListObject = json_object_new_object();
+				json_object* rbVersArray   = json_object_new_array();
+
+				json_object* versionObject = json_object_new_object();
+				json_object_object_add(versionObject, "file", json_object_new_string(""));
+				json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
+				json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
+				json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+				json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
+
+				json_object_array_add(rbVersArray, json_object_new_string(NULL_STR(installedVer)));
+
+				json_object_object_add(pkgObject, "version-list", verListObject);
+				json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
+
+				comp_set_fake_rb_version(&uacc->st_info, pkgInfo.name, NULL_STR(installedVer));
 
 			}
 
 			json_object_object_add(bodyObject, "package", pkgObject);
-
+			Z_FREE(uacc->backup_manifest);
 		}
 
 		json_object* jObject = json_object_new_object();
