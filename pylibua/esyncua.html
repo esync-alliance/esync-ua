@@ -61,7 +61,7 @@ Args:<br>
 Returns:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="eSyncUA-do_confirm_download"><strong>do_confirm_download</strong></a>(self, pkgName, version)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;confirm/deny&nbsp;download&nbsp;after&nbsp;UA&nbsp;receives<br>
-xl4.ready-download&nbsp;message&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+esync.ready-download&nbsp;message&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;<br>
 Args:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;pkgName:&nbsp;Component&nbsp;package&nbsp;name.<br>
@@ -104,7 +104,7 @@ Args:&nbsp;None<br>
 Returns:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="eSyncUA-do_install"><strong>do_install</strong></a>(self, downloadFileStr)</dt><dd><tt>[Required]&nbsp;Interface&nbsp;to&nbsp;start&nbsp;updating&nbsp;after&nbsp;<a href="#eSyncUA-do_pre_install">do_pre_install</a>()&nbsp;upon<br>
-receiving&nbsp;xl4.ready-update&nbsp;message.&nbsp;&nbsp;<br>
+receiving&nbsp;esync.ready-update&nbsp;message.&nbsp;&nbsp;<br>
 &nbsp;<br>
 Args:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;downloadFileStr:&nbsp;Full&nbsp;pathname&nbsp;of&nbsp;the&nbsp;installation&nbsp;package&nbsp;file.<br>
@@ -126,7 +126,7 @@ Args:<br>
 Returns:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="eSyncUA-do_pre_install"><strong>do_pre_install</strong></a>(self, downloadFileStr)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;prepare&nbsp;for&nbsp;updating&nbsp;after&nbsp;UA&nbsp;receives&nbsp;<br>
-xl4.ready-update&nbsp;message<br>
+esync.ready-update&nbsp;message<br>
 &nbsp;<br>
 Args:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;pkgName:&nbsp;Component&nbsp;package&nbsp;name.<br>
@@ -138,7 +138,7 @@ Returns:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Default&nbsp;is&nbsp;"INSTALL_IN_PROGRESS"</tt></dd></dl>
 
 <dl><dt><a name="eSyncUA-do_prepare_install"><strong>do_prepare_install</strong></a>(self, packageName, version, packageFile)</dt><dd><tt>[Optional]&nbsp;Interface&nbsp;to&nbsp;allow&nbsp;UA&nbsp;to&nbsp;manage&nbsp;'packageFile'&nbsp;after<br>
-receiving&nbsp;xl4.prepare-update.&nbsp;e.g.&nbsp;A&nbsp;system&nbsp;might&nbsp;need&nbsp;to&nbsp;copy<br>
+receiving&nbsp;esync.prepare-update.&nbsp;e.g.&nbsp;A&nbsp;system&nbsp;might&nbsp;need&nbsp;to&nbsp;copy<br>
 'packageFile'&nbsp;to&nbsp;a&nbsp;specific&nbsp;directory.&nbsp;In&nbsp;such&nbsp;case,&nbsp;UA&nbsp;shall<br>
 return&nbsp;the&nbsp;new&nbsp;pathname,&nbsp;which&nbsp;will&nbsp;be&nbsp;passed&nbsp;to&nbsp;do_install.<br>
 &nbsp;<br>
@@ -157,8 +157,8 @@ Returns:<br>
 &nbsp;<br>
 Args:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;packageName(str):&nbsp;A&nbsp;string&nbsp;for&nbsp;component&nbsp;package&nbsp;name&nbsp;found&nbsp;in&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xl4.ready-update&nbsp;message.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;ver(str):&nbsp;A&nbsp;version&nbsp;string&nbsp;found&nbsp;in&nbsp;xl4.ready-update&nbsp;message.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;esync.ready-update&nbsp;message.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ver(str):&nbsp;A&nbsp;version&nbsp;string&nbsp;found&nbsp;in&nbsp;esync.ready-update&nbsp;message.<br>
 &nbsp;<br>
 Returns:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int:&nbsp;0&nbsp;for&nbsp;success,&nbsp;1&nbsp;for&nbsp;error.</tt></dd></dl>
@@ -167,7 +167,7 @@ Returns:<br>
 a&nbsp;remote&nbsp;system&nbsp;to&nbsp;the&nbsp;local&nbsp;filesystem&nbsp;for&nbsp;installation,&nbsp;after<br>
 receiving&nbsp;.&nbsp;UA&nbsp;shall&nbsp;return&nbsp;the&nbsp;new&nbsp;local&nbsp;pathname,<br>
 which&nbsp;will&nbsp;be&nbsp;used&nbsp;for&nbsp;further&nbsp;processing.&nbsp;Note&nbsp;that&nbsp;this&nbsp;inteface&nbsp;is<br>
-invoked&nbsp;after&nbsp;receiving&nbsp;xl4.prepare-update,&nbsp;before&nbsp;calling<br>
+invoked&nbsp;after&nbsp;receiving&nbsp;esync.prepare-update,&nbsp;before&nbsp;calling<br>
 do_prepare_install<br>
 &nbsp;<br>
 Args:<br>
@@ -188,7 +188,7 @@ Args:&nbsp;None<br>
 &nbsp;<br>
 Returns:&nbsp;None</tt></dd></dl>
 
-<dl><dt><a name="eSyncUA-send_diag_data"><strong>send_diag_data</strong></a>(self, message, level='INFO', timestamp=None, compoundable=True, nodeType=None)</dt><dd><tt>Send&nbsp;diagnostic&nbsp;message&nbsp;(xl4.log-report)&nbsp;to&nbsp;DMClient<br>
+<dl><dt><a name="eSyncUA-send_diag_data"><strong>send_diag_data</strong></a>(self, message, level='INFO', timestamp=None, compoundable=True, nodeType=None)</dt><dd><tt>Send&nbsp;diagnostic&nbsp;message&nbsp;(esync.log-report)&nbsp;to&nbsp;DMClient<br>
 &nbsp;<br>
 Args:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message(str):&nbsp;message&nbsp;JSON&nbsp;<a href="builtins.html#object">object</a>&nbsp;should&nbsp;be&nbsp;created&nbsp;by&nbsp;<br>
