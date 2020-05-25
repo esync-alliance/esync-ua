@@ -272,7 +272,7 @@ class eSyncUA:
 
     def send_diag_data(self, message, level='INFO', timestamp=None, compoundable=True, nodeType=None):
         """ 
-        Send diagnostic message (xl4.log-report) to DMClient
+        Send diagnostic message (esync.log-report) to DMClient
 
         Args:
                 message(str): message JSON object should be created by 
@@ -288,7 +288,7 @@ class eSyncUA:
         if nodeType is None:
             nodeType = self.nodeType
 
-        diagMsg = OrderedDict([('type', 'xl4.log-report'), ('body', None)])
+        diagMsg = OrderedDict([('type', 'esync.log-report'), ('body', None)])
         body = OrderedDict([('type', nodeType), ('level', level), ('timestamp', timestamp),
                             ('compoundable', compoundable), ('message', message)])
 
