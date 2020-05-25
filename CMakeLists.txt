@@ -94,6 +94,10 @@ configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
 add_custom_command(OUTPUT PHONY ${CMAKE_BINARY_DIR}/ua_version.h COMMAND ${CMAKE_SOURCE_DIR}/make_version.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_definitions(-D_GNU_SOURCE)
 
+if(ESYNC_ALLIANCE)
+	add_definitions(-DESYNC_ALLIANCE)
+endif()
+
 set(LIB_SOURCE ${LIB_SOURCE}
     PHONY
     ${BCH}
