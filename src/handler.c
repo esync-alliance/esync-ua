@@ -763,7 +763,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	char* installedVer = NULL;
 	char* replyId      = NULL;
 	int uae            = E_UA_OK;
-	int fake_rb_ver   = 0;
+	int fake_rb_ver    = 0;
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -773,7 +773,6 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 		if (comp_get_update_stage(uacc->st_info, pkgInfo.name) == UA_STATE_READY_UPDATE_STARTED) {
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
 		}else {
-
 			json_object* pkgObject = json_object_new_object();
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
 			if (uae == E_UA_OK)
@@ -799,11 +798,11 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
 			}
 
-			fake_rb_ver = delta_use_external_algo() || ua_rollback_disabled(pkgInfo.name) ;
+			fake_rb_ver = delta_use_external_algo() || ua_rollback_disabled(pkgInfo.name);
 
 			if ( !(S(ua_intl.backup_dir) && (uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG))) ) {
 				fake_rb_ver = 1;
-			}				
+			}
 
 			if (!fake_rb_ver &&  uae == E_UA_OK ) {
 				pkg_file_t* pf, * aux, * pkgFile = NULL;
@@ -811,7 +810,6 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				json_object* rbVersArray   = json_object_new_array();
 
 				if (!parse_pkg_manifest(uacc->backup_manifest, &pkgFile)) {
-											
 					DL_FOREACH_SAFE(pkgFile, pf, aux) {
 						json_object* versionObject = json_object_new_object();
 
@@ -840,8 +838,8 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 					json_object_put(rbVersArray);
 				}
 			}
-				
-			if(fake_rb_ver && uae == E_UA_OK ) {
+
+			if (fake_rb_ver && uae == E_UA_OK ) {
 				json_object* verListObject = json_object_new_object();
 				json_object* rbVersArray   = json_object_new_array();
 
@@ -905,11 +903,28 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
 	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
 	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
-		ua_state_t st = comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
-		if ( st == UA_STATE_PREPARE_UPDATE_STARTED || st == UA_STATE_PREPARE_UPDATE_DONE ) {
-			DBG("skip prepare-update.");
+
+		ua_stage_t st = comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
+		if ( st == UA_STATE_PREPARE_UPDATE_STARTED ) {
+			DBG("skipping, still prcocessing prepare-update for version %s of %s", uacc->update_pkg.version, uacc->update_pkg.name);
 			return;
 
+		}
+
+		if ( st == UA_STATE_PREPARE_UPDATE_DONE ) {
+			char* prepared_ver = comp_get_prepared_version(uacc->st_info, uacc->update_pkg.name);
+
+			if(prepared_ver) {
+				if(!strcmp(prepared_ver, uacc->update_pkg.version)) {
+					DBG("skipping, prepare-update has been processed for version %s of %s", uacc->update_pkg.version, uacc->update_pkg.name);
+					return;
+				} else {
+					DBG("%s prepare-update has different version(%s) than the saved prepared_ver: %s ", 
+					uacc->update_pkg.name, uacc->update_pkg.version, prepared_ver);
+				}
+			} else {
+				DBG("prepared-update has been processed for version %s, but libua has no version record.", uacc->update_pkg.version);
+			}
 		}
 
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_STARTED);
@@ -963,8 +978,10 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.version);
 			free(pkgFile.file);
 		}
-		if (state == INSTALL_READY)
+		if (state == INSTALL_READY) {
+			comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, uacc->update_pkg.version);
 			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
+		}
 		else
 			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, st);
 
@@ -982,6 +999,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
+		comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, NULL); //reset saved prepared_ver
+		
 		update_set_rollback_info(uacc);
 
 		if (uacc->update_pkg.rollback_version) {
@@ -989,7 +1008,6 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 		}else {
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
-			    !ua_rollback_disabled(uacc->update_pkg.name) &&
 			    uacc->update_pkg.rollback_versions) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
@@ -1058,10 +1076,10 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version)) {
-		ua_state_t st = comp_get_update_stage(uacc->st_info, pkgInfo.name);
+		ua_stage_t st = comp_get_update_stage(uacc->st_info, pkgInfo.name);
 
 		if (!(st == UA_STATE_READY_UPDATE_DONE ||  st == UA_STATE_UNKNOWN)) {
-			DBG("Skip confirm-update");
+			DBG("skipping confirm-update for version %s of %s", pkgInfo.version, pkgInfo.name);
 			return;
 		}
 
@@ -1083,7 +1101,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 				remove(update_manifest);
 				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
 			} else {
-				DBG("confirm-update did not find temp manifest %s", update_manifest);
+				DBG("skipping confirm-update, did not find temp manifest %s", update_manifest);
 			}
 
 		}else
@@ -1324,7 +1342,8 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 
 	}
 
-	send_install_status(uacc, state, 0, UE_NONE);
+	if (state == INSTALL_IN_PROGRESS)
+		send_install_status(uacc, state, 0, UE_NONE);
 
 	return state;
 }

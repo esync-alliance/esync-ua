@@ -184,7 +184,7 @@ static void _help(const char* app)
 int main(int argc, char** argv)
 {
 	int c = 0;
-	int sel = 0;
+	int sel = -1;
 	handler_type = UT_DEFAULT_HANDLER_TYPE;
 	strcpy(case_dir, "../unit_tests/cases");
 	while ((c = getopt(argc, argv, ":c:i:t:h")) != -1) {
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	if(sel) {
+	if(sel >= 0) {
 		const struct CMUnitTest signle[] = {
 			cmocka_unit_test(case_funcs[sel]),
 		};

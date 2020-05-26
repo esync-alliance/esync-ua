@@ -89,7 +89,7 @@ typedef enum esync_bus_conn_state {
 
 }esync_bus_conn_state_t;
 
-typedef enum ua_state {
+typedef enum ua_stage {
 	UA_STATE_UNKNOWN,
 	UA_STATE_IDLE_INIT,
 	UA_STATE_READY_DOWNLOAD_STARTED,
@@ -101,7 +101,7 @@ typedef enum ua_state {
 	UA_STATE_CONFIRM_UPDATE_STARTED,
 	UA_STATE_CONFIRM_UPDATE_DONE,
 
-}ua_state_t;
+}ua_stage_t;
 
 typedef struct async_update_status {
 	pthread_mutex_t lock;
@@ -195,7 +195,8 @@ typedef struct comp_sequence {
 
 typedef struct comp_state_info {
 	char* pkg_name;
-	ua_state_t stage;
+	char* prepared_ver;
+	ua_stage_t stage;
 	update_rollback_t rb_type;
 	char* fake_rb_ver;
 
