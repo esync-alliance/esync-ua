@@ -1008,7 +1008,6 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 		}else {
 			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
-			    !ua_rollback_disabled(uacc->update_pkg.name) &&
 			    uacc->update_pkg.rollback_versions) {
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
@@ -1343,7 +1342,8 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 
 	}
 
-	send_install_status(uacc, state, 0, UE_NONE);
+	if (state == INSTALL_IN_PROGRESS)
+		send_install_status(uacc, state, 0, UE_NONE);
 
 	return state;
 }
