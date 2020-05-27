@@ -175,6 +175,11 @@ typedef struct ua_cfg {
 	//1 = disable, do not verify downloaded package against sha256
 	int package_verification_disabled;
 
+	//Enable fake rollback version in query-package response.
+	//0 = default, do NOT use fake rollback version.
+	//1 = enable, use fake rollback version.
+	int enable_fake_rb_ver;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 	// specifies whether UA is to handle package download.
 	int ua_download_required;

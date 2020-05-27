@@ -154,6 +154,7 @@ typedef struct ua_internal {
 	rollback_crtl_t* rb_crtl;
 	char* query_reply_id;
 	int seq_info_valid;
+	int enable_fake_rb_ver;
 #ifdef SUPPORT_UA_DOWNLOAD
 	int ua_download_required;
 	char* ua_downloaded_filename;
@@ -219,6 +220,7 @@ typedef struct ua_component_context {
 	comp_sequence_t* seq_in;
 	comp_sequence_t* seq_out;
 	comp_state_info_t* st_info;
+	int enable_fake_rb_ver;
 
 } ua_component_context_t;
 
