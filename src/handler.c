@@ -917,14 +917,15 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 			if (prepared_ver) {
 				if (!strcmp(prepared_ver, uacc->update_pkg.version)) {
-					DBG("skipping, prepare-update has been processed for version %s of %s", uacc->update_pkg.version, uacc->update_pkg.name);
+					DBG("version %s of %s has been marked prepared, sending back INSTALL_READY with no further processing", uacc->update_pkg.version, uacc->update_pkg.name);
+					send_install_status(uacc, INSTALL_READY, 0, UE_NONE);
 					return;
 				} else {
 					DBG("%s prepare-update has different version(%s) than the saved prepared_ver: %s ",
 					    uacc->update_pkg.name, uacc->update_pkg.version, prepared_ver);
 				}
 			} else {
-				DBG("prepared-update has been processed for version %s, but libua has no version record.", uacc->update_pkg.version);
+				DBG("version %s has been marked prepared, but found no version record.", uacc->update_pkg.version);
 			}
 		}
 
@@ -957,15 +958,11 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 			uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
 
-			{
-				state = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
+			state = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
+			send_install_status(uacc, state, &pkgFile, updateErr);
 
-				send_install_status(uacc, state, &pkgFile, updateErr);
-
-				Z_FREE(updateFile.version);
-				Z_FREE(updateFile.file);
-			}
-
+			Z_FREE(updateFile.version);
+			Z_FREE(updateFile.file);
 			Z_FREE(uacc->update_manifest);
 
 		} else {
