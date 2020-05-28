@@ -24,14 +24,15 @@ static void _help(const char* app)
 {
 	printf("Usage: %s [OPTION...]\n\n%s", app,
 	       "Options:\n"
-	       "  -u <url>   : url of xl4bus broker (default: \"tcp://localhost:9133\")\n"
-	       "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
+	       "  -a <cap>   : delta capability\n"
 	       "  -b <path>  : path to backup directory (default: \"/data/sota/esync/\")\n"
 	       "  -c <path>  : path to cache directory (default: \"/tmp/esync/\")\n"
 	       "  -d         : enable verbose\n"
-	       "  -D         : disable delta reconstruction\n"
-	       "  -a <cap>   : delta capability\n"
+	       "  -k <path>  : path to certificate directory (default: \"./../pki/certs/updateagent\")\n"
 	       "  -m <size>  : read/write buffer size, in kilobytes\n"
+	       "  -u <url>   : url of xl4bus broker (default: \"tcp://localhost:9133\")\n"
+	       "  -D         : disable delta reconstruction\n"
+	       "  -F         : enable fake rollback version\n"
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	       "  -H <host>  : host of scp server.\n"
 	       "  -U <user>  : scp username\n"
@@ -67,7 +68,7 @@ int main(int argc, char** argv)
 	scpi.sshpass_bin = "sshpass";
 #endif
 
-	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:dDh")) != -1) {
+	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:dDFh")) != -1) {
 		switch (c) {
 			case 'k':
 				cfg.cert_dir = optarg;
@@ -106,6 +107,9 @@ int main(int argc, char** argv)
 				break;
 			case 'D':
 				cfg.delta = 0;
+				break;
+			case 'F':
+				cfg.enable_fake_rb_ver = 1;
 				break;
 			case 'm':
 				if ((cfg.rw_buffer_size = atoi(optarg)) > 0)
