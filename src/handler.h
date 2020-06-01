@@ -52,6 +52,7 @@
 #define LOG_REPORT      "xl4.log-report"
 #define UPDATE_STATUS   "xl4.update-status"
 #define UPDATE_REPORT   "xl4.update-report"
+#define QUERY_SEQUENCE  "xl4.sequence-info"
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #define START_DOWNLOAD "xl4.start-download"
