@@ -887,7 +887,6 @@ static void process_ready_download(ua_component_context_t* uacc, json_object* js
 
 	}
 
-	memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
 }
 
 
@@ -901,6 +900,8 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	#ifdef SUPPORT_UA_DOWNLOAD
 	char tmp_filename[PATH_MAX] = {0};
 	#endif
+
+	memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
 
 	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
 	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
