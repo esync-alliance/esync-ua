@@ -96,8 +96,10 @@ add_definitions(-D_GNU_SOURCE)
 
 if(ESYNC_ALLIANCE)
 	add_definitions(-DESYNC_ALLIANCE)
-endif()
-
+	set(UpdateAgentBinNAme "${binName}")
+else()
+	set(UpdateAgentBinNAme "tmpl-updateagent")
+endif() 
 set(LIB_SOURCE ${LIB_SOURCE}
     PHONY
     ${BCH}
@@ -205,11 +207,11 @@ if (BUILD_BINS)
         src/test_agents/util.h
         )
     endif()
-    add_executable(agent ${TMPL_UA_SOURCE})
-    targets_link_libraries(agent deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
+    add_executable(${UpdateAgentBinNAme} ${TMPL_UA_SOURCE})
+    targets_link_libraries(${UpdateAgentBinNAme} deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
 
     if (XL4_PROVIDE_THREADS)
-        targets_link_libraries(agent deltapatcher LIBRARIES Threads::Threads)
+        targets_link_libraries(${UpdateAgentBinNAme} deltapatcher LIBRARIES Threads::Threads)
     else()
         message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
     endif()
