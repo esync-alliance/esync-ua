@@ -34,6 +34,7 @@
 #define UPDATE_REPORT   "esync.update-report"
 #define UPDATE_STATUS   "esync.update-status"
 #define QUERY_SEQUENCE  "esync.sequence-info"
+#define SESSION_REQUEST "esync.session-request"
 
 
 #ifdef SUPPORT_UA_DOWNLOAD
@@ -53,6 +54,7 @@
 #define UPDATE_STATUS   "xl4.update-status"
 #define UPDATE_REPORT   "xl4.update-report"
 #define QUERY_SEQUENCE  "xl4.sequence-info"
+#define SESSION_REQUEST "xl4.session-request"
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #define START_DOWNLOAD "xl4.start-download"
