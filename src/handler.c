@@ -30,9 +30,9 @@ static void process_sota_report(ua_component_context_t* uacc, json_object* jsonO
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj);
-static download_state_t prepare_download_action(ua_component_context_t* uacc);
+static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* update_pkg);
 static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
-static void send_download_status(ua_component_context_t* uacc, download_state_t state);
+static void send_download_status(ua_component_context_t* uacc, pkg_info_t* pkgInfo, download_state_t state);
 static int send_update_report(const char* pkgName, const char* version, int indeterminate, int percent, update_stage_t us);
 static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version);
 static int send_sequence_query(void);
@@ -880,10 +880,12 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 static void process_ready_download(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
-	    !get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name) &&
-	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
-		prepare_download_action(uacc);
+	pkg_info_t update_pkg = {0};
+
+	if (!get_pkg_type_from_json(jsonObj, &update_pkg.type) &&
+	    !get_pkg_name_from_json(jsonObj, &update_pkg.name) &&
+	    !get_pkg_version_from_json(jsonObj, &update_pkg.version)) {
+		prepare_download_action(uacc, &update_pkg);
 
 	}
 
@@ -1287,14 +1289,14 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 }
 
 
-static download_state_t prepare_download_action(ua_component_context_t* uacc)
+static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* update_pkg)
 {
 	ua_routine_t* uar      = (uacc != NULL) ? uacc->uar : NULL;
 	download_state_t state = DOWNLOAD_CONSENT;
 
-	if (uar->on_prepare_download) {
-		state = (*uar->on_prepare_download)(uacc->update_pkg.type, uacc->update_pkg.name, uacc->update_pkg.version);
-		send_download_status(uacc, state);
+	if (uar && uar->on_prepare_download) {
+		state = (*uar->on_prepare_download)(update_pkg->type, update_pkg->name, update_pkg->version);
+		send_download_status(uacc, update_pkg, state);
 	}
 
 	return state;
@@ -1436,10 +1438,9 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 }
 
 
-static void send_download_status(ua_component_context_t* uacc, download_state_t state)
+static void send_download_status(ua_component_context_t* uacc, pkg_info_t* pkgInfo, download_state_t state)
 {
 	json_object* pkgObject = json_object_new_object();
-	pkg_info_t* pkgInfo    = &uacc->update_pkg;
 
 	json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
