@@ -14,6 +14,8 @@ typedef void (*ut_test_func)(void** state);
 
 extern char* optarg;
 char* handler_type;
+
+static char* xl4_msg_path = 0;
 static char case_dir[PATH_MAX];
 static char *cases[] = {
 	"test_normal_update_success",
@@ -32,7 +34,7 @@ static void handle_messages_from_file(char* filename, ua_cfg_t* cfg)
 
 	//ua_cfg_t* cfg = NULL;
 
-	sprintf(fullpath, "%s/%s", case_dir, filename);
+	sprintf(fullpath, "%s%s", case_dir, filename);
 	test_ua_setup((void**)&cfg);
 
 	if ((fd = fopen(fullpath, "r"))) {
@@ -44,7 +46,7 @@ static void handle_messages_from_file(char* filename, ua_cfg_t* cfg)
 			}
 		fclose(fd);
 	}
-
+	//while(1);
 	test_ua_teardown((void**)&filename);
 }
 
@@ -111,7 +113,6 @@ void test_delta_dmc_rollback_failure(void** state)
 	test_rollback_by_dmc(1);
 }
 
-
 void test_rollback_mixed(void** state)
 {
 	assert_true(!system("rm -rf /data/sota/esync/backup"));
@@ -129,6 +130,7 @@ void test_rollback_mixed(void** state)
 	assert_true(!access("/data/sota/esync/backup/ECU_HMNS_ROM/4.0", F_OK));
 	assert_true(access("/tmp/esync/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
 }
+
 
 void test_rollback_fake_version(void** state)
 {
@@ -155,6 +157,12 @@ void test_rollback_fake_version(void** state)
 	assert_true(access("/tmp/esync/ECU_HMNS_ROM/manifest_pkg.xml", F_OK));
 }
 
+void test_xl4_msg_file(void** state)
+{
+
+	handle_messages_from_file(xl4_msg_path, NULL);
+
+}
 
 static ut_test_func case_funcs[] = {
 	test_normal_update_success,
@@ -172,6 +180,7 @@ static void _help(const char* app)
 	       "Options:\n"
 	       "  -h         : display this help and exit\n"
 	       "  -t <type>  : handler type (default: \"/UNITTEST/UA/\")\n"
+	       "  -f <file>  : only run test with <file>, containing xl4bus messages\n"
 	       "  -c <path>  : path to test cases directory (default \"../unit_tests/cases/\")\n"
 	       "  -i index   : run single ith test case, default(0) is to run all tests> \n"
 	       );
@@ -185,9 +194,11 @@ int main(int argc, char** argv)
 {
 	int c = 0;
 	int sel = -1;
+
 	handler_type = UT_DEFAULT_HANDLER_TYPE;
-	strcpy(case_dir, "../unit_tests/cases");
-	while ((c = getopt(argc, argv, ":c:i:t:h")) != -1) {
+	strcpy(case_dir, "../unit_tests/cases/");
+
+	while ((c = getopt(argc, argv, ":c:i:t:f:h")) != -1) {
 		switch (c) {
 			case 'c':
 				memset(case_dir, 0, sizeof(case_dir));
@@ -195,6 +206,9 @@ int main(int argc, char** argv)
 				break;
 			case 'i':
 				sel = atoi(optarg) - 1;
+				break;
+			case 'f':
+				xl4_msg_path = optarg;
 				break;
 			case 't':
 				handler_type = optarg;
@@ -204,6 +218,14 @@ int main(int argc, char** argv)
 				_help(argv[0]);
 				break;
 		}
+	}
+
+	if(xl4_msg_path) {
+		case_dir[0] = 0;
+		const struct CMUnitTest signle[] = {
+			cmocka_unit_test(test_xl4_msg_file),
+		};
+		return cmocka_run_group_tests(signle, NULL, NULL);		
 	}
 
 	if(sel >= 0) {

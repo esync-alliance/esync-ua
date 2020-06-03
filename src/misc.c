@@ -778,6 +778,7 @@ char* randstring(int length)
 
 	return randomString;
 }
+
 int remove_subdirs_except(char* parent_dir, char* subdir_to_keep)
 {
 	DIR* d;
@@ -801,4 +802,12 @@ int remove_subdirs_except(char* parent_dir, char* subdir_to_keep)
 		closedir(d);
 	}
 	return(0);
+}
+
+int reply_id_matched(char* s1, char* s2)
+{
+	int matched = 0;
+	if(s1 && s2)
+		matched = !strcmp(s1, s2);
+	return matched;
 }
