@@ -1173,8 +1173,7 @@ static void process_update_status(ua_component_context_t* uacc, json_object* jso
 	char* replyTo;
 
 	if (!get_replyto_from_json(jsonObj, &replyTo) &&
-	    uacc->update_status_info.reply_id &&
-	    !strcmp(replyTo, uacc->update_status_info.reply_id)) {
+	    reply_id_matched(replyTo, uacc->update_status_info.reply_id)) {
 		free(uacc->update_status_info.reply_id);
 		uacc->update_status_info.reply_id = NULL;
 
