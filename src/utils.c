@@ -175,13 +175,13 @@ int get_pkg_version_item_from_json(json_object* jsonObj, char* version, version_
 				break;
 		}
 #if 1
-		DBG("vi->sha256: %s", vi->sha256);
-		DBG("vi->downloaded: %d", vi->downloaded);
-		DBG("vi->downloadable.sha256: %s", vi->downloadable.sha256);
-		DBG("vi->downloadable.length: %d", vi->downloadable.length);
-		DBG("vi->downloadable.url: %s", vi->downloadable.url);
-		DBG("vi->encryption.method: %s", vi->encryption.method);
-		DBG("vi->encryption.key: %s", vi->encryption.key);
+		A_INFO_MSG("vi->sha256: %s", vi->sha256);
+		A_INFO_MSG("vi->downloaded: %d", vi->downloaded);
+		A_INFO_MSG("vi->downloadable.sha256: %s", vi->downloadable.sha256);
+		A_INFO_MSG("vi->downloadable.length: %d", vi->downloadable.length);
+		A_INFO_MSG("vi->downloadable.url: %s", vi->downloadable.url);
+		A_INFO_MSG("vi->encryption.method: %s", vi->encryption.method);
+		A_INFO_MSG("vi->encryption.key: %s", vi->encryption.key);
 #endif
 		return E_UA_OK;
 	}
@@ -269,7 +269,7 @@ int json_get_property(json_object* json, enum json_type typ, void* value, const 
 
 	while (node) {
 		if (!json_object_object_get_ex(obj, node, &aux)) {
-			//DBG("No %s property in json object", node);
+			//A_ERROR_MSG("No %s property in json object", node);
 			err = E_UA_ERR;
 			break;
 		}

@@ -83,7 +83,7 @@ int ua_init(ua_cfg_t* uaConfig)
 
 		if (uaConfig->delta) {
 			if (delta_init(uaConfig->cache_dir, uaConfig->delta_config)) {
-				DBG("delta initialization failed, disabling delta feature. ");
+				A_INFO_MSG("delta initialization failed, disabling delta feature. ");
 				uaConfig->delta = 0;
 			}
 		}
@@ -185,11 +185,11 @@ int ua_register(ua_handler_t* uah, int len)
 			ri->component.update_status_info.reply_id = NULL;
 			ri->component.record_file                 = ua_intl.record_file;
 			ri->component.enable_fake_rb_ver          = ua_intl.enable_fake_rb_ver;
-			DBG("Registered: %s", ri->component.type);
+			A_INFO_MSG("Registered: %s", ri->component.type);
 		} while (0);
 
 		if (err) {
-			DBG("Failed to register: %s", (uah + i)->type_handler);
+			A_ERROR_MSG("Failed to register: %s", (uah + i)->type_handler);
 			free(ri);
 			ua_unregister(uah, len);
 			break;
@@ -235,13 +235,13 @@ int ua_unregister(ua_handler_t* uah, int len)
 					Z_FREE(ri->component.type);
 					Z_FREE(ri->component.update_status_info.reply_id);
 					Z_FREE(ri);
-					DBG("Unregistered: %s", type);
+					A_INFO_MSG("Unregistered: %s", type);
 				}
 
 			} while (0);
 
 			if (err) {
-				DBG("Failed to unregister: %s", type);
+				A_ERROR_MSG("Failed to unregister: %s", type);
 				ret = err;
 			}
 		}
@@ -273,14 +273,14 @@ int ua_send_message(json_object* jsonObj)
 {
 	char* msg = (char*)json_object_to_json_string(jsonObj);
 
-	DBG("Sending to DMC : %s", msg);
+	A_DEBUG_MSG("Sending to DMC : %s", msg);
 	return xl4bus_client_send_msg(msg);
 
 }
 
 int ua_send_message_string(char* message)
 {
-	DBG("Sending to DMC : %s", message);
+	A_DEBUG_MSG("Sending to DMC : %s", message);
 	return xl4bus_client_send_msg(message);
 }
 
@@ -288,13 +288,13 @@ XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t*
 {
 	char* msg = (char*)json_object_to_json_string(jsonObj);
 
-	DBG("Sending with bus addr: %s", msg);
+	A_DEBUG_MSG("Sending with bus addr: %s", msg);
 	return xl4bus_client_send_msg_to_addr(msg, xl4_address);
 }
 
 int ua_send_message_string_with_address(char* message,  xl4bus_address_t* xl4_address)
 {
-	DBG("Sending with bus addr: %s", message);
+	A_DEBUG_MSG("Sending with bus addr: %s", message);
 	return xl4bus_client_send_msg_to_addr(message, xl4_address);
 }
 
@@ -366,7 +366,7 @@ void handle_status(int status)
 		"CLIENT_START"
 	};
 
-	DBG("eSync Bus Status (%d): %s", status, status < sizeof(sts_str)/sizeof(sts_str[0]) ? sts_str[status] : "NULL");
+	A_INFO_MSG("eSync Bus Status (%d): %s", status, status < sizeof(sts_str)/sizeof(sts_str[0]) ? sts_str[status] : "NULL");
 	ua_intl.esync_bus_conn_status = status;
 }
 
@@ -382,7 +382,7 @@ void handle_delivered(const char* msg, int ok)
 			get_pkg_type_from_json(jObj, &pkg_type);
 			get_type_from_json(jObj, &msg_type);
 			if (!ok)
-				DBG("Message delivered %s : %s for %s", ok ? "OK" : "NOT OK", NULL_STR(msg_type), NULL_STR(pkg_type));
+				A_INFO_MSG("Message delivered %s : %s for %s", ok ? "OK" : "NOT OK", NULL_STR(msg_type), NULL_STR(pkg_type));
 			json_object_put(jObj);
 		}
 	}
@@ -391,7 +391,7 @@ void handle_delivered(const char* msg, int ok)
 
 void handle_presence(int connected, int disconnected, esync_bus_conn_state_t connection_state)
 {
-	DBG("Connected : %d,  Disconnected : %d", connected, disconnected);
+	A_INFO_MSG("Connected : %d,  Disconnected : %d", connected, disconnected);
 	switch (connection_state)
 	{
 		case BUS_CONN_BROKER_NOT_CONNECTED:
@@ -413,7 +413,7 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 						pthread_attr_init(&attr);
 						pthread_attr_setdetachstate(&attr, 1);
 						if (pthread_create(&thread_dmc_presence, &attr, ua_handle_dmc_presence, (void*)uar)) {
-							DBG("Failed to spawn thread_dmc_presence.");
+							A_ERROR_MSG("Failed to spawn thread_dmc_presence.");
 						}
 						pthread_attr_destroy(&attr);
 					}
@@ -433,16 +433,16 @@ void handle_message(const char* type, const char* msg, size_t len)
 	int err = E_UA_OK;
 	UT_array ri_list;
 
-	DBG("Incoming message : %s", msg);
+	A_DEBUG_MSG("Incoming message : %s", msg);
 
 	utarray_init(&ri_list, &ut_ptr_icd);
 	query_hash_tree(ri_tree, 0, type, 0, &ri_list, 0);
 
 	int l = utarray_len(&ri_list);
 	if (!l)
-		DBG("Incoming message for non-registered handler %s : %s", type, msg);
+		A_DEBUG_MSG("Incoming message for non-registered handler %s : %s", type, msg);
 	//else
-	//	DBG("Registered handlers found for %s : %d", type, l);
+	//	A_INFO_MSG("Registered handlers found for %s : %d", type, l);
 
 	for (int j = 0; j < l; j++) {
 		runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
@@ -459,7 +459,7 @@ void handle_message(const char* type, const char* msg, size_t len)
 
 	utarray_done(&ri_list);
 
-	if (err) DBG("Error while appending message to queue for %s : %s", type, msg);
+	if (err) A_ERROR_MSG("Error while appending message to queue for %s : %s", type, msg);
 
 }
 
@@ -511,7 +511,7 @@ void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const 
 	HASH_FIND(hh, current->nodes, ua_type, key_len, child);
 	if (!child) {
 		if (is_delete) {
-			DBG("sub-node not found to delete sub-tree %s", ua_type);
+			A_ERROR_MSG("sub-node not found to delete sub-tree %s", ua_type);
 		} else if (!gather) {
 			child         = f_malloc(sizeof(runner_info_hash_tree_t));
 			child->key    = f_strndup(ua_type, key_len);
@@ -545,7 +545,7 @@ void* runner_loop(void* arg)
 	while (info->run) {
 		incoming_msg_t* im = NULL;
 		if (pthread_mutex_lock(&info->lock)) {
-			DBG_SYS("lock failed");
+			A_ERROR_MSG("lock failed");
 			continue;
 		}
 
@@ -562,7 +562,7 @@ void* runner_loop(void* arg)
 			if (tnow < tout)
 				process_message(&info->component, im->msg, im->msg_len);
 			else
-				DBG("message timed out: %s", im->msg);
+				A_INFO_MSG("message timed out: %s", im->msg);
 
 			free(im->msg);
 			free(im);
@@ -626,9 +626,9 @@ static int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, 
 
 	HASH_FIND_STR(*seq, name, s);
 	if (s) {
-		//DBG("found %s in seq num: %d", s->name, s->num);
+		//A_INFO_MSG("found %s in seq num: %d", s->name, s->num);
 		if (s->num >= num) {
-			DBG("Got outdated command sequence number : %d for %s", seq, name);
+			A_WARN_MSG("Got outdated command sequence number : %d for %s", seq, name);
 			outdated = 1;
 		}
 		HASH_DEL(*seq, s);
@@ -668,7 +668,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 		if ( !get_seq_num_from_json(jObj, &seq) &&
 		     !get_pkg_name_from_json(jObj, &pkg_name) ) {
 			if (handler_chk_incoming_seq_outdated(&uacc->seq_in, pkg_name, seq)) {
-				DBG("Skipping the installation command due to updated sequence");
+				A_INFO_MSG("Skipping the installation command due to updated sequence");
 				if (!jErr) json_object_put(jObj);
 				return;
 			}
@@ -703,14 +703,14 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_query_trust, jObj, 0);
 				#endif
 				} else {
-					DBG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
+					A_ERROR_MSG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
 				}
 			} else {
-				DBG("Not processing message for type %s : %s", type, json_object_to_json_string(jObj));
+				A_ERROR_MSG("Not processing message for type %s : %s", type, json_object_to_json_string(jObj));
 			}
 		}
 	} else {
-		DBG("Failed to parse json (%s): %s", json_tokener_error_desc(jErr), msg);
+		A_ERROR_MSG("Failed to parse json (%s): %s", json_tokener_error_desc(jErr), msg);
 	}
 
 	if (!jErr) json_object_put(jObj);
@@ -745,14 +745,14 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 			pthread_attr_init(&attr);
 			pthread_attr_setdetachstate(&attr, 1);
 			if (pthread_create(&uacc->worker.worker_thread, &attr, worker_action, uacc)) {
-				DBG_SYS("pthread create");
+				A_ERROR_MSG("pthread create");
 				json_object_put(uacc->worker.worker_jobj);
 				uacc->worker.worker_running = 0;
 			}
 			pthread_attr_destroy(&attr);
 
 		} else {
-			DBG("UA worker busy, discarding this message.");
+			A_INFO_MSG("UA worker busy, discarding this message.");
 		}
 	}
 }
@@ -778,15 +778,16 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			json_object* pkgObject = json_object_new_object();
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
 			if (uae == E_UA_OK)
-				DBG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
+				A_INFO_MSG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
 			else
-				DBG("get version for %s failed! err=%d", pkgInfo.name, uae);
+				A_INFO_MSG("get version for %s failed! err=%d", pkgInfo.name, uae);
 
 			json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo.type));
 			json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo.name));
 			json_object_object_add(pkgObject, "version", S(installedVer) ? json_object_new_string(installedVer) : NULL);
 
 			if (ua_intl.delta) {
+				A_INFO_MSG("Delta capability supported : %s", get_delta_capability());
 				json_object_object_add(pkgObject, "delta-cap", S(get_delta_capability()) ? json_object_new_string(get_delta_capability()) : NULL);
 			}
 
@@ -910,7 +911,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	    !get_pkg_version_from_json(jsonObj, &uacc->update_pkg.version)) {
 		ua_stage_t st = comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
 		if ( st == UA_STATE_PREPARE_UPDATE_STARTED ) {
-			DBG("skipping, still prcocessing prepare-update for version %s of %s", uacc->update_pkg.version, uacc->update_pkg.name);
+			A_INFO_MSG("skipping, still prcocessing prepare-update for version %s of %s", uacc->update_pkg.version, uacc->update_pkg.name);
 			return;
 
 		}
@@ -920,15 +921,15 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 			if (prepared_ver) {
 				if (!strcmp(prepared_ver, uacc->update_pkg.version)) {
-					DBG("version %s of %s has been marked prepared, sending back INSTALL_READY with no further processing", uacc->update_pkg.version, uacc->update_pkg.name);
+					A_INFO_MSG("version %s of %s has been marked prepared, sending back INSTALL_READY with no further processing", uacc->update_pkg.version, uacc->update_pkg.name);
 					send_install_status(uacc, INSTALL_READY, 0, UE_NONE);
 					return;
 				} else {
-					DBG("%s prepare-update has different version(%s) than the saved prepared_ver: %s ",
+					A_INFO_MSG("%s prepare-update has different version(%s) than the saved prepared_ver: %s ",
 					    uacc->update_pkg.name, uacc->update_pkg.version, prepared_ver);
 				}
 			} else {
-				DBG("version %s has been marked prepared, but found no version record.", uacc->update_pkg.version);
+				A_INFO_MSG("version %s has been marked prepared, but found no version record.", uacc->update_pkg.version);
 			}
 		}
 
@@ -955,7 +956,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 				         uacc->update_pkg.name, uacc->update_pkg.version,
 				         uacc->update_pkg.version);
 				pkgFile.file = tmp_filename;
-				DBG("ua download changes pkf file path[%s]=", pkgFile.file);
+				A_INFO_MSG("ua download changes pkf file path[%s]=", pkgFile.file);
 			}
 			#endif
 
@@ -969,8 +970,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			Z_FREE(uacc->update_manifest);
 
 		} else {
-			DBG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
-			state = INSTALL_FAILED;
+			A_ERROR_MSG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
 			send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 
 		}
@@ -1015,14 +1015,14 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 					update_sts = INSTALL_ROLLBACK;
 					update_send_rollback_status(uacc, rb_version);
 				} else {
-					DBG("Failed to locate rollback info, informing terminal-failure.");
+					A_INFO_MSG("Failed to locate rollback info, informing terminal-failure.");
 					uacc->update_error = UE_TERMINAL_FAILURE;
 					send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 				}
 			}
 
 			if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {
-				DBG("Removing temp manifest %s", uacc->update_manifest);
+				A_INFO_MSG("Removing temp manifest %s", uacc->update_manifest);
 				remove(uacc->update_manifest);
 			}
 		}
@@ -1042,9 +1042,9 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 	}else {
 		if (uacc == NULL || jsonObj == NULL)
-			DBG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
+			A_ERROR_MSG("Error: null pointer(s) detected: uacc(%p), jsonObj(%p)", uacc, jo);
 		else {
-			DBG("Error: parsing ready-update, or getting info form temp manifest.");
+			A_ERROR_MSG("Error: parsing ready-update, or getting info form temp manifest.");
 			send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 		}
 	}
@@ -1059,7 +1059,12 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 	if (pkgManifest == NULL || diffFile == NULL || newFile == NULL || pkgFile == NULL ||
 	    (get_pkg_file_manifest(pkgManifest, version, pkgFile)) ||
 	    delta_reconstruct(pkgFile->file, diffFile, newFile)) {
-		err = E_UA_ERR;
+		err = E_UA_ERR;	
+		if (err) {
+			A_INFO_MSG("Delta reconstruction failed!");
+		} else {
+			A_INFO_MSG("Delta reconstruction success!");
+		}
 
 	}
 	if (pkgFile != NULL)
@@ -1080,7 +1085,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		ua_stage_t st = comp_get_update_stage(uacc->st_info, pkgInfo.name);
 
 		if (!(st == UA_STATE_READY_UPDATE_DONE ||  st == UA_STATE_UNKNOWN)) {
-			DBG("skipping confirm-update for version %s of %s", pkgInfo.version, pkgInfo.name);
+			A_INFO_MSG("skipping confirm-update for version %s of %s", pkgInfo.version, pkgInfo.name);
 			return;
 		}
 
@@ -1098,21 +1103,20 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 				else
 					remove_old_backup(backup_manifest, pkgInfo.version);
 
-				DBG("Removing update_manifest %s", update_manifest);
+				A_INFO_MSG("Removing update_manifest %s", update_manifest);
 				remove(update_manifest);
 				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
 			} else {
-				DBG("skipping confirm-update, did not find temp manifest %s", update_manifest);
+				A_ERROR_MSG("confirm-update did not find temp manifest %s", update_manifest);
 			}
 
 		}else
-			DBG("Could not form manifest file path.");
-
+			A_ERROR_MSG("Could not form manifest file path.");
 		Z_FREE(backup_manifest);
 		Z_FREE(update_manifest);
 
 	} else
-		DBG("Could not parse info from confirm-update.");
+		A_ERROR_MSG("Could not parse info from confirm-update.");
 }
 
 
@@ -1125,7 +1129,7 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
 	    !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
 	    !get_total_bytes_from_json(jsonObj, &totalBytes)) {
-		DBG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
+		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
 
 	}
 }
@@ -1146,22 +1150,22 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 	if (!get_replyto_from_json(jsonObj, &replyTo) &&
 	    ua_intl.query_reply_id ) {
 		if (!strcmp(replyTo, ua_intl.query_reply_id)) {
-			DBG("sequence-info with reply-id: %s", replyTo);
+			A_INFO_MSG("sequence-info with reply-id: %s", replyTo);
 			ua_intl.seq_info_valid = 1;
 			json_object* jo_seq = NULL;
 			get_seq_info_per_update_from_json(jsonObj, &jo_seq);
 			json_object_object_foreach(jo_seq, key, val) {
 				if (json_object_get_type(val) == json_type_int) {
 					int seq = json_object_get_int64(val);
-					DBG("Update component \"%s\" sequence num to %d", key, seq);
+					A_INFO_MSG("Update component \"%s\" sequence num to %d", key, seq);
 					handler_update_outgoing_seq_num(&uacc->seq_out, key, seq);
 				} else {
-					DBG("json value is not interger");
+					A_INFO_MSG("json value is not interger");
 				}
 			}
 
 		} else {
-			DBG("sequence-info with mismatched reply id: %s, expected: %s", replyTo, ua_intl.query_reply_id);
+			A_INFO_MSG("sequence-info with mismatched reply id: %s, expected: %s", replyTo, ua_intl.query_reply_id);
 		}
 
 		Z_FREE(ua_intl.query_reply_id);
@@ -1179,7 +1183,7 @@ static void process_update_status(ua_component_context_t* uacc, json_object* jso
 		uacc->update_status_info.reply_id = NULL;
 
 		if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
-			DBG_SYS("lock failed");
+			A_ERROR_MSG("lock failed");
 		}
 
 		get_update_status_response_from_json(jsonObj, &uacc->update_status_info.successful);
@@ -1204,7 +1208,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 	if (!bck && uar->on_transfer_file) {
 		err = transfer_file_action(uacc, pkgInfo, pkgFile);
 		if (err == E_UA_ERR)
-			DBG("UA:on_transfer_file returned error");
+			A_ERROR_MSG("UA:on_transfer_file returned error");
 	}
 
 	if (err == E_UA_OK && !ua_intl.package_verification_disabled) {
@@ -1220,7 +1224,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 		free(bname);
 
 		if ((*uar->on_get_version)(pkgInfo->type, pkgInfo->name, &installedVer)) {
-			DBG("get version for %s failed!", pkgInfo->name);
+			A_ERROR_MSG("get version for %s failed!", pkgInfo->name);
 		}
 
 		if (uacc->backup_manifest == NULL || (err = patch_delta(uacc->backup_manifest, installedVer, pkgFile->file, updateFile->file)) == E_UA_ERR) {
@@ -1243,14 +1247,14 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 		if (uar->on_prepare_install) {
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
 			if (S(newFile)) {
-				DBG("UA indicated to update using this new file: %s", newFile);
+				A_INFO_MSG("UA indicated to update using this new file: %s", newFile);
 				free(updateFile->file);
 				updateFile->file = f_strdup(newFile);
 			}
 		}
 
 	} else {
-		DBG("Error in prepare_install_action, returning INSTALL_FAILED");
+		A_ERROR_MSG("Error in prepare_install_action, returning INSTALL_FAILED");
 		state = INSTALL_FAILED;
 	}
 
@@ -1259,7 +1263,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 			if (!calc_sha256_x(updateFile->file, updateFile->sha_of_sha)) {
 				add_pkg_file_manifest(uacc->update_manifest, updateFile);
 			} else {
-				DBG("Error in calculating sha_of_sha, returning INSTALL_FAILED");
+				A_ERROR_MSG("Error in calculating sha_of_sha, returning INSTALL_FAILED");
 				state = INSTALL_FAILED;
 			}
 		}
@@ -1278,10 +1282,10 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 	if (uar && uar->on_transfer_file && pkgInfo) {
 		ret = (*uar->on_transfer_file)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
 		if (!ret && S(newFile)) {
-			DBG("UA transfered file %s to new path %s", pkgFile->file, newFile);
+			A_INFO_MSG("UA transfered file %s to new path %s", pkgFile->file, newFile);
 			pkgFile->file = newFile;
 		} else {
-			DBG("UA returned error(%d) in callback on_transfer_file.", ret);
+			A_INFO_MSG("UA returned error(%d) in callback on_transfer_file.", ret);
 		}
 	}
 
@@ -1318,7 +1322,7 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 		if (send_current_report_version(uacc, pkgInfo, NULL) == E_UA_OK) {
 			//Wait for response of update-status.
 			if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
-				DBG_SYS("lock failed");
+				A_ERROR_MSG("lock failed");
 			}
 
 			int rc = 0;
@@ -1328,7 +1332,7 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 			rc         = pthread_cond_timedwait(&uacc->update_status_info.cond, &uacc->update_status_info.lock, &ts);
 
 			if (rc == ETIMEDOUT) {
-				DBG("Timed out waiting for update status response");
+				A_INFO_MSG("Timed out waiting for update status response");
 				Z_FREE(uacc->update_status_info.reply_id);
 			}
 
@@ -1358,12 +1362,12 @@ install_state_t update_action(ua_component_context_t* uacc)
 	pkg_file_t* pkgFile   = &uacc->update_file_info;
 
 	if (uar) {
-		DBG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
+		A_INFO_MSG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
 		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 
 		if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
 			if ((*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version))
-				DBG("set version for %s failed!", pkgInfo->name);
+				A_INFO_MSG("set version for %s failed!", pkgInfo->name);
 		}
 
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
@@ -1541,7 +1545,7 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 
 			if (!strcmp(pkgFile->file, backupFile->file) ||
 			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {
-				DBG("Back up already exists: %s", backupFile->file);
+				A_INFO_MSG("Back up already exists: %s", backupFile->file);
 
 			} else {
 				char* src_file = pkgFile->file;
@@ -1552,11 +1556,11 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 
 					if (src_file ) {
 						if (access(src_file, F_OK)) {
-							DBG("Reconstructed file %s is not available", src_file);
+							A_ERROR_MSG("Reconstructed file %s is not available", src_file);
 							src_file = pkgFile->file;
 						}
 					}else {
-						DBG("Error generating reconstructed filepath, try using installation path for backup");
+						A_ERROR_MSG("Error generating reconstructed filepath, try using installation path for backup");
 						src_file = pkgFile->file;
 					}
 
@@ -1567,10 +1571,10 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 				if (err == E_UA_OK)
 					add_pkg_file_manifest(uacc->backup_manifest, backupFile);
 				else
-					DBG("Backing up failed: %s", backupFile->file);
+					A_INFO_MSG("Backing up failed: %s", backupFile->file);
 
 				if (src_file != pkgFile->file) {
-					DBG("Removing installation file after backup: %s", src_file);
+					A_INFO_MSG("Removing installation file after backup: %s", src_file);
 					unlink(src_file);
 					Z_FREE(src_file);
 
@@ -1689,10 +1693,10 @@ int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* ve
 			free(updateFile.file);
 			free(updateFile.version);
 		} else {
-			DBG("Could not parse info from update_manifest %s.", uacc->update_manifest);
+			A_WARN_MSG("Could not parse info from update_manifest %s.", uacc->update_manifest);
 		}
 	} else {
-		DBG("update_manifest is not set.");
+		A_ERROR_MSG("update_manifest is not set.");
 		ret = E_UA_ERR;
 	}
 
@@ -1726,7 +1730,7 @@ int ua_backup_package(char* type, char* pkgName, char* version)
 	}
 
 	if (!uacc) {
-		DBG("Couldn't find ua component with type %s", type);
+		A_ERROR_MSG("Couldn't find ua component with type %s", type);
 		return E_UA_ERR;
 	}
 
@@ -1762,7 +1766,7 @@ int ua_rollback_disabled(const char* pkgName)
 
 	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
 	if (rbc) {
-		DBG("rollback_disabled flag for %s is set (%d)", rbc->pkg_name, rbc->rb_disable);
+		A_INFO_MSG("rollback_disabled flag for %s is set (%d)", rbc->pkg_name, rbc->rb_disable);
 		return rbc->rb_disable;
 	}
 
@@ -1798,7 +1802,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
 	if (rbc) {
 		if (!disable) {
-			DBG("Re-enable rollback for %s", rbc->pkg_name);
+			A_INFO_MSG("Re-enable rollback for %s", rbc->pkg_name);
 			HASH_DEL(ua_intl.rb_crtl, rbc);
 			f_free(rbc->pkg_name);
 			free(rbc);
@@ -1806,7 +1810,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 
 	} else {
 		if (disable) {
-			DBG("Disable rollback for %s", pkgName);
+			A_INFO_MSG("Disable rollback for %s", pkgName);
 			rbc             = (rollback_crtl_t*)malloc(sizeof(rollback_crtl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
 			rbc->rb_disable = disable;
@@ -1845,7 +1849,7 @@ void ua_verify_ca_file_init(const char* path)
 			continue;
 		} else {
 			ua_intl.verify_ca_file[count] = f_asprintf("%s/%s", path, ent->d_name);
-			DBG("ua_verify_ca_file_init ca file: %s", ua_intl.verify_ca_file[count]);
+			A_INFO_MSG("ua_verify_ca_file_init ca file: %s", ua_intl.verify_ca_file[count]);
 			++count;
 			if (count >= MAX_VERIFY_CA_COUNT) {
 				break;
@@ -1880,7 +1884,7 @@ static void process_query_trust(ua_component_context_t* uacc, json_object* jsonO
 
 		ua_dl_trust_t dlt = {0};
 		if (E_UA_OK != get_trust_info_from_json(jsonObj, &dlt)) {
-			DBG("Error parsing query trust.");
+			A_ERROR_MSG("Error parsing query trust.");
 		}
 
 		ua_dl_set_trust_info(&dlt);
@@ -1933,10 +1937,10 @@ int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done)
 		json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
 		json_object_object_add(jObject, "body", bodyObject);
 
-		DBG("Sending : %s", json_object_to_json_string(jObject));
+		A_DEBUG_MSG("Sending : %s", json_object_to_json_string(jObject));
 
 		if ((err = xl4bus_client_send_msg(json_object_to_json_string(jObject))) != E_UA_OK)
-			DBG("Failed to send download-report to dmc");
+			A_ERROR_MSG("Failed to send download-report to dmc");
 
 		json_object_put(jObject);
 	} while (0);

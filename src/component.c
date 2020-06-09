@@ -41,7 +41,7 @@ ua_stage_t comp_get_update_stage(comp_state_info_t* cs_head, char* pkg_name)
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return st;
 	}
 
@@ -49,7 +49,7 @@ ua_stage_t comp_get_update_stage(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		st = cs->stage;
 	}
-	DBG("update stage of %s is %s", pkg_name, st_string[st]);
+	A_INFO_MSG("update stage of %s is %s", pkg_name, st_string[st]);
 	return st;
 }
 
@@ -59,16 +59,16 @@ int comp_set_update_stage(comp_state_info_t** cs_head, char* pkg_name, ua_stage_
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return E_UA_ERR;
 	}
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
-		DBG("change update stage of %s to %s", pkg_name, st_string[stage]);
+		A_INFO_MSG("change update stage of %s to %s", pkg_name, st_string[stage]);
 		cs->stage = stage;
 	} else {
-		DBG("init update stage of %s  to %s", pkg_name, st_string[stage]);
+		A_INFO_MSG("init update stage of %s  to %s", pkg_name, st_string[stage]);
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name = f_strdup(pkg_name);
@@ -85,7 +85,7 @@ update_rollback_t comp_get_rb_type(comp_state_info_t* cs_head, char* pkg_name)
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return ret;
 	}
 
@@ -93,7 +93,7 @@ update_rollback_t comp_get_rb_type(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		ret = cs->rb_type;
 	}
-	//DBG("%s rb_type is %d", pkg_name, ret);
+	//A_INFO_MSG("%s rb_type is %d", pkg_name, ret);
 	return ret;
 }
 
@@ -103,16 +103,16 @@ int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollbac
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return E_UA_ERR;
 	}
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
-		DBG("change rb_type of %s to %d", pkg_name, rb_type);
+		A_INFO_MSG("change rb_type of %s to %d", pkg_name, rb_type);
 		cs->rb_type = rb_type;
 	} else {
-		DBG("init rb_type of %s  to %d", pkg_name, rb_type);
+		A_INFO_MSG("init rb_type of %s  to %d", pkg_name, rb_type);
 		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 		memset(cs, 0, sizeof(comp_state_info_t));
 		cs->pkg_name = f_strdup(pkg_name);
@@ -129,7 +129,7 @@ char* comp_get_fake_rb_version(comp_state_info_t* cs_head, char* pkg_name)
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return fake_ver;
 	}
 
@@ -137,7 +137,7 @@ char* comp_get_fake_rb_version(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		fake_ver = cs->fake_rb_ver;
 	}
-	DBG("fake rb version is %s", fake_ver ? fake_ver : "NIL");
+	A_INFO_MSG("fake rb version is %s", fake_ver ? fake_ver : "NIL");
 	return fake_ver;
 }
 
@@ -147,18 +147,18 @@ int comp_set_fake_rb_version(comp_state_info_t** cs_head, char* pkg_name, char* 
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return E_UA_ERR;
 	}
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
-		DBG("change fake rb version of %s to %s", pkg_name, fake_ver);
+		A_INFO_MSG("change fake rb version of %s to %s", pkg_name, fake_ver);
 		Z_FREE(cs->fake_rb_ver);
 		cs->fake_rb_ver = f_strdup(fake_ver);
 	} else {
 		if (fake_ver) {
-			DBG("init fake rb version of %s to %s", pkg_name, fake_ver);
+			A_INFO_MSG("init fake rb version of %s to %s", pkg_name, fake_ver);
 			cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 			memset(cs, 0, sizeof(comp_state_info_t));
 			cs->pkg_name    = f_strdup(pkg_name);
@@ -177,7 +177,7 @@ char* comp_get_prepared_version(comp_state_info_t* cs_head, char* pkg_name)
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return prepared_ver;
 	}
 
@@ -185,7 +185,7 @@ char* comp_get_prepared_version(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		prepared_ver = cs->prepared_ver;
 	}
-	DBG("prepared_ver is %s", prepared_ver ? prepared_ver : "NIL");
+	A_INFO_MSG("prepared_ver is %s", prepared_ver ? prepared_ver : "NIL");
 	return prepared_ver;
 }
 
@@ -195,18 +195,18 @@ int comp_set_prepared_version(comp_state_info_t** cs_head, char* pkg_name, char*
 	comp_state_info_t* cs = NULL;
 
 	if (!pkg_name) {
-		DBG("NIL pointer: pkg_name=%p",pkg_name);
+		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
 		return E_UA_ERR;
 	}
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
-		DBG("change prepared_ver version of %s to %s", pkg_name, prepared_ver);
+		A_INFO_MSG("change prepared_ver version of %s to %s", pkg_name, prepared_ver);
 		Z_FREE(cs->prepared_ver);
 		cs->prepared_ver = f_strdup(prepared_ver);
 	} else {
 		if (prepared_ver) {
-			DBG("init prepared_ver version of %s to %s", pkg_name, prepared_ver);
+			A_INFO_MSG("init prepared_ver version of %s to %s", pkg_name, prepared_ver);
 			cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
 			memset(cs, 0, sizeof(comp_state_info_t));
 			cs->pkg_name     = f_strdup(pkg_name);

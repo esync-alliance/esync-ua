@@ -24,7 +24,16 @@
         sprintf(__now+15, "%03d", (int)(__tv.tv_usec/1000))
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define DBG(fmt, a ...) {do { _ltime_; printf("[%s] %s:%d " fmt "\n", __now, __FILENAME__, __LINE__, ## a); } while (0); }
+//#define DBG(fmt, a ...) {do { _ltime_; printf("[%s] %s:%d " fmt "\n", __now, __FILENAME__, __LINE__, ## a); } while (0); }
+#define A_INFO_MSG(a,b ...)     do { if (ua_debug == 4 || ua_debug == 5) { \
+				      _ltime_; \
+				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
+				      if (_str) { \
+					      printf("%s\n", _str); \
+					      fflush(stdout); \
+					      free(_str); \
+				      } \
+			      } } while (0)
 
 typedef struct scp_info {
 	char* url;
