@@ -183,7 +183,6 @@ typedef enum update_rollback {
 	URB_NONE,
 	URB_DMC_INITIATED,   /* ready-update has rollback-version. */
 	URB_UA_INITIATED,    /* ready-update has rollback-versions. */
-	URB_UA_LOCAL_BACKUP, /* local backup folder supports rollback. */
 
 } update_rollback_t;
 
