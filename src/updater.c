@@ -261,16 +261,7 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 				free_pkg_file(pf);
 			}
 
-			if (!uacc->update_pkg.rollback_version &&
-			    !uacc->update_pkg.rollback_versions &&
-			    json_object_array_length(ua_ctrl_rb_versions) > 0) {
-				A_INFO_MSG("Found local backup available for rollback");
-				rb_type                            = URB_UA_LOCAL_BACKUP;
-				uacc->update_pkg.rollback_versions = ua_ctrl_rb_versions;
-			}else {
-				A_INFO_MSG("No local backup available for rollback");
-				json_object_put(ua_ctrl_rb_versions);
-			}
+			json_object_put(ua_ctrl_rb_versions);
 		}
 
 		comp_set_rb_type(&uacc->st_info, uacc->update_pkg.name, rb_type);
@@ -678,11 +669,6 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 void update_release_comp_context(ua_component_context_t* uacc)
 {
-	if (comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) == URB_UA_LOCAL_BACKUP) {
-		if (uacc->update_pkg.rollback_versions)
-			json_object_put(uacc->update_pkg.rollback_versions);
-	}
-
 	Z_FREE(uacc->update_file_info.version);
 	Z_FREE(uacc->update_file_info.file);
 
