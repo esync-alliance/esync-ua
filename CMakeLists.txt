@@ -212,9 +212,11 @@ if(UNIT_TEST)
                     unit_tests/test_setup.h
                     unit_tests/ut_main.c
                     )
-    set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=randstring )
+    if(NOT GCC_WRAP_FLAGS)
+    set(GCC_WRAP_FLAGS ${GCC_WRAP_FLAGS} -Wl,--wrap=xl4bus_client_init,--wrap=xl4bus_client_stop,--wrap=xl4bus_client_send_msg,--wrap=reply_id_matched )
+    endif()
     target_compile_definitions(ut_test PRIVATE WITH_UNIT_TEST)
-    target_compile_options(ut_test PUBLIC -fprofile-arcs -ftest-coverage --coverage )
+    target_compile_options(ut_test PUBLIC -fprofile-arcs -ftest-coverage --coverage ${GCC_WRAP_FLAGS})
     target_link_libraries(ut_test pthread gcov ${GCC_WRAP_FLAGS} ${CMOCKA_LIB} ${APP_DEPS})
 endif()
 

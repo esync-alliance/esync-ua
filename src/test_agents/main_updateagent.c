@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "tmpl_updateagent.h"
+#include "util.h"
 
 ua_handler_t uah[] = {
 	{"/template", get_tmpl_routine }
@@ -135,6 +136,8 @@ int main(int argc, char** argv)
 #endif
 
 	signal(SIGINT, sig_handler);
+
+	ua_debug_lvl = cfg.delta;
 
 	if (ua_init(&cfg)) {
 		printf("Updateagent failed!");

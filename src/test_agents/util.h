@@ -9,9 +9,19 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include "build_config.h"
+#include "misc.h"
 #if HAVE_LIMITS_H
 #include <linux/limits.h>
 #endif
+
+extern int ua_debug_lvl;
+static inline const char* cut_path(const char* path)
+{
+	const char* aux = strrchr(path, '/');
+
+	if (aux) { return aux + 1; }
+	return path;
+}
 
 #define _ltime_ \
         char __now[24]; \
@@ -24,7 +34,12 @@
         sprintf(__now+15, "%03d", (int)(__tv.tv_usec/1000))
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-//#define DBG(fmt, a ...) {do { _ltime_; printf("[%s] %s:%d " fmt "\n", __now, __FILENAME__, __LINE__, ## a); } while (0); }
+#define A_INFO_MSG(fmt, a ...) do { if (ua_debug_lvl == 4 || ua_debug_lvl == 5) { \
+			_ltime_; \
+			printf("[%s] %s:%d " fmt "\n", __now, cut_path(__FILE__), __LINE__, ## a); \
+			fflush(stdout); \
+			} } while (0);
+#if 0
 #define A_INFO_MSG(a,b ...)     do { if (ua_debug == 4 || ua_debug == 5) { \
 				      _ltime_; \
 				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
@@ -34,7 +49,7 @@
 					      free(_str); \
 				      } \
 			      } } while (0)
-
+#endif 
 typedef struct scp_info {
 	char* url;
 	char* user;

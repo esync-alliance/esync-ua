@@ -11,6 +11,7 @@
 #include "handler.h"
 #include "test_agents/tmpl_updateagent.h"
 #include "test_setup.h"
+
 extern char* handler_type;
 ua_handler_t uah[] = {
 	{UT_DEFAULT_HANDLER_TYPE, get_tmpl_routine }
@@ -62,7 +63,6 @@ int __wrap_xl4bus_client_stop(void)
 {
 	usleep(500*1000);
 	return 0;
-
 }
 
 int __wrap_xl4bus_client_send_msg(const char* message)
@@ -70,12 +70,18 @@ int __wrap_xl4bus_client_send_msg(const char* message)
 	return 0;
 }
 
-char* __wrap_randstring(int length)
+int __wrap_calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 {
-	char* randomString;
+	return E_UA_OK;
+}
 
-	randomString = malloc(sizeof(char) * (length +1));
-	strcpy(randomString, FAKE_RAND_STRING);
-	return randomString;
+int __wrap_verify_file_hash_b64(const char* file, const char* sha256_b64) 
+{
+	return E_UA_OK;
+}
 
+
+int __wrap_reply_id_matched(char* s1, char* s2)
+{
+	return 1;
 }

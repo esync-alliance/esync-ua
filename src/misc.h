@@ -95,4 +95,5 @@ int rmdirp(const char* path);
 int chkdirp(const char* path);
 int run_cmd(char* cmd, char* argv[]);
 char* randstring(int length);
+int reply_id_matched(char* s1, char* s2);
 #endif /* UA_MISC_H_ */

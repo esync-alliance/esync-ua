@@ -10,6 +10,7 @@
 #include "util.h"
 
 scp_info_t ua_scp_info;
+int ua_debug_lvl = 0;
 
 int xl4_run_cmd(char* argv[])
 {
@@ -57,7 +58,7 @@ scp_info_t* scp_init(scp_info_t* scp)
 
 		char* argv[] = {"mkdir", "-p", scp->local_dir, NULL};
 		if (xl4_run_cmd(argv) != E_UA_OK)
-			A_INFO_MSG("Failed to create scp dir %s", scp->local_dir)
+			A_INFO_MSG("Failed to create scp dir %s", scp->local_dir);
 			return &ua_scp_info;
 	}
 	return NULL;
@@ -129,7 +130,7 @@ int do_transfer_file(const char* type, const char* pkgName, const char* version,
 		if ((*newFile = scp_get_file(scp, (char*)pkgFile)) == NULL)
 			rc = E_UA_ERR;
 	} else {
-		A_INFO_MSG("SCP url is not set, not transferring file remotely.")
+		A_INFO_MSG("SCP url is not set, not transferring file remotely.");
 	}
 
 	return rc;
