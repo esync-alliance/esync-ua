@@ -66,6 +66,11 @@ extern ua_log_handler_f ua_log_handler;
 				      } \
 			      } } while (0)
 
+#define A_ERROR_MSG	DBG
+#define A_WARN_MSG	DBG
+#define A_INFO_MSG	DBG
+#define A_DEBUG_MSG	DBG
+
 #else
 
 #define A_ERROR_MSG(a,b ...) do { if (ua_debug == 2 || ua_debug == 5) { \
