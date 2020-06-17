@@ -10,7 +10,6 @@
 #include "util.h"
 
 scp_info_t ua_scp_info;
-int ua_debug_lvl = 0;
 
 int xl4_run_cmd(char* argv[])
 {

@@ -8,7 +8,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "tmpl_updateagent.h"
-#include "util.h"
+
+int ua_debug_lvl = 0;
 
 ua_handler_t uah[] = {
 	{"/template", get_tmpl_routine }
