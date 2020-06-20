@@ -73,7 +73,7 @@ extern ua_log_handler_f ua_log_handler;
 
 #else
 
-#define A_ERROR_MSG(a,b ...) do { if (ua_debug == 2 || ua_debug == 5) { \
+#define A_ERROR_MSG(a,b ...) do { if (ua_debug >= 0) { \
 				      int _errno = errno; \
 				      _ltime_; \
 				      char* _str = f_asprintf("[%s] %s:%d error %s(%d): " a, __now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
@@ -84,7 +84,7 @@ extern ua_log_handler_f ua_log_handler;
 				      } \
 			      } } while (0)
 
-#define A_WARN_MSG(a,b ...)     do { if (ua_debug == 3 || ua_debug == 5) { \
+#define A_WARN_MSG(a,b ...)     do { if (ua_debug >= 1) { \
 				      _ltime_; \
 				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 				      if (_str) { \
@@ -94,7 +94,7 @@ extern ua_log_handler_f ua_log_handler;
 				      } \
 			      } } while (0)
 
-#define A_INFO_MSG(a,b ...)     do { if (ua_debug == 4 || ua_debug == 5) { \
+#define A_INFO_MSG(a,b ...)     do { if (ua_debug >= 2) { \
 				      _ltime_; \
 				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 				      if (_str) { \
@@ -104,7 +104,7 @@ extern ua_log_handler_f ua_log_handler;
 				      } \
 			      } } while (0)
 
-#define A_DEBUG_MSG(a,b ...)     do { if (ua_debug == 5) { \
+#define A_DEBUG_MSG(a,b ...)     do { if (ua_debug >= 3) { \
 				      _ltime_; \
 				      char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 				      if (_str) { \

@@ -51,7 +51,7 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 static void process_query_trust(ua_component_context_t* uacc, json_object* jsonObj);
 #endif
 
-int ua_debug          = 1;
+int ua_debug          = 0;
 ua_internal_t ua_intl = {0};
 runner_info_hash_tree_t* ri_tree = NULL;
 
@@ -69,7 +69,7 @@ int ua_init(ua_cfg_t* uaConfig)
 	int err = E_UA_OK;
 
 	do {
-		ua_debug = uaConfig->debug + 1;
+		ua_debug = uaConfig->debug + 0;
 
 		BOLT_IF(!uaConfig || !S(uaConfig->url)
 #ifdef USE_XL4BUS_TRUST
