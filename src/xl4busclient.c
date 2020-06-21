@@ -195,8 +195,7 @@ static void on_xl4bus_message(xl4bus_client_t* client, xl4bus_message_t* msg)
 				A_INFO_MSG("Empty incoming message (%d)?", msg->data_len);
 			} else {
 				for (xl4bus_address_t* a = msg->address; a; a=a->next) {
-					if (a->type == XL4BAT_UPDATE_AGENT)
-						handle_message(a->update_agent, msg->data, msg->data_len);
+					handle_message(a->update_agent, msg->data, msg->data_len);
 				}
 			}
 		} else {

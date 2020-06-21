@@ -174,7 +174,9 @@ int ua_register(ua_handler_t* uah, int len)
 			ri->component.type = f_strdup((uah + i)->type_handler);
 			ri->component.uar  = (*(uah + i)->get_routine)();
 			ri->run            = 1;
-			BOLT_IF(!ri->component.uar || !ri->component.uar->on_get_version || !ri->component.uar->on_install || !S(ri->component.type), E_UA_ARG, "registration error");
+			BOLT_IF(!ri->component.uar || !S(ri->component.type), E_UA_ARG, "registration error");
+			BOLT_IF((ri->component.uar->on_get_version == NULL || ri->component.uar->on_install == NULL)
+														 && ri->component.uar->on_message == NULL, E_UA_ARG, "registration error");
 			BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
 			BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
 			BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
@@ -552,6 +554,10 @@ void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const 
 void* runner_loop(void* arg)
 {
 	runner_info_t* info = arg;
+	if (info == NULL)
+		return NULL;
+
+	A_INFO_MSG("Start runner : %s", info->component.type);
 
 	while (info->run) {
 		incoming_msg_t* im = NULL;
@@ -686,7 +692,11 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 		}
 
 		if (get_type_from_json(jObj, &type) == E_UA_OK) {
-			if (!uacc->uar->on_message || !(*uacc->uar->on_message)(type, jObj)) {
+			int processed = 0;
+			if (uacc->uar->on_message) {
+				processed = (*uacc->uar->on_message)(type, jObj);
+			}
+			if (!processed) {
 				if (!strcmp(type, QUERY_PACKAGE)) {
 					process_run(uacc, process_query_package, jObj, 0);
 				} else if (!strcmp(type, READY_DOWNLOAD)) {
@@ -777,6 +787,11 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	char* replyId      = NULL;
 	int uae            = E_UA_OK;
 	int fake_rb_ver    = 0;
+
+	if (uar->on_get_version == NULL) {
+			A_WARN_MSG("No get version callback for %s", pkgInfo.name);
+			return;
+	}
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -982,6 +997,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 		} else {
 			A_ERROR_MSG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
+      state = INSTALL_FAILED;
 			send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 
 		}
@@ -1070,7 +1086,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 	if (pkgManifest == NULL || diffFile == NULL || newFile == NULL || pkgFile == NULL ||
 	    (get_pkg_file_manifest(pkgManifest, version, pkgFile)) ||
 	    delta_reconstruct(pkgFile->file, diffFile, newFile)) {
-		err = E_UA_ERR;	
+		err = E_UA_ERR;
 		if (err) {
 			A_INFO_MSG("Delta reconstruction failed!");
 		} else {
@@ -1372,6 +1388,10 @@ install_state_t update_action(ua_component_context_t* uacc)
 	pkg_file_t* pkgFile   = &uacc->update_file_info;
 
 	if (uar) {
+		if (uar->on_install == NULL) {
+			A_INFO_MSG("No callback on_install.");
+			return INSTALL_FAILED;
+		}
 		A_INFO_MSG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
 		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 
@@ -1976,4 +1996,3 @@ int send_query_trust(void)
 	return err;
 }
 #endif
-
