@@ -30,9 +30,14 @@ typedef enum download_state {
 #define E_UA_ARG    (-3)
 #define E_UA_SYS    (-4)
 
+typedef enum dmclient_state {
+	DMCLIENT_NOT_CONNECTED,
+	DMCLIENT_CONNECTED
+} dmclient_state_t;
+
 typedef struct dmc_presence {
 	int size; /* reserved for future use */
-
+	dmclient_state_t state;
 }dmc_presence_t;
 
 /**

@@ -254,13 +254,20 @@ int ua_unregister(ua_handler_t* uah, int len)
 	return ret;
 }
 
+typedef struct dmc_handler {
+	ua_routine_t*  uar;
+	dmc_presence_t presence;
+} dmc_handler_t;
+
 void* ua_handle_dmc_presence(void* arg)
 {
-	ua_routine_t* uar = (ua_routine_t*)arg;
-
+	dmc_handler_t *dmc = (dmc_handler_t*)arg;
+	if (dmc) {
+		ua_routine_t* uar = dmc->uar;
 	if (uar && uar->on_dmc_presence)
-		(*uar->on_dmc_presence)(NULL);
-
+			(*uar->on_dmc_presence)(&dmc->presence);
+		Z_FREE(dmc);
+	}
 	while (!ua_intl.seq_info_valid) {
 		send_sequence_query();
 		sleep(5);
@@ -399,7 +406,6 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 		case BUS_CONN_BROKER_CONNECTED:
 			break;
 		case BUS_CONN_DMC_NOT_CONNECTED:
-			break;
 		case BUS_CONN_DMC_CONNECTED:
 			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
 				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
@@ -412,8 +418,13 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 						pthread_attr_t attr;
 						pthread_attr_init(&attr);
 						pthread_attr_setdetachstate(&attr, 1);
-						if (pthread_create(&thread_dmc_presence, &attr, ua_handle_dmc_presence, (void*)uar)) {
+						dmc_handler_t *dmc = f_malloc(sizeof(*dmc));
+						dmc->uar = uar;
+						dmc->presence.size = sizeof(dmc->presence);
+						dmc->presence.state = (connection_state == BUS_CONN_DMC_CONNECTED) ? DMCLIENT_CONNECTED : DMCLIENT_NOT_CONNECTED;
+						if (pthread_create(&thread_dmc_presence, &attr, ua_handle_dmc_presence, dmc)) {
 							A_ERROR_MSG("Failed to spawn thread_dmc_presence.");
+							Z_FREE(dmc);
 						}
 						pthread_attr_destroy(&attr);
 					}
