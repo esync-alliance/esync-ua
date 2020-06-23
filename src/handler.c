@@ -1373,7 +1373,7 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 
 	}
 
-	if (state == INSTALL_IN_PROGRESS)
+	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED)))
 		send_install_status(uacc, state, 0, UE_NONE);
 
 	return state;

@@ -140,7 +140,7 @@ void test_rollback_fake_version(void** state)
 
 	ua_cfg_t cfg = {0};
 
-	cfg.debug          = 0;
+	cfg.debug          = 4;
 	cfg.delta          = 1;
 	cfg.reboot_support = 1;
 	cfg.cert_dir       = "/data/sota/pki/certs/ua";
