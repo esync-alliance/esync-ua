@@ -14,7 +14,7 @@
 #include "handler.h"
 #include "debug.h"
 
-#define DEBUG 5
+#define DEBUG 4
 
 static void on_xl4bus_message(struct xl4bus_client* client, xl4bus_message_t* msg);
 static void on_xl4bus_status(struct xl4bus_client* client, xl4bus_client_condition_t cond);
