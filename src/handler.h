@@ -134,6 +134,14 @@ typedef struct rollback_crtl {
 
 }rollback_crtl_t;
 
+
+typedef struct comp_sequence {
+	char* name;
+	int num;
+	UT_hash_handle hh;
+
+}comp_sequence_t;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 #define MAX_VERIFY_CA_COUNT 5
 #endif
@@ -150,11 +158,14 @@ typedef struct ua_internal {
 	int package_verification_disabled;
 
 	uint32_t backup_source;
+	pthread_mutex_t lock;
 	pthread_mutex_t backup_lock;
 	rollback_crtl_t* rb_crtl;
 	char* query_reply_id;
 	int seq_info_valid;
 	int enable_fake_rb_ver;
+	comp_sequence_t* seq_out;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 	int ua_download_required;
 	char* ua_downloaded_filename;
@@ -165,6 +176,7 @@ typedef struct ua_internal {
 	char* verify_ca_file[MAX_VERIFY_CA_COUNT];
 	async_update_status_t update_status_info;
 #endif
+
 } ua_internal_t;
 
 typedef enum update_err {
@@ -185,13 +197,6 @@ typedef enum update_rollback {
 	URB_UA_INITIATED,    /* ready-update has rollback-versions. */
 
 } update_rollback_t;
-
-typedef struct comp_sequence {
-	char* name;
-	int num;
-	UT_hash_handle hh;
-
-}comp_sequence_t;
 
 typedef struct comp_state_info {
 	char* pkg_name;
@@ -217,7 +222,6 @@ typedef struct ua_component_context {
 	char* backup_manifest;
 	char* record_file;
 	comp_sequence_t* seq_in;
-	comp_sequence_t* seq_out;
 	comp_state_info_t* st_info;
 	int enable_fake_rb_ver;
 

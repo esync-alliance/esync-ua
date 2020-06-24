@@ -98,6 +98,8 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
 
+		srand(time(0));
+
 		#ifdef SUPPORT_UA_DOWNLOAD
 		ua_intl.ua_download_required      = uaConfig->ua_download_required;
 		ua_intl.ua_dl_dir                 = S(uaConfig->ua_dl_dir) ? f_strdup(uaConfig->ua_dl_dir) : NULL;
@@ -110,6 +112,7 @@ int ua_init(ua_cfg_t* uaConfig)
 
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
 		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "backup lock init");
+		BOLT_SYS(pthread_mutex_init(&ua_intl.lock, 0), "backup lock init");
 
 		ua_intl.state = UAI_STATE_INITIALIZED;
 
@@ -132,6 +135,7 @@ int ua_stop(void)
 	Z_FREE(ua_intl.cache_dir);
 	Z_FREE(ua_intl.backup_dir);
 	Z_FREE(ua_intl.record_file);
+	release_comp_sequence(ua_intl.seq_out);
 
 	#ifdef SUPPORT_UA_DOWNLOAD
 	if (ua_intl.ua_dl_dir) { free(ua_intl.ua_dl_dir); ua_intl.ua_dl_dir = NULL; }
@@ -150,6 +154,7 @@ int ua_stop(void)
 		rc            = xl4bus_client_stop();
 		ua_intl.state = UAI_STATE_NOT_KNOWN;
 	}
+	pthread_mutex_destroy(&ua_intl.lock);
 	pthread_mutex_destroy(&ua_intl.backup_lock);
 	return rc;
 }
@@ -229,7 +234,6 @@ int ua_unregister(ua_handler_t* uah, int len)
 					BOLT_SYS(pthread_cond_destroy(&ri->cond), "cond destroy");
 					BOLT_SYS(pthread_mutex_destroy(&ri->lock), "lock destroy");
 					release_comp_sequence(ri->component.seq_in);
-					release_comp_sequence(ri->component.seq_out);
 					ri->component.record_file = NULL;
 					comp_release_state_info(ri->component.st_info);
 					Z_FREE(ri->component.update_manifest);
@@ -266,10 +270,11 @@ void* ua_handle_dmc_presence(void* arg)
 	dmc_handler_t *dmc = (dmc_handler_t*)arg;
 	if (dmc) {
 		ua_routine_t* uar = dmc->uar;
-	if (uar && uar->on_dmc_presence)
-			(*uar->on_dmc_presence)(&dmc->presence);
-		Z_FREE(dmc);
+		if (uar && uar->on_dmc_presence)
+				(*uar->on_dmc_presence)(&dmc->presence);
+			Z_FREE(dmc);
 	}
+
 	while (!ua_intl.seq_info_valid) {
 		send_sequence_query();
 		sleep(5);
@@ -1172,7 +1177,9 @@ static void process_log_report(ua_component_context_t* uacc, json_object* jsonOb
 
 static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	char* replyTo;
+	char* replyTo = NULL;
+
+	pthread_mutex_lock(&ua_intl.lock);
 
 	if (!get_replyto_from_json(jsonObj, &replyTo) &&
 	    ua_intl.query_reply_id ) {
@@ -1185,7 +1192,7 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 				if (json_object_get_type(val) == json_type_int) {
 					int seq = json_object_get_int64(val);
 					A_INFO_MSG("Update component \"%s\" sequence num to %d", key, seq);
-					handler_update_outgoing_seq_num(&uacc->seq_out, key, seq);
+					handler_update_outgoing_seq_num(&ua_intl.seq_out, key, seq);
 				} else {
 					A_INFO_MSG("json value is not interger");
 				}
@@ -1197,6 +1204,8 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 
 		Z_FREE(ua_intl.query_reply_id);
 	}
+
+	pthread_mutex_unlock(&ua_intl.lock);
 }
 
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
@@ -1458,7 +1467,7 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 
 	json_object* bodyObject = json_object_new_object();
 	if (ua_intl.seq_info_valid)
-		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&uacc->seq_out, pkgInfo->name, 0)));
+		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&ua_intl.seq_out, pkgInfo->name, 0)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1483,7 +1492,7 @@ static void send_download_status(ua_component_context_t* uacc, pkg_info_t* pkgIn
 
 	json_object* bodyObject = json_object_new_object();
 	if (ua_intl.seq_info_valid)
-		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&uacc->seq_out, pkgInfo->name, 0)));
+		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&ua_intl.seq_out, pkgInfo->name, 0)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1507,7 +1516,7 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 
 	json_object* bodyObject = json_object_new_object();
 	if (ua_intl.seq_info_valid)
-		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&uacc->seq_out, pkgInfo->name, 0)));
+		json_object_object_add(bodyObject, "sequence", json_object_new_int(handler_update_outgoing_seq_num(&ua_intl.seq_out, pkgInfo->name, 0)));
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
@@ -1805,22 +1814,30 @@ int ua_rollback_disabled(const char* pkgName)
 
 static int send_sequence_query(void)
 {
-	int err                 = E_UA_OK;
-	json_object* jObject    = json_object_new_object();
-	json_object* bodyObject = json_object_new_object();
+	int err                 = E_UA_ERR;
 
-	if (ua_intl.query_reply_id == NULL)
+	pthread_mutex_lock(&ua_intl.lock);
+	
+	if (ua_intl.query_reply_id == NULL) {
+		json_object* jObject    = json_object_new_object();
+		json_object* bodyObject = json_object_new_object();
+
 		ua_intl.query_reply_id = randstring(REPLY_ID_STR_LEN);
 
-	if (ua_intl.query_reply_id) {
-		json_object_object_add(jObject, "type", json_object_new_string(QUERY_SEQUENCE));
-		json_object_object_add(jObject, "body", bodyObject);
-		json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.query_reply_id ));
-		json_object_object_add(bodyObject, "domain", json_object_new_string("change-notifications" ));
-		err = ua_send_message(jObject);
+		if (ua_intl.query_reply_id) {
+			json_object_object_add(jObject, "type", json_object_new_string(QUERY_SEQUENCE));
+			json_object_object_add(jObject, "body", bodyObject);
+			json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.query_reply_id ));
+			json_object_object_add(bodyObject, "domain", json_object_new_string("change-notifications" ));
+			err = ua_send_message(jObject);
+			err = E_UA_OK;
+		}
+
+		json_object_put(jObject);
+
 	}
 
-	json_object_put(jObject);
+	pthread_mutex_unlock(&ua_intl.lock);
 
 	return err;
 }
