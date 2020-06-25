@@ -111,7 +111,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		#endif
 
 		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
-		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "backup lock init");
+		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "lock init");
 		BOLT_SYS(pthread_mutex_init(&ua_intl.lock, 0), "backup lock init");
 
 		ua_intl.state = UAI_STATE_INITIALIZED;
@@ -181,7 +181,7 @@ int ua_register(ua_handler_t* uah, int len)
 			ri->run            = 1;
 			BOLT_IF(!ri->component.uar || !S(ri->component.type), E_UA_ARG, "registration error");
 			BOLT_IF((ri->component.uar->on_get_version == NULL || ri->component.uar->on_install == NULL)
-														 && ri->component.uar->on_message == NULL, E_UA_ARG, "registration error");
+			        && ri->component.uar->on_message == NULL, E_UA_ARG, "registration error");
 			BOLT_SYS(pthread_mutex_init(&ri->lock, 0), "lock init");
 			BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
 			BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
@@ -261,18 +261,19 @@ int ua_unregister(ua_handler_t* uah, int len)
 }
 
 typedef struct dmc_handler {
-	ua_routine_t*  uar;
+	ua_routine_t* uar;
 	dmc_presence_t presence;
 } dmc_handler_t;
 
 void* ua_handle_dmc_presence(void* arg)
 {
-	dmc_handler_t *dmc = (dmc_handler_t*)arg;
+	dmc_handler_t* dmc = (dmc_handler_t*)arg;
+
 	if (dmc) {
 		ua_routine_t* uar = dmc->uar;
 		if (uar && uar->on_dmc_presence)
-				(*uar->on_dmc_presence)(&dmc->presence);
-			Z_FREE(dmc);
+			(*uar->on_dmc_presence)(&dmc->presence);
+		Z_FREE(dmc);
 	}
 
 	while (!ua_intl.seq_info_valid) {
@@ -425,9 +426,9 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 						pthread_attr_t attr;
 						pthread_attr_init(&attr);
 						pthread_attr_setdetachstate(&attr, 1);
-						dmc_handler_t *dmc = f_malloc(sizeof(*dmc));
-						dmc->uar = uar;
-						dmc->presence.size = sizeof(dmc->presence);
+						dmc_handler_t* dmc = f_malloc(sizeof(*dmc));
+						dmc->uar            = uar;
+						dmc->presence.size  = sizeof(dmc->presence);
 						dmc->presence.state = (connection_state == BUS_CONN_DMC_CONNECTED) ? DMCLIENT_CONNECTED : DMCLIENT_NOT_CONNECTED;
 						if (pthread_create(&thread_dmc_presence, &attr, ua_handle_dmc_presence, dmc)) {
 							A_ERROR_MSG("Failed to spawn thread_dmc_presence.");
@@ -451,16 +452,16 @@ void handle_message(const char* type, const char* msg, size_t len)
 	int err = E_UA_OK;
 	UT_array ri_list;
 
-	A_DEBUG_MSG("Incoming message : %s", msg);
+	if (!type || !msg) return;
 
 	utarray_init(&ri_list, &ut_ptr_icd);
 	query_hash_tree(ri_tree, 0, type, 0, &ri_list, 0);
 
 	int l = utarray_len(&ri_list);
 	if (!l)
-		A_DEBUG_MSG("Incoming message for non-registered handler %s : %s", type, msg);
-	//else
-	//	A_INFO_MSG("Registered handlers found for %s : %d", type, l);
+		A_DEBUG_MSG("Ignoring message for non-registered handler <%s> : %s", type, msg);
+	else
+		A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
 
 	for (int j = 0; j < l; j++) {
 		runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
@@ -559,6 +560,7 @@ void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const 
 void* runner_loop(void* arg)
 {
 	runner_info_t* info = arg;
+
 	if (info == NULL)
 		return NULL;
 
@@ -794,8 +796,8 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	int fake_rb_ver    = 0;
 
 	if (uar->on_get_version == NULL) {
-			A_WARN_MSG("No get version callback for %s", pkgInfo.name);
-			return;
+		A_WARN_MSG("No get version callback for %s", pkgInfo.name);
+		return;
 	}
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
@@ -957,7 +959,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 					return;
 				} else {
 					A_INFO_MSG("%s prepare-update has different version(%s) than the saved prepared_ver: %s ",
-					    uacc->update_pkg.name, uacc->update_pkg.version, prepared_ver);
+					           uacc->update_pkg.name, uacc->update_pkg.version, prepared_ver);
 				}
 			} else {
 				A_INFO_MSG("version %s has been marked prepared, but found no version record.", uacc->update_pkg.version);
@@ -1002,7 +1004,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 		} else {
 			A_ERROR_MSG("prepare-update msg doesn't have the expected info, returning INSTALL_FAILED");
-      state = INSTALL_FAILED;
+			state = INSTALL_FAILED;
 			send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 
 		}
@@ -1814,10 +1816,10 @@ int ua_rollback_disabled(const char* pkgName)
 
 static int send_sequence_query(void)
 {
-	int err                 = E_UA_ERR;
+	int err = E_UA_ERR;
 
 	pthread_mutex_lock(&ua_intl.lock);
-	
+
 	if (ua_intl.query_reply_id == NULL) {
 		json_object* jObject    = json_object_new_object();
 		json_object* bodyObject = json_object_new_object();

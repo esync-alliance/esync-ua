@@ -392,7 +392,7 @@ static xl4bus_asn1_t* load_full(char* path)
 			}
 			if (!rd) {
 				A_INFO_MSG("Premature EOF reading %d, file declared %d bytes, read %d bytes, remaining %d bytes",
-				    path, buf->buf.len-1, ptr-buf->buf.data, size);
+				           path, buf->buf.len-1, ptr-buf->buf.data, size);
 				break;
 			}
 			size -= rd;
