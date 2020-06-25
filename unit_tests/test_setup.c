@@ -23,7 +23,7 @@ int test_ua_setup(void** state)
 	ua_cfg_t dfl_cfg = {0};
 
 	if(!cfg) {
-		dfl_cfg.debug          = 0;
+		dfl_cfg.debug          = 4;
 		dfl_cfg.delta          = 1;
 		dfl_cfg.reboot_support = 1;
 		dfl_cfg.cert_dir       = "/data/sota/pki/certs/ua";

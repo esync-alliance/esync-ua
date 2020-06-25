@@ -5,20 +5,18 @@
 #include "tmpl_updateagent.h"
 #include <string.h>
 
-#define MAX_VER_LEN 512
-char tmpl_version[MAX_VER_LEN] = {0};
+pkg_version_t* package_version = 0;
 
 static int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
-	*version = tmpl_version;
+	TMPL_VER_GET(pkgName, *version);
 	return E_UA_OK;
 
 }
 
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
-	if (version)
-		strncpy(tmpl_version, version, sizeof(tmpl_version) - 1);
+	TMPL_VER_SET(pkgName, version);
 	return E_UA_OK;
 
 }

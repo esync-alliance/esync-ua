@@ -12,7 +12,7 @@
 int ua_debug_lvl = 0;
 
 ua_handler_t uah[] = {
-	{"/template", get_tmpl_routine }
+	{"/ECU/ROM", get_tmpl_routine }
 };
 
 static int stop = 0;
@@ -33,6 +33,7 @@ static void _help(const char* app)
 	       "  -w         : enable warning msg\n"
 	       "  -i         : enable information msg\n"
 	       "  -d         : enable all debug msg\n"
+	       "  -t <type>  : handler type\n"
 	       "  -D         : disable delta reconstruction\n"
 	       "  -F         : enable fake rollback version\n"
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
