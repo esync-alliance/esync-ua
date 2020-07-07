@@ -17,7 +17,6 @@
 #include <dirent.h>
 #include "ua_download.h"
 #endif
-
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
 static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj);
@@ -809,7 +808,15 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
 		}else {
 			json_object* pkgObject = json_object_new_object();
+#ifdef LIBUA_VER_2_0
+			ua_callback_clt_t uaclt = {0};
+			uaclt.type     = pkgInfo.type;
+			uaclt.pkg_name = pkgInfo.name;
+			uae            = (*uar->on_get_version)(&uaclt);
+
+#else
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
+#endif
 			if (uae == E_UA_OK)
 				A_INFO_MSG("DMClient is querying version info of : %s Returning %s", pkgInfo.name, NULL_STR(installedVer));
 			else
@@ -1260,9 +1267,17 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
 		free(bname);
 
+#ifdef LIBUA_VER_2_0
+		ua_callback_clt_t uaclt = {0};
+		uaclt.type     = pkgInfo->type;
+		uaclt.pkg_name = pkgInfo->name;
+		err            = (*uar->on_get_version)(&uaclt);
+
+#else
 		if ((*uar->on_get_version)(pkgInfo->type, pkgInfo->name, &installedVer)) {
 			A_ERROR_MSG("get version for %s failed!", pkgInfo->name);
 		}
+#endif
 
 		if (uacc->backup_manifest == NULL || (err = patch_delta(uacc->backup_manifest, installedVer, pkgFile->file, updateFile->file)) == E_UA_ERR) {
 			if (err == E_UA_ERR)
@@ -1282,7 +1297,18 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 
 	if (err == E_UA_OK) {
 		if (uar->on_prepare_install) {
+#ifdef LIBUA_VER_2_0
+			ua_callback_clt_t uaclt = {0};
+			uaclt.type     = pkgInfo->type;
+			uaclt.pkg_name = pkgInfo->name;
+
+			state = (*uar->on_get_version)(&uaclt);
+			//TODO: Fixme!!
+			newFile = *uaclt.new_file_path;
+
+#else
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
+#endif
 			if (S(newFile)) {
 				A_INFO_MSG("UA indicated to update using this new file: %s", newFile);
 				free(updateFile->file);
@@ -1317,7 +1343,19 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 	char* newFile     = 0;
 
 	if (uar && uar->on_transfer_file && pkgInfo) {
+#ifdef LIBUA_VER_2_0
+		ua_callback_clt_t uaclt = {0};
+		uaclt.type     = pkgInfo->type;
+		uaclt.pkg_name = pkgInfo->name;
+		uaclt.version  = &(pkgFile->version);
+
+		ret = (*uar->on_transfer_file)(&uaclt);
+		//TODO: Fixme!!
+		newFile = *uaclt.new_file_path;
+
+#else
 		ret = (*uar->on_transfer_file)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
+#endif
 		if (!ret && S(newFile)) {
 			A_INFO_MSG("UA transfered file %s to new path %s", pkgFile->file, newFile);
 			pkgFile->file = newFile;
@@ -1336,7 +1374,17 @@ static download_state_t prepare_download_action(ua_component_context_t* uacc, pk
 	download_state_t state = DOWNLOAD_CONSENT;
 
 	if (uar && uar->on_prepare_download) {
+#ifdef LIBUA_VER_2_0
+		ua_callback_clt_t uaclt = {0};
+		uaclt.type     = update_pkg->type;
+		uaclt.pkg_name = update_pkg->name;
+		uaclt.version  = &update_pkg->version;
+
+		state = (*uar->on_prepare_download)(&uaclt);
+
+#else
 		state = (*uar->on_prepare_download)(update_pkg->type, update_pkg->name, update_pkg->version);
+#endif
 		send_download_status(uacc, update_pkg, state);
 	}
 
@@ -1351,7 +1399,17 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 	pkg_file_t* pkgFile   = &uacc->update_file_info;
 
 	if (uar->on_pre_install) {
+#ifdef LIBUA_VER_2_0
+		ua_callback_clt_t uaclt = {0};
+		uaclt.type      = pkgInfo->type;
+		uaclt.pkg_name  = pkgInfo->name;
+		uaclt.version   = &pkgFile->version;
+		uaclt.pkg_path = pkgFile->file;
+		state           = (*uar->on_pre_install)(&uaclt);
+
+#else
 		state = (*uar->on_pre_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
+#endif
 	}
 
 	if (state == INSTALL_IN_PROGRESS) {
@@ -1397,6 +1455,7 @@ install_state_t update_action(ua_component_context_t* uacc)
 	install_state_t state = INSTALL_FAILED;
 	pkg_info_t* pkgInfo   = &uacc->update_pkg;
 	pkg_file_t* pkgFile   = &uacc->update_file_info;
+	int err = E_UA_OK;
 
 	if (uar) {
 		if (uar->on_install == NULL) {
@@ -1404,13 +1463,34 @@ install_state_t update_action(ua_component_context_t* uacc)
 			return INSTALL_FAILED;
 		}
 		A_INFO_MSG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
+#ifdef LIBUA_VER_2_0
+		ua_callback_clt_t uaclt = {0};
+		uaclt.type      = pkgInfo->type;
+		uaclt.pkg_name  = pkgInfo->name;
+		uaclt.version   = &pkgFile->version;
+		uaclt.pkg_path = pkgFile->file;
+		state           = (*uar->on_install)(&uaclt);
+
+#else
 		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
-
+#endif
 		if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
-			if ((*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version))
-				A_INFO_MSG("set version for %s failed!", pkgInfo->name);
-		}
+#ifdef LIBUA_VER_2_0
+			ua_callback_clt_t uaclt = {0};
+			uaclt.type      = pkgInfo->type;
+			uaclt.pkg_name  = pkgInfo->name;
+			uaclt.version   = &pkgFile->version;
+			uaclt.pkg_path = pkgFile->file;
+			err             = (*uar->on_set_version)(&uaclt);
 
+#else
+			err = (*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version);				
+
+#endif
+			if(err != E_UA_OK)
+				A_INFO_MSG("set version for %s failed!", pkgInfo->name);
+
+		}
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
 			send_install_status(uacc, state, 0, UE_NONE);
 		}
@@ -1424,7 +1504,17 @@ void post_update_action(ua_component_context_t* uacc)
 	ua_routine_t* uar = (uacc != NULL) ? uacc->uar : NULL;
 
 	if (uar->on_post_install) {
+#ifdef LIBUA_VER_2_0
+		ua_callback_clt_t uaclt = {0};
+		uaclt.type     = uacc->update_pkg.type;
+		uaclt.pkg_name = uacc->update_pkg.name;
+		uaclt.version  = &uacc->update_pkg.version;
+
+		(*uar->on_post_install)(&uaclt);
+
+#else
 		(*uar->on_post_install)(uacc->update_pkg.type, uacc->update_pkg.name);
+#endif
 	}
 
 }

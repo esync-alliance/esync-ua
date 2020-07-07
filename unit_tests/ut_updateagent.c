@@ -21,6 +21,52 @@ char instVer[60] = "\0";
 char* bkpDir;
 FILE* fp1;
 
+#ifdef LIBUA_VER_2_0
+
+int get_tmpl_version(ua_callback_clt_t* clt)
+{
+	return E_UA_OK;
+
+}
+
+static int set_tmpl_version(ua_callback_clt_t* clt)
+{
+	return E_UA_OK;
+
+}
+
+static install_state_t do_tmpl_pre_install(ua_callback_clt_t* clt)
+{
+	return INSTALL_IN_PROGRESS;
+
+}
+
+static install_state_t do_tmpl_install(ua_callback_clt_t* clt)
+{
+	return INSTALL_COMPLETED;
+
+}
+
+static void do_tmpl_post_install(ua_callback_clt_t* clt)
+{
+	return;
+
+}
+
+static install_state_t do_prepare_install(ua_callback_clt_t* clt)
+{
+	return INSTALL_READY;
+
+}
+
+static download_state_t do_prepare_download(ua_callback_clt_t* clt)
+{
+	return DOWNLOAD_CONSENT;
+
+}
+
+#else
+
 // Read installed version from the version file
 int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
@@ -134,6 +180,8 @@ static download_state_t do_prepare_download(const char* type, const char* pkgNam
 	return DOWNLOAD_CONSENT;
 
 }
+
+#endif
 
 static int tmpl_on_dmc_presence(dmc_presence_t* dp)
 {

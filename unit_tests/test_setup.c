@@ -7,7 +7,12 @@
 #include <setjmp.h>
 #include "cmocka.h"
 
+#ifdef LIBUA_VER_2_0
+#include "esyncua.h"
+#else
 #include "xl4ua.h"
+#endif //LIBUA_VER_2_0
+
 #include "handler.h"
 #include "test_agents/tmpl_updateagent.h"
 #include "test_setup.h"
@@ -19,10 +24,10 @@ ua_handler_t uah[] = {
 
 int test_ua_setup(void** state)
 {
-	ua_cfg_t* cfg = (ua_cfg_t*)*state;
+	ua_cfg_t* cfg    = (ua_cfg_t*)*state;
 	ua_cfg_t dfl_cfg = {0};
 
-	if(!cfg) {
+	if (!cfg) {
 		dfl_cfg.debug          = 4;
 		dfl_cfg.delta          = 1;
 		dfl_cfg.reboot_support = 1;
@@ -75,7 +80,7 @@ int __wrap_calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	return E_UA_OK;
 }
 
-int __wrap_verify_file_hash_b64(const char* file, const char* sha256_b64) 
+int __wrap_verify_file_hash_b64(const char* file, const char* sha256_b64)
 {
 	return E_UA_OK;
 }

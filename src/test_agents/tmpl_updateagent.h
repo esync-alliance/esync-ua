@@ -5,7 +5,12 @@
 #ifndef _TMPL_UPDATEAGENT_H_
 #define _TMPL_UPDATEAGENT_H_
 
-#include <xl4ua.h>
+#ifdef LIBUA_VER_2_0
+#include "esyncua.h"
+#else
+#include "xl4ua.h"
+#endif //LIBUA_VER_2_0
+
 #include "build_config.h"
 #include "uthash.h"
 #if TMPL_UA_SUPPORT_SCP_TRANSFER

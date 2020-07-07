@@ -5,7 +5,11 @@
 #ifndef TMPL_UPDATEAGENT_H_
 #define TMPL_UPDATEAGENT_H_
 
+#ifdef LIBUA_VER_2_0
+#include "esyncua.h"
+#else
 #include "xl4ua.h"
+#endif //LIBUA_VER_2_0
 
 typedef enum update_mode {
 	UPDATE_MODE_SUCCESSFUL,
@@ -14,7 +18,11 @@ typedef enum update_mode {
 	UPDATE_MODE_ROLLBACK,
 }update_mode_t;
 
+#ifdef LIBUA_VER_2_0
+int get_tmpl_version(ua_callback_clt_t* clt);
+#else
 int get_tmpl_version(const char* type, const char* pkgName, char** version);
+#endif
 ua_routine_t* get_tmpl_routine(void);
 void set_test_installation_mode(update_mode_t mode, int reboot);
 void get_usr_rbVersion(char* usr_rbVersion, char* usr_pkgName);

@@ -8,11 +8,17 @@
 #ifndef PUA_H_
 #define PUA_H_
 
+
 #include <Python.h>
 #include <unistd.h>
-#include "xl4ua.h"
 #include "libxl4bus/low_level.h"
 #include "libxl4bus/high_level.h"
+
+#ifdef LIBUA_VER_2_0
+#include "esyncua.h"
+#else 
+#include "xl4ua.h"
+#endif //LIBUA_VER_2_0
 
 #define VERSION_SIZE_MAX 256
 #define _ltime_ \

@@ -190,10 +190,22 @@ char* update_record_load(char* record_file)
 int update_installed_version_same(ua_component_context_t* uacc, char* target_version)
 {
 	char* install_version = NULL;
+	int err               = E_UA_ERR;
 
-	if (E_UA_OK != (uacc->uar->on_get_version)(uacc->update_pkg.type,
-	                                           uacc->update_pkg.name,
-	                                           &install_version))
+#ifdef LIBUA_VER_2_0
+	ua_callback_clt_t uaclt = {0};
+	uaclt.type     = uacc->update_pkg.type;
+	uaclt.pkg_name = uacc->update_pkg.name;
+	uaclt.version  = &uacc->update_pkg.version;
+	err            = (uacc->uar->on_set_version)(&uaclt);
+
+#else
+	err = (uacc->uar->on_get_version)(uacc->update_pkg.type,
+	                                  uacc->update_pkg.name,
+	                                  &install_version);
+
+#endif
+	if (err != E_UA_OK)
 		A_ERROR_MSG("Error get version for %s.", uacc->update_pkg.name);
 
 	return (S(install_version) && !strcmp(target_version, install_version));
@@ -626,12 +638,23 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 								char* new_file    = NULL;
 								ua_routine_t* uar = uacc->uar;
 								if (uar->on_transfer_file) {
-									int ret = (*uar->on_transfer_file)(uacc->update_pkg.type,
-									                                   uacc->update_pkg.name,
-									                                   uacc->update_pkg.version,
-									                                   uacc->update_file_info.file,
-									                                   &new_file);
-									if (ret) err = E_UA_ERR;
+#ifdef LIBUA_VER_2_0
+									ua_callback_clt_t uaclt = {0};
+									uaclt.type      = uacc->update_pkg.type;
+									uaclt.pkg_name  = uacc->update_pkg.name;
+									uaclt.version   = &uacc->update_pkg.version;
+									uaclt.pkg_path = uacc->update_file_info.file;
+									err             = (*uar->on_transfer_file)(&uaclt);
+
+									new_file = *uaclt.new_file_path;
+
+#else
+									err = (*uar->on_transfer_file)(uacc->update_pkg.type,
+									                               uacc->update_pkg.name,
+									                               uacc->update_pkg.version,
+									                               uacc->update_file_info.file,
+									                               &new_file);
+#endif
 								}
 								if (new_file) {
 									f_free(uacc->update_file_info.file);

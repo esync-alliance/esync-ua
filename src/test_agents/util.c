@@ -6,7 +6,6 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <libgen.h>
-#include "xl4ua.h"
 #include "util.h"
 
 scp_info_t ua_scp_info;
@@ -34,7 +33,7 @@ int xl4_run_cmd(char* argv[])
 				rc = E_UA_SYS;
 			}else {
 				rc = WEXITSTATUS(status);
-				if(rc)
+				if (rc)
 					A_INFO_MSG("command(%s) exited with status: %d", cmd, rc);
 			}
 		}
@@ -58,7 +57,7 @@ scp_info_t* scp_init(scp_info_t* scp)
 		char* argv[] = {"mkdir", "-p", scp->local_dir, NULL};
 		if (xl4_run_cmd(argv) != E_UA_OK)
 			A_INFO_MSG("Failed to create scp dir %s", scp->local_dir);
-			return &ua_scp_info;
+		return &ua_scp_info;
 	}
 	return NULL;
 }
@@ -119,6 +118,24 @@ scp_info_t* scp_get_info(void)
 	return &ua_scp_info;
 }
 
+#ifdef LIBUA_VER_2_0
+
+int do_transfer_file(ua_callback_clt_t* clt)
+{
+	int rc          = E_UA_OK;
+	scp_info_t* scp = scp_get_info();
+
+	if (scp && scp->url) {
+		if (scp_get_file(scp, (char*)clt->pkg_path) == NULL)
+			rc = E_UA_ERR;
+	} else {
+		A_INFO_MSG("SCP url is not set, not transferring file remotely.");
+	}
+
+	return rc;
+}
+
+#else
 
 int do_transfer_file(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile)
 {
@@ -134,3 +151,5 @@ int do_transfer_file(const char* type, const char* pkgName, const char* version,
 
 	return rc;
 }
+
+#endif

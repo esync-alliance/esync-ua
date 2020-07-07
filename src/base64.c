@@ -58,7 +58,7 @@ int num_strchr(const char* str, char c)
 
 int base64_encode_v(const char* sourcedata, char* base64)
 {
-	int i=0, j=0;
+	int i                    =0, j=0;
 	unsigned char trans_index=0;
 	const int datalength     = strlen((const char*)sourcedata);
 
@@ -99,7 +99,7 @@ int base64_encode_v(const char* sourcedata, char* base64)
 
 int base64_decode(const char* base64, char* dedata)
 {
-	int i = 0, j=0;
+	int i        = 0, j=0;
 	int trans[4] = {0,0,0,0};
 
 	for (; base64[i] != '\0'; i+=4) {

@@ -149,7 +149,7 @@ int main(int argc, char** argv)
 	int l = sizeof(uah)/sizeof(ua_handler_t);
 	ua_register(uah, l);
 
-	while(!stop) {sleep(1);};
+	while (!stop) {sleep(1); };
 
 	ua_unregister(uah, l);
 

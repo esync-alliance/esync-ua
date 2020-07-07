@@ -76,7 +76,7 @@ set_empty(XL4_PROVIDE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_STD_MALLOC 1)
 set_empty(HAVE_LIMITS_H 1)
-
+add_definitions(-DLIBUA_VER_2_0)
 if (CMAKE_CROSSCOMPILING)
     set(THREADS_PTHREAD_ARG 2)
 endif()

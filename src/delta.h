@@ -6,7 +6,11 @@
 
 #include "misc.h"
 #include "uthash.h"
+#ifdef LIBUA_VER_2_0
+#include "esyncua.h"
+#else
 #include "xl4ua.h"
+#endif //LIBUA_VER_2_0
 
 #define MANIFEST_DIFF        "manifest_diff.xml"
 #define MANIFEST_PKG         "manifest_pkg.xml"
