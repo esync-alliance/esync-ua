@@ -18,6 +18,17 @@
 #include "xl4ua.h"
 #endif //LIBUA_VER_2_0
 
+/**
+ * Debug output level
+ */
+typedef enum ua_dbg_level {
+	DBG_NONE,
+	DBG_ERROR,
+	DBG_WARN,
+	DBG_INFO, 
+	DBG_DEBUG,
+} ua_dbg_level_t;
+
 extern int ua_debug;
 
 #ifdef HAVE_INSTALL_LOG_HANDLER
@@ -78,7 +89,7 @@ extern ua_log_handler_f ua_log_handler;
 
 #else
 
-#define A_ERROR_MSG(a,b ...) do { if (ua_debug >= 0) { \
+#define A_ERROR_MSG(a,b ...) do { if (ua_debug >= DBG_ERROR) { \
 					  int _errno = errno; \
 					  _ltime_; \
 					  char* _str = f_asprintf("[%s] %s:%d error %s(%d): " a, __now, chop_path(__FILE__), __LINE__, strerror(_errno), _errno, ## b); \
@@ -89,7 +100,7 @@ extern ua_log_handler_f ua_log_handler;
 					  } \
 				  } } while (0)
 
-#define A_WARN_MSG(a,b ...)  do { if (ua_debug >= 1) { \
+#define A_WARN_MSG(a,b ...)  do { if (ua_debug >= DBG_WARN) { \
 					  _ltime_; \
 					  char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 					  if (_str) { \
@@ -99,7 +110,7 @@ extern ua_log_handler_f ua_log_handler;
 					  } \
 				  } } while (0)
 
-#define A_INFO_MSG(a,b ...)  do { if (ua_debug >= 2) { \
+#define A_INFO_MSG(a,b ...)  do { if (ua_debug >= DBG_INFO) { \
 					  _ltime_; \
 					  char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 					  if (_str) { \
@@ -109,7 +120,7 @@ extern ua_log_handler_f ua_log_handler;
 					  } \
 				  } } while (0)
 
-#define A_DEBUG_MSG(a,b ...) do { if (ua_debug >= 3) { \
+#define A_DEBUG_MSG(a,b ...) do { if (ua_debug >= DBG_DEBUG) { \
 					  _ltime_; \
 					  char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 					  if (_str) { \

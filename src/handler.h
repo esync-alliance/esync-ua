@@ -231,6 +231,8 @@ typedef struct ua_component_context {
 	comp_state_info_t* st_info;
 	int enable_fake_rb_ver;
 
+	void* usr_ref;
+
 } ua_component_context_t;
 
 

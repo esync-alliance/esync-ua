@@ -11,14 +11,14 @@ pkg_version_t* package_version = 0;
 
 static int get_tmpl_version(ua_callback_clt_t* clt)
 {
-	//TMPL_VER_GET(pkgName, *version);
+	TMPL_VER_GET(clt->pkg_name, clt->version);
 	return E_UA_OK;
 
 }
 
 static int set_tmpl_version(ua_callback_clt_t* clt)
 {
-	//TMPL_VER_SET(pkgName, version);
+	TMPL_VER_SET(clt->pkg_name, clt->version);
 	return E_UA_OK;
 
 }

@@ -12,7 +12,7 @@
 int ua_debug_lvl = 0;
 
 ua_handler_t uah[] = {
-	{"/ECU/ROM", get_tmpl_routine }
+	{"/ECU/ROM", get_tmpl_routine, "UA SELF REF" }
 };
 
 static int stop = 0;

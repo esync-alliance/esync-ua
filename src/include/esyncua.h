@@ -47,7 +47,6 @@ typedef struct dmc_presence {
 	dmclient_state_t state;
 }dmc_presence_t;
 
-
 typedef struct ua_callback_clt {
 	/**
      * Component handler type, set by the library. 
@@ -66,7 +65,7 @@ typedef struct ua_callback_clt {
 	 * Its value can only be modified in the on_get_version function, 
 	 * in all other callback functions, its value shall not be modified.
      */
-	char** version;
+	char* version;
 
 	/**
      * full path of installation package archive, 
@@ -81,7 +80,7 @@ typedef struct ua_callback_clt {
 	 * library does not modify the value referenced by the pointer.
 	 * 
      */
-	char** new_file_path;
+	char* new_file_path;
 
 	/**
      * self reference pointer set by UA when calling ua_regitster, 
@@ -136,7 +135,7 @@ typedef install_state_t (*ua_on_prepare_install)(ua_callback_clt_t* clt);
  * Callback invoked when handling xl4.ready-update,
  * This is first callback to allow ECU to setup for update installaion.
  * @param clt UA control data struct
- * @return INSTALL_IN_PROGRESS on success, INSTALL_FAILED on failure
+ * @return INSTALL_READY on success, INSTALL_FAILED on failure
  */
 typedef install_state_t (*ua_on_pre_install)(ua_callback_clt_t* clt);
 
@@ -157,16 +156,23 @@ typedef install_state_t (*ua_on_install)(ua_callback_clt_t* clt);
  */
 typedef void (*ua_on_post_install)(ua_callback_clt_t* clt);
 
-
 /**
  * Callback invoked when eSync Client is connected/disconnected to/from eSync bus
  * @param dp, pointer to dmc_presence_t structure, reserved for future use.
- * @return UA returns E_UA_OK, or E_UA_ERR.
+ * @return E_UA_OK on success, E_UA_ERR on failure
  */
 typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
 
-
-typedef int (*ua_on_message)(const char* msgType, void* message);
+/**
+ * Callback invoked for every eSync bus message received by libua
+ * Returning !0 in this function signals this message has been processed, 
+ * libua will not invoke the default handler function for this messsage type.
+ * If this function returns 0, the default handler function will still be called.
+ * @param type, component handler type
+ * @param message, charater string containing raw eSync bus message
+ * @return !0 = message has been processed, 0 = not processed
+ */
+typedef int (*ua_on_message)(const char* type, const char* message);
 
 
 typedef struct ua_routine {
@@ -235,6 +241,8 @@ typedef struct ua_cfg {
 	char* backup_dir;
 
 	// enables delta support
+	// 0 = default, delta update is disable. 
+	// 1 = delta update is enabled.
 	int delta;
 
 	// delta configuration
@@ -280,10 +288,15 @@ typedef struct ua_cfg {
 
 
 typedef struct ua_handler {
+
+	//component handler type
 	char* type_handler;
 
+	//get a pointer to a set of callback functions invoked by libua
 	ua_routine_t* (*get_routine)(void);
 
+	//Pointer to user referenced data structure
+	//This is passed to all callback functions.
 	void* ref;
 
 } ua_handler_t;
@@ -420,6 +433,9 @@ XL4_PUB
  */
 int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address);
 
+/**
+ * log level used in xl4.log-report messages
+ */
 typedef enum log_type {
 	LOG_EVENT,
 	LOG_INFO,

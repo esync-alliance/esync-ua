@@ -196,8 +196,10 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 	ua_callback_clt_t uaclt = {0};
 	uaclt.type     = uacc->update_pkg.type;
 	uaclt.pkg_name = uacc->update_pkg.name;
-	uaclt.version  = &uacc->update_pkg.version;
-	err            = (uacc->uar->on_set_version)(&uaclt);
+	uaclt.version  = uacc->update_pkg.version;
+	uaclt.ref      = uacc->usr_ref;
+	if ((err = (uacc->uar->on_get_version)(&uaclt)) == E_UA_OK)
+			install_version = uaclt.version;
 
 #else
 	err = (uacc->uar->on_get_version)(uacc->update_pkg.type,
@@ -640,13 +642,14 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 								if (uar->on_transfer_file) {
 #ifdef LIBUA_VER_2_0
 									ua_callback_clt_t uaclt = {0};
-									uaclt.type      = uacc->update_pkg.type;
-									uaclt.pkg_name  = uacc->update_pkg.name;
-									uaclt.version   = &uacc->update_pkg.version;
+									uaclt.type     = uacc->update_pkg.type;
+									uaclt.pkg_name = uacc->update_pkg.name;
+									uaclt.version  = uacc->update_pkg.version;
 									uaclt.pkg_path = uacc->update_file_info.file;
-									err             = (*uar->on_transfer_file)(&uaclt);
+									uaclt.ref      = uacc->usr_ref;
+									err            = (*uar->on_transfer_file)(&uaclt);
 
-									new_file = *uaclt.new_file_path;
+									new_file = uaclt.new_file_path;
 
 #else
 									err = (*uar->on_transfer_file)(uacc->update_pkg.type,
