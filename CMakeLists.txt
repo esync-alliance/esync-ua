@@ -115,6 +115,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/utlist.h
     src/debug.h
     src/include/xl4ua.h
+    src/include/esyncua.h
 )
 
 if (SUPPORT_UA_DOWNLOAD)
@@ -201,7 +202,7 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-install(FILES src/include/xl4ua.h  DESTINATION include)
+install(FILES src/include/xl4ua.h src/include/esyncua.h DESTINATION include)
 
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
