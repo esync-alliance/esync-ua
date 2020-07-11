@@ -11,8 +11,11 @@ libua_build = os.getenv("LIBUA_BUILD")
 if(libua_build is not None and len(libua_build) == 0):
     libua_build = None
 
-xl4bus_build = os.getenv("XL4BUS_DIR")
+libua_api_ver = os.getenv("LIBUA_API_VER")
+if(libua_api_ver is not None and len(libua_api_ver) == 0):
+    libua_api_ver = None
 
+xl4bus_build = os.getenv("XL4BUS_DIR")
 if(xl4bus_build is not None and len(xl4bus_build) == 0):
     xl4bus_build = None
 	
@@ -43,6 +46,9 @@ if(libua_build is not None):
     moduleconf['include_dirs'].append(libua_build)
     moduleconf['library_dirs'].append(libua_build)
     moduleconf['runtime_library_dirs'].append(libua_build)
+
+if(libua_api_ver is not None):
+    moduleconf['extra_compile_args'].append("-DLIBUA_VER_2_0")
 
 esyncua_module = Extension(**moduleconf)
 

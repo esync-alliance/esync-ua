@@ -25,7 +25,7 @@ typedef enum ua_dbg_level {
 	DBG_NONE,
 	DBG_ERROR,
 	DBG_WARN,
-	DBG_INFO, 
+	DBG_INFO,
 	DBG_DEBUG,
 } ua_dbg_level_t;
 

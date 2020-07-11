@@ -11,10 +11,15 @@
 
 int ua_debug_lvl = 0;
 
+#ifdef LIBUA_VER_2_0
 ua_handler_t uah[] = {
 	{"/ECU/ROM", get_tmpl_routine, "UA SELF REF" }
 };
-
+#else
+ua_handler_t uah[] = {
+	{"/ECU/ROM", get_tmpl_routine}
+};
+#endif 
 static int stop = 0;
 
 static void sig_handler(int num)

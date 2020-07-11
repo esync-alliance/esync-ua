@@ -1,7 +1,7 @@
 /**
  * @file esyncua.h
  * @brief API header file for eSync Update Agent Library (libua)
- * 
+ *
  * Copyright(c) 2020 Excelfore Corporation, - All Rights Reserved
  * Unauthorized copying of this file, via any medium is strictly prohibited.
  * Proprietary and confidential.
@@ -47,72 +47,72 @@ typedef struct dmc_presence {
 	dmclient_state_t state;
 }dmc_presence_t;
 
-typedef struct ua_callback_clt {
+typedef struct ua_callback_ctl {
 	/**
-     * Component handler type, set by the library. 
+	 * Component handler type, set by the library.
 	 * Its value shall not be modified in the callback function.
-     */
+	 */
 	const char* type;
 
 	/**
-     * Component package name, set by the library. 
+	 * Component package name, set by the library.
 	 * Its value shall not be modified in the callback function.
-     */
+	 */
 	const char* pkg_name;
 
 	/**
-     * Component version, set by the library except in callback on_get_version.
-	 * Its value can only be modified in the on_get_version function, 
+	 * Component version, set by the library except in callback on_get_version.
+	 * Its value can only be modified in the on_get_version function,
 	 * in all other callback functions, its value shall not be modified.
-     */
+	 */
 	char* version;
 
 	/**
-     * full path of installation package archive, 
+	 * full path of installation package archive,
 	 * set by the the caller in the libarary.
-     */
+	 */
 	char* pkg_path;
 
 	/**
-     * full path of new installation package archive, 
-	 * shall be set in the callback functin if needed, 
+	 * full path of new installation package archive,
+	 * shall be set in the callback functin if needed,
 	 * and the reference pointer should be still vald after callback returns.
 	 * library does not modify the value referenced by the pointer.
-	 * 
-     */
+	 *
+	 */
 	char* new_file_path;
 
 	/**
-     * self reference pointer set by UA when calling ua_regitster, 
+	 * self reference pointer set by UA when calling ua_regitster,
 	 * library does not alter the contents referenced by the pointer.
-	 * 
-     */
+	 *
+	 */
 	void* ref;
 
-}ua_callback_clt_t;
+}ua_callback_ctl_t;
 
 /**
  * Callback invoked when handling xl4.query-package to get ECU version
  * @param clt UA control data struct
  * @return E_UA_OK on success, E_UA_ERR on failure
  */
-typedef int (*ua_on_get_version)(ua_callback_clt_t* clt);
+typedef int (*ua_on_get_version)(ua_callback_ctl_t* ctl);
 
 /**
- * Callback invoked after successful update when handling xl4.ready-update to 
+ * Callback invoked after successful update when handling xl4.ready-update to
  * allow ECU to set installed version manually if neeeded.
  * @param clt UA control data struct
  * @return E_UA_OK on success, E_UA_ERR on failure
  */
-typedef int (*ua_on_set_version)(ua_callback_clt_t* clt);
+typedef int (*ua_on_set_version)(ua_callback_ctl_t* ctl);
 
 /**
  * Callback invoked when handling xl4.ready-download
  * @param clt UA control data struct
- * @return DOWNLOAD_CONSENT to signal eSync Client to start downloading, 
- * 		   DOWNLOAD_DENIED to singal eSync Client not to download.
+ * @return DOWNLOAD_CONSENT to signal eSync Client to start downloading,
+ *                 DOWNLOAD_DENIED to singal eSync Client not to download.
  */
-typedef download_state_t (*ua_on_prepare_download)(ua_callback_clt_t* clt);
+typedef download_state_t (*ua_on_prepare_download)(ua_callback_ctl_t* ctl);
 
 /**
  * Callback invoked when handling xl4.prepare-update,
@@ -120,16 +120,16 @@ typedef download_state_t (*ua_on_prepare_download)(ua_callback_clt_t* clt);
  * @param clt UA control data struct
  * @return E_UA_OK on success, E_UA_ERR on failure
  */
-typedef int (*ua_on_transfer_file)(ua_callback_clt_t* clt);
+typedef int (*ua_on_transfer_file)(ua_callback_ctl_t* ctl);
 
 /**
- * Callback invoked when handling xl4.prepare-update, 
+ * Callback invoked when handling xl4.prepare-update,
  * after ua_on_transfer_file to allow UA transfer file from a remote system,
  * after delta reconstruction if delta pakcage is used for update.
  * @param clt UA control data struct
  * @return E_UA_OK on success, E_UA_ERR on failure
  */
-typedef install_state_t (*ua_on_prepare_install)(ua_callback_clt_t* clt);
+typedef install_state_t (*ua_on_prepare_install)(ua_callback_ctl_t* ctl);
 
 /**
  * Callback invoked when handling xl4.ready-update,
@@ -137,7 +137,7 @@ typedef install_state_t (*ua_on_prepare_install)(ua_callback_clt_t* clt);
  * @param clt UA control data struct
  * @return INSTALL_READY on success, INSTALL_FAILED on failure
  */
-typedef install_state_t (*ua_on_pre_install)(ua_callback_clt_t* clt);
+typedef install_state_t (*ua_on_pre_install)(ua_callback_ctl_t* ctl);
 
 /**
  * Callback invoked when handling xl4.ready-update,
@@ -146,15 +146,15 @@ typedef install_state_t (*ua_on_pre_install)(ua_callback_clt_t* clt);
  * @param clt UA control data struct
  * @return INSTALL_COMPLETED on success, INSTALL_FAILED on failure
  */
-typedef install_state_t (*ua_on_install)(ua_callback_clt_t* clt);
+typedef install_state_t (*ua_on_install)(ua_callback_ctl_t* ctl);
 
 /**
  * Callback invoked when handling xl4.ready-update,
- * if ua_on_install returns INSTALL_IN_PROGRESS, 
+ * if ua_on_install returns INSTALL_IN_PROGRESS,
  * UA can perform additional processing after successfull update.
  * @param clt UA control data struct
  */
-typedef void (*ua_on_post_install)(ua_callback_clt_t* clt);
+typedef void (*ua_on_post_install)(ua_callback_ctl_t* ctl);
 
 /**
  * Callback invoked when eSync Client is connected/disconnected to/from eSync bus
@@ -165,7 +165,7 @@ typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
 
 /**
  * Callback invoked for every eSync bus message received by libua
- * Returning !0 in this function signals this message has been processed, 
+ * Returning !0 in this function signals this message has been processed,
  * libua will not invoke the default handler function for this messsage type.
  * If this function returns 0, the default handler function will still be called.
  * @param type, component handler type
@@ -241,7 +241,7 @@ typedef struct ua_cfg {
 	char* backup_dir;
 
 	// enables delta support
-	// 0 = default, delta update is disable. 
+	// 0 = default, delta update is disable.
 	// 1 = delta update is enabled.
 	int delta;
 
@@ -288,7 +288,6 @@ typedef struct ua_cfg {
 
 
 typedef struct ua_handler {
-
 	//component handler type
 	char* type_handler;
 
@@ -335,7 +334,7 @@ XL4_PUB
  */
 int ua_unregister(ua_handler_t* uah, int len);
 
-XL4_PUB 
+XL4_PUB
 /**
  * Stop update agent, all related resource will be released.
  * @return E_UA_OK on success, E_UA_ERR on failure
@@ -358,9 +357,9 @@ const char* ua_get_xl4bus_version(void);
 
 XL4_PUB
 /**
- * Make a backup image of the installation package after successful update. 
- * libua performs the same backup automatically after successful installation. 
- * For ECU(s) reboots itself to start update installation (e.g. by boot loader), 
+ * Make a backup image of the installation package after successful update.
+ * libua performs the same backup automatically after successful installation.
+ * For ECU(s) reboots itself to start update installation (e.g. by boot loader),
  * UA should call this fuction to make a backup image manually.
  * @param type component handler type
  * @param pkgName package name
@@ -393,7 +392,7 @@ int ua_send_transfer_progress(const char* pkgName, const char* version, int inde
 
 XL4_PUB
 /**
- * Send charater string as-is in "message" to eSync Client. 
+ * Send charater string as-is in "message" to eSync Client.
  * Sender is fully responsible for the "correctness" of the message format.
  * @param message character string
  * @return E_UA_OK on success, E_UA_ERR on failure
@@ -401,20 +400,20 @@ XL4_PUB
 int ua_send_message_string(char* message);
 
 
-XL4_PUB/**
- * Send charater string as-is in "message" to a eSync bus addressed node.
- * Sender is fully responsible for the "correctness" of the message format.
- * @param message character string
- * @param address eSync bus address
- * @return E_UA_OK on success, E_UA_ERR on failure
- */
+XL4_PUB /**
+         * Send charater string as-is in "message" to a eSync bus addressed node.
+         * Sender is fully responsible for the "correctness" of the message format.
+         * @param message character string
+         * @param address eSync bus address
+         * @return E_UA_OK on success, E_UA_ERR on failure
+         */
 int ua_send_message_string_with_address(char* message,  xl4bus_address_t* address);
 
 #ifdef _json_h_
 
 XL4_PUB
 /**
- * Send josn string formated by json_object "message" to eSync Client. 
+ * Send josn string formated by json_object "message" to eSync Client.
  * Sender is fully responsible for the "correctness" of the message format.
  * libua converts json_object "message" to json charater string.
  * @param message character string

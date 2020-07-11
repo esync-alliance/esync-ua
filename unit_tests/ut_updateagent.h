@@ -19,7 +19,7 @@ typedef enum update_mode {
 }update_mode_t;
 
 #ifdef LIBUA_VER_2_0
-int get_tmpl_version(ua_callback_clt_t* clt);
+int get_tmpl_version(ua_callback_ctl_t* ctl);
 #else
 int get_tmpl_version(const char* type, const char* pkgName, char** version);
 #endif

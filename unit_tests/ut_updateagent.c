@@ -23,43 +23,43 @@ FILE* fp1;
 
 #ifdef LIBUA_VER_2_0
 
-int get_tmpl_version(ua_callback_clt_t* clt)
+int get_tmpl_version(ua_callback_ctl_t* ctl)
 {
 	return E_UA_OK;
 
 }
 
-static int set_tmpl_version(ua_callback_clt_t* clt)
+static int set_tmpl_version(ua_callback_ctl_t* ctl)
 {
 	return E_UA_OK;
 
 }
 
-static install_state_t do_tmpl_pre_install(ua_callback_clt_t* clt)
+static install_state_t do_tmpl_pre_install(ua_callback_ctl_t* ctl)
 {
 	return INSTALL_IN_PROGRESS;
 
 }
 
-static install_state_t do_tmpl_install(ua_callback_clt_t* clt)
+static install_state_t do_tmpl_install(ua_callback_ctl_t* ctl)
 {
 	return INSTALL_COMPLETED;
 
 }
 
-static void do_tmpl_post_install(ua_callback_clt_t* clt)
+static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
 {
 	return;
 
 }
 
-static install_state_t do_prepare_install(ua_callback_clt_t* clt)
+static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
 {
 	return INSTALL_READY;
 
 }
 
-static download_state_t do_prepare_download(ua_callback_clt_t* clt)
+static download_state_t do_prepare_download(ua_callback_ctl_t* ctl)
 {
 	return DOWNLOAD_CONSENT;
 

@@ -16,7 +16,7 @@
 
 #ifdef LIBUA_VER_2_0
 #include "esyncua.h"
-#else 
+#else
 #include "xl4ua.h"
 #endif //LIBUA_VER_2_0
 

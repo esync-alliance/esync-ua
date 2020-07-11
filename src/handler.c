@@ -174,11 +174,13 @@ int ua_register(ua_handler_t* uah, int len)
 
 	for (int i = 0; i < len; i++) {
 		do {
-			ri                    = f_malloc(sizeof(runner_info_t));
-			ri->component.type    = f_strdup((uah + i)->type_handler);
-			ri->component.uar     = (*(uah + i)->get_routine)();
+			ri                 = f_malloc(sizeof(runner_info_t));
+			ri->component.type = f_strdup((uah + i)->type_handler);
+			ri->component.uar  = (*(uah + i)->get_routine)();
+#ifdef LIBUA_VER_2_0
 			ri->component.usr_ref = (uah + i)->ref;
-			ri->run               = 1;
+#endif
+			ri->run = 1;
 			BOLT_IF(!ri->component.uar || !S(ri->component.type), E_UA_ARG, "registration error");
 			BOLT_IF((ri->component.uar->on_get_version == NULL || ri->component.uar->on_install == NULL)
 			        && ri->component.uar->on_message == NULL, E_UA_ARG, "registration error");
@@ -288,7 +290,7 @@ int ua_send_message(json_object* jsonObj)
 {
 	char* msg = (char*)json_object_to_json_string(jsonObj);
 
-	A_DEBUG_MSG("Sending to DMC : %s", msg);
+	A_INFO_MSG("Sending to DMC : %s", msg);
 	return xl4bus_client_send_msg(msg);
 
 }
@@ -814,12 +816,12 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 		}else {
 			json_object* pkgObject = json_object_new_object();
 #ifdef LIBUA_VER_2_0
-			ua_callback_clt_t uaclt = {0};
-			uaclt.type     = pkgInfo.type;
-			uaclt.pkg_name = pkgInfo.name;
-			uaclt.ref      = uacc->usr_ref;
-			if ((uae = (*uar->on_get_version)(&uaclt)) == E_UA_OK)
-				installedVer = uaclt.version;
+			ua_callback_ctl_t uactl = {0};
+			uactl.type     = pkgInfo.type;
+			uactl.pkg_name = pkgInfo.name;
+			uactl.ref      = uacc->usr_ref;
+			if ((uae = (*uar->on_get_version)(&uactl)) == E_UA_OK)
+				installedVer = uactl.version;
 
 #else
 			uae = (*uar->on_get_version)(pkgInfo.type, pkgInfo.name, &installedVer);
@@ -1275,12 +1277,12 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 		free(bname);
 
 #ifdef LIBUA_VER_2_0
-		ua_callback_clt_t uaclt = {0};
-		uaclt.type     = pkgInfo->type;
-		uaclt.pkg_name = pkgInfo->name;
-		uaclt.ref      = uacc->usr_ref;
-		if ((err = (*uar->on_get_version)(&uaclt)) == E_UA_OK)
-			installedVer = uaclt.version;
+		ua_callback_ctl_t uactl = {0};
+		uactl.type     = pkgInfo->type;
+		uactl.pkg_name = pkgInfo->name;
+		uactl.ref      = uacc->usr_ref;
+		if ((err = (*uar->on_get_version)(&uactl)) == E_UA_OK)
+			installedVer = uactl.version;
 #else
 		err = (*uar->on_get_version)(pkgInfo->type, pkgInfo->name, &installedVer);
 
@@ -1308,13 +1310,13 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 	if (err == E_UA_OK) {
 		if (uar->on_prepare_install) {
 #ifdef LIBUA_VER_2_0
-			ua_callback_clt_t uaclt = {0};
-			uaclt.type     = pkgInfo->type;
-			uaclt.pkg_name = pkgInfo->name;
-			uaclt.pkg_path = updateFile->file;
-			uaclt.ref      = uacc->usr_ref;
-			if((state = (*uar->on_prepare_install)(&uaclt)) == INSTALL_READY)
-				newFile = uaclt.new_file_path;
+			ua_callback_ctl_t uactl = {0};
+			uactl.type     = pkgInfo->type;
+			uactl.pkg_name = pkgInfo->name;
+			uactl.pkg_path = updateFile->file;
+			uactl.ref      = uacc->usr_ref;
+			if ((state = (*uar->on_prepare_install)(&uactl)) == INSTALL_READY)
+				newFile = uactl.new_file_path;
 
 #else
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);
@@ -1354,14 +1356,14 @@ static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInf
 
 	if (uar && uar->on_transfer_file && pkgInfo) {
 #ifdef LIBUA_VER_2_0
-		ua_callback_clt_t uaclt = {0};
-		uaclt.type     = pkgInfo->type;
-		uaclt.pkg_name = pkgInfo->name;
-		uaclt.version  = pkgFile->version;
-		uaclt.pkg_path = pkgFile->file;
-		uaclt.ref      = uacc->usr_ref;
-		if((ret = (*uar->on_transfer_file)(&uaclt)) == E_UA_OK)
-			newFile = uaclt.new_file_path;
+		ua_callback_ctl_t uactl = {0};
+		uactl.type     = pkgInfo->type;
+		uactl.pkg_name = pkgInfo->name;
+		uactl.version  = pkgFile->version;
+		uactl.pkg_path = pkgFile->file;
+		uactl.ref      = uacc->usr_ref;
+		if ((ret = (*uar->on_transfer_file)(&uactl)) == E_UA_OK)
+			newFile = uactl.new_file_path;
 
 #else
 		ret = (*uar->on_transfer_file)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file, &newFile);
@@ -1385,13 +1387,13 @@ static download_state_t prepare_download_action(ua_component_context_t* uacc, pk
 
 	if (uar && uar->on_prepare_download) {
 #ifdef LIBUA_VER_2_0
-		ua_callback_clt_t uaclt = {0};
-		uaclt.type     = update_pkg->type;
-		uaclt.pkg_name = update_pkg->name;
-		uaclt.version  = update_pkg->version;
-		uaclt.ref      = uacc->usr_ref;
+		ua_callback_ctl_t uactl = {0};
+		uactl.type     = update_pkg->type;
+		uactl.pkg_name = update_pkg->name;
+		uactl.version  = update_pkg->version;
+		uactl.ref      = uacc->usr_ref;
 
-		state = (*uar->on_prepare_download)(&uaclt);
+		state = (*uar->on_prepare_download)(&uactl);
 
 #else
 		state = (*uar->on_prepare_download)(update_pkg->type, update_pkg->name, update_pkg->version);
@@ -1411,13 +1413,13 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 
 	if (uar->on_pre_install) {
 #ifdef LIBUA_VER_2_0
-		ua_callback_clt_t uaclt = {0};
-		uaclt.type     = pkgInfo->type;
-		uaclt.pkg_name = pkgInfo->name;
-		uaclt.version  = pkgFile->version;
-		uaclt.pkg_path = pkgFile->file;
-		uaclt.ref      = uacc->usr_ref;
-		state          = (*uar->on_pre_install)(&uaclt);
+		ua_callback_ctl_t uactl = {0};
+		uactl.type     = pkgInfo->type;
+		uactl.pkg_name = pkgInfo->name;
+		uactl.version  = pkgFile->version;
+		uactl.pkg_path = pkgFile->file;
+		uactl.ref      = uacc->usr_ref;
+		state          = (*uar->on_pre_install)(&uactl);
 
 #else
 		state = (*uar->on_pre_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
@@ -1476,26 +1478,26 @@ install_state_t update_action(ua_component_context_t* uacc)
 		}
 		A_INFO_MSG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
 #ifdef LIBUA_VER_2_0
-		ua_callback_clt_t uaclt = {0};
-		uaclt.type     = pkgInfo->type;
-		uaclt.pkg_name = pkgInfo->name;
-		uaclt.version  = pkgFile->version;
-		uaclt.pkg_path = pkgFile->file;
-		uaclt.ref      = uacc->usr_ref;
-		state          = (*uar->on_install)(&uaclt);
+		ua_callback_ctl_t uactl = {0};
+		uactl.type     = pkgInfo->type;
+		uactl.pkg_name = pkgInfo->name;
+		uactl.version  = pkgFile->version;
+		uactl.pkg_path = pkgFile->file;
+		uactl.ref      = uacc->usr_ref;
+		state          = (*uar->on_install)(&uactl);
 
 #else
 		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 #endif
 		if ((state == INSTALL_COMPLETED) && uar->on_set_version) {
 #ifdef LIBUA_VER_2_0
-			ua_callback_clt_t uaclt = {0};
-			uaclt.type     = pkgInfo->type;
-			uaclt.pkg_name = pkgInfo->name;
-			uaclt.version  = pkgFile->version;
-			uaclt.pkg_path = pkgFile->file;
-			uaclt.ref      = uacc->usr_ref;
-			err            = (*uar->on_set_version)(&uaclt);
+			ua_callback_ctl_t uactl = {0};
+			uactl.type     = pkgInfo->type;
+			uactl.pkg_name = pkgInfo->name;
+			uactl.version  = pkgFile->version;
+			uactl.pkg_path = pkgFile->file;
+			uactl.ref      = uacc->usr_ref;
+			err            = (*uar->on_set_version)(&uactl);
 
 #else
 			err = (*uar->on_set_version)(pkgInfo->type, pkgInfo->name, pkgFile->version);
@@ -1519,12 +1521,12 @@ void post_update_action(ua_component_context_t* uacc)
 
 	if (uar->on_post_install) {
 #ifdef LIBUA_VER_2_0
-		ua_callback_clt_t uaclt = {0};
-		uaclt.type     = uacc->update_pkg.type;
-		uaclt.pkg_name = uacc->update_pkg.name;
-		uaclt.version  = uacc->update_pkg.version;
-		uaclt.ref      = uacc->usr_ref;
-		(*uar->on_post_install)(&uaclt);
+		ua_callback_ctl_t uactl = {0};
+		uactl.type     = uacc->update_pkg.type;
+		uactl.pkg_name = uacc->update_pkg.name;
+		uactl.version  = uacc->update_pkg.version;
+		uactl.ref      = uacc->usr_ref;
+		(*uar->on_post_install)(&uactl);
 
 #else
 		(*uar->on_post_install)(uacc->update_pkg.type, uacc->update_pkg.name);
@@ -1808,7 +1810,12 @@ void free_pkg_file(pkg_file_t* pkgFile)
 
 const char* ua_get_updateagent_version()
 {
-	return BUILD_VERSION;
+
+#ifdef LIBUA_VER_2_0
+	return ("libua_api_v2.0-" BUILD_VERSION);
+#else
+	return ("libua_api_v1.0-" BUILD_VERSION);
+#endif
 
 }
 

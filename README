@@ -2,6 +2,10 @@
 
 ** Building for Linux **
 
+***** !! NOTES !! *****
+- The default is to build libua API version 2.0. 
+- To build with legacy API prototype, please set(USE_LEGACY_API true) in config.cmk
+
 *** json-c ***
 
 json-c library must be built first.
@@ -22,8 +26,6 @@ $ ( rm -rf json-c-build && cp -fr json-c json-c-build && \
 If building updateagent binary for the first time, edit config.cmk file to change any make variables necessary. You most likely need to change XL4BUS_DIR.
 
 To build Python UA library, set BUILD_PY_LIBUA to true in config.cmk.
-
-To build with API version 2.0, LIBUA_VER_2_0 should be defined. e.g. add_definitions(-DLIBUA_VER_2_0)
 
 After configuring make process, use cmake to compile the binaries. The
 recommended approach is for the first time build:

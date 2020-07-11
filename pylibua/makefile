@@ -31,7 +31,7 @@ ${BUILD_DIR}/libua.so :
 
 # build and install python library to user ~/.local/lib/ for testing.
 dev: ${BUILD_DIR}/libua.so
-	cd $(SETUP_PY_DIR) && $(PY) $(SETUP_PY_DIR)/setup.py develop --user
+	cd $(SETUP_PY_DIR) && LIBUA_LEGACY_API=1 $(PY) $(SETUP_PY_DIR)/setup.py develop --user
 
 # output python document as xml file (esyncua.html)
 doc: dev
@@ -43,5 +43,6 @@ clean:
 cleanall: clean
 	rm -rf $(MKFILE_DIR)/libuamodule.py  $(MKFILE_DIR)/libuac_wrap.c $(MKFILE_DIR)/__pycache__  \
 		$(BUILD_DIR)/build $(BUILD_DIR)/*.linux-x86_64* \
+		$(BUILD_DIR)/build $(BUILD_DIR)/CMakeFiles \
 		$(SETUP_PY_DIR)/_libuamodule*.so $(SETUP_PY_DIR)/*.egg-info \
 		$(MKFILE_DIR)/*.pyc

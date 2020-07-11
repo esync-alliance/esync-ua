@@ -73,7 +73,7 @@ char* scp_get_file(scp_info_t* scp, char* remote_path);
 scp_info_t* scp_get_info(void);
 
 #ifdef LIBUA_VER_2_0
-int do_transfer_file(ua_callback_clt_t* clt);
+int do_transfer_file(ua_callback_ctl_t* ctl);
 
 #else
 int do_transfer_file(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile);

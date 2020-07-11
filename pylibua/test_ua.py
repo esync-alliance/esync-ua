@@ -112,8 +112,8 @@ if __name__ == "__main__":
                       help="enable  DOWNLOAD_CONSENT to ready-download")
     parser.add_option('-D', '--delta', default=False, action='store_true', dest="disable_delta",
                       help="disable delta")
-    parser.add_option('-d', '--debug', default=False, action='store_true',
-                      help="show debug messages")
+    parser.add_option('-d', '--debug', default=3, action='store', type='int',
+                      help="debug level(3), 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG", metavar="LVL")
     (options, args) = parser.parse_args()
 
     host_p = 'tcp://' + options.host + ':' + str(options.port)

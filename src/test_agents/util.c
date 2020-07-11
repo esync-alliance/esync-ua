@@ -120,13 +120,13 @@ scp_info_t* scp_get_info(void)
 
 #ifdef LIBUA_VER_2_0
 
-int do_transfer_file(ua_callback_clt_t* clt)
+int do_transfer_file(ua_callback_ctl_t* ctl)
 {
 	int rc          = E_UA_OK;
 	scp_info_t* scp = scp_get_info();
 
 	if (scp && scp->url) {
-		if (scp_get_file(scp, (char*)clt->pkg_path) == NULL)
+		if (scp_get_file(scp, (char*)ctl->pkg_path) == NULL)
 			rc = E_UA_ERR;
 	} else {
 		A_INFO_MSG("SCP url is not set, not transferring file remotely.");
