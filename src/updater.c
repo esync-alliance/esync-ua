@@ -190,12 +190,25 @@ char* update_record_load(char* record_file)
 int update_installed_version_same(ua_component_context_t* uacc, char* target_version)
 {
 	char* install_version = NULL;
+	int err               = E_UA_ERR;
 
-	if (E_UA_OK != (uacc->uar->on_get_version)(uacc->update_pkg.type,
-	                                           uacc->update_pkg.name,
-	                                           &install_version))
+#ifdef LIBUA_VER_2_0
+	ua_callback_ctl_t uactl = {0};
+	uactl.type     = uacc->update_pkg.type;
+	uactl.pkg_name = uacc->update_pkg.name;
+	uactl.ref      = uacc->usr_ref;
+	if ((err = (uacc->uar->on_get_version)(&uactl)) == E_UA_OK)
+		install_version = uactl.version;
+
+#else
+	err = (uacc->uar->on_get_version)(uacc->update_pkg.type,
+	                                  uacc->update_pkg.name,
+	                                  &install_version);
+
+#endif
+	if (err != E_UA_OK)
 		A_ERROR_MSG("Error get version for %s.", uacc->update_pkg.name);
-
+	A_ERROR_MSG("target_version = %s, install_version = %s", target_version, install_version);
 	return (S(install_version) && !strcmp(target_version, install_version));
 
 }
@@ -626,12 +639,24 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 								char* new_file    = NULL;
 								ua_routine_t* uar = uacc->uar;
 								if (uar->on_transfer_file) {
-									int ret = (*uar->on_transfer_file)(uacc->update_pkg.type,
-									                                   uacc->update_pkg.name,
-									                                   uacc->update_pkg.version,
-									                                   uacc->update_file_info.file,
-									                                   &new_file);
-									if (ret) err = E_UA_ERR;
+#ifdef LIBUA_VER_2_0
+									ua_callback_ctl_t uactl = {0};
+									uactl.type     = uacc->update_pkg.type;
+									uactl.pkg_name = uacc->update_pkg.name;
+									uactl.version  = uacc->update_pkg.version;
+									uactl.pkg_path = uacc->update_file_info.file;
+									uactl.ref      = uacc->usr_ref;
+									err            = (*uar->on_transfer_file)(&uactl);
+
+									new_file = uactl.new_file_path;
+
+#else
+									err = (*uar->on_transfer_file)(uacc->update_pkg.type,
+									                               uacc->update_pkg.name,
+									                               uacc->update_pkg.version,
+									                               uacc->update_file_info.file,
+									                               &new_file);
+#endif
 								}
 								if (new_file) {
 									f_free(uacc->update_file_info.file);

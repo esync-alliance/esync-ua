@@ -15,7 +15,6 @@
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
 #include "utlist.h"
-#include "xl4ua.h"
 #include "debug.h"
 
 static int libzip_archive_add_file(struct zip* za, const char* path, const char* base);
@@ -807,7 +806,8 @@ int remove_subdirs_except(char* parent_dir, char* subdir_to_keep)
 int reply_id_matched(char* s1, char* s2)
 {
 	int matched = 0;
-	if(s1 && s2)
+
+	if (s1 && s2)
 		matched = !strcmp(s1, s2);
 	return matched;
 }

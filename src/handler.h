@@ -6,7 +6,13 @@
 #define UA_HANDLER_H_
 #include "misc.h"
 #include <json.h>
+
+#ifdef LIBUA_VER_2_0
+#include "esyncua.h"
+#else
 #include "xl4ua.h"
+#endif //LIBUA_VER_2_0
+
 #include "uthash.h"
 #include "utlist.h"
 #include "utarray.h"
@@ -193,8 +199,8 @@ typedef enum update_stage {
 
 typedef enum update_rollback {
 	URB_NONE,
-	URB_DMC_INITIATED,   /* ready-update has rollback-version. */
-	URB_UA_INITIATED,    /* ready-update has rollback-versions. */
+	URB_DMC_INITIATED, /* ready-update has rollback-version. */
+	URB_UA_INITIATED,  /* ready-update has rollback-versions. */
 
 } update_rollback_t;
 
@@ -224,6 +230,8 @@ typedef struct ua_component_context {
 	comp_sequence_t* seq_in;
 	comp_state_info_t* st_info;
 	int enable_fake_rb_ver;
+
+	void* usr_ref;
 
 } ua_component_context_t;
 

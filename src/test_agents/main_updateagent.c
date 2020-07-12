@@ -11,10 +11,15 @@
 
 int ua_debug_lvl = 0;
 
+#ifdef LIBUA_VER_2_0
 ua_handler_t uah[] = {
-	{"/ECU/ROM", get_tmpl_routine }
+	{"/ECU/ROM", get_tmpl_routine, "UA SELF REF" }
 };
-
+#else
+ua_handler_t uah[] = {
+	{"/ECU/ROM", get_tmpl_routine}
+};
+#endif 
 static int stop = 0;
 
 static void sig_handler(int num)
@@ -149,7 +154,7 @@ int main(int argc, char** argv)
 	int l = sizeof(uah)/sizeof(ua_handler_t);
 	ua_register(uah, l);
 
-	while(!stop) {sleep(1);};
+	while (!stop) {sleep(1); };
 
 	ua_unregister(uah, l);
 

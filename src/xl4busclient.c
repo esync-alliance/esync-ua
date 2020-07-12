@@ -14,8 +14,6 @@
 #include "handler.h"
 #include "debug.h"
 
-#define DEBUG 4
-
 static void on_xl4bus_message(struct xl4bus_client* client, xl4bus_message_t* msg);
 static void on_xl4bus_status(struct xl4bus_client* client, xl4bus_client_condition_t cond);
 static void on_xl4bus_delivered(struct xl4bus_client* client, xl4bus_message_t* msg, void* arg, int ok);
@@ -33,7 +31,7 @@ static char* m_xl4bus_url = NULL;
 
 void debug_print(const char* msg)
 {
-	if (ua_debug == DEBUG)
+	if (ua_debug >= DBG_DEBUG)
 		printf("%s\n", msg);
 
 }

@@ -17,7 +17,7 @@ char* handler_type;
 
 static char* xl4_msg_path = 0;
 static char case_dir[PATH_MAX];
-static char *cases[] = {
+static char* cases[] = {
 	"test_normal_update_success",
 	"test_normal_update_failure",
 	"test_delta_dmc_rollback_success",
@@ -148,7 +148,7 @@ void test_rollback_fake_version(void** state)
 	cfg.cache_dir      = "/tmp/esync/";
 	cfg.backup_dir     = "/data/sota/esync/";
 	cfg.delta_config   = &(delta_cfg_t){.delta_cap = "A:4"};
-	
+
 	set_test_installation_mode(UPDATE_MODE_ROLLBACK, 0);
 	handle_messages_from_file("ut_rollback_fake_version", &cfg);
 
@@ -159,7 +159,6 @@ void test_rollback_fake_version(void** state)
 
 void test_xl4_msg_file(void** state)
 {
-
 	handle_messages_from_file(xl4_msg_path, NULL);
 
 }
@@ -184,15 +183,15 @@ static void _help(const char* app)
 	       "  -c <path>  : path to test cases directory (default \"../unit_tests/cases/\")\n"
 	       "  -i index   : run single ith test case, default(0) is to run all tests> \n"
 	       );
-	for (int i = 0; i < sizeof(cases)/sizeof(cases[0]);  i++) {
-		printf("  	       %d =  %s \n", i+1, cases[i]);
+	for (int i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
+		printf("               %d =  %s \n", i+1, cases[i]);
 	}
 	_exit(1);
 }
 
 int main(int argc, char** argv)
 {
-	int c = 0;
+	int c   = 0;
 	int sel = -1;
 
 	handler_type = UT_DEFAULT_HANDLER_TYPE;
@@ -220,21 +219,20 @@ int main(int argc, char** argv)
 		}
 	}
 
-	if(xl4_msg_path) {
+	if (xl4_msg_path) {
 		case_dir[0] = 0;
 		const struct CMUnitTest signle[] = {
 			cmocka_unit_test(test_xl4_msg_file),
 		};
-		return cmocka_run_group_tests(signle, NULL, NULL);		
+		return cmocka_run_group_tests(signle, NULL, NULL);
 	}
 
-	if(sel >= 0) {
+	if (sel >= 0) {
 		const struct CMUnitTest signle[] = {
 			cmocka_unit_test(case_funcs[sel]),
 		};
 		return cmocka_run_group_tests(signle, NULL, NULL);
 	} else {
-
 		const struct CMUnitTest tests[] = {
 			cmocka_unit_test(test_normal_update_success),
 			cmocka_unit_test(test_normal_update_failure),
@@ -244,7 +242,7 @@ int main(int argc, char** argv)
 			cmocka_unit_test(test_rollback_fake_version),
 		};
 
-		return cmocka_run_group_tests(tests, NULL, NULL);		
+		return cmocka_run_group_tests(tests, NULL, NULL);
 	}
 
 }

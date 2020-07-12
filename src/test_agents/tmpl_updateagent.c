@@ -7,6 +7,48 @@
 
 pkg_version_t* package_version = 0;
 
+#ifdef LIBUA_VER_2_0
+
+static int get_tmpl_version(ua_callback_ctl_t* ctl)
+{
+	TMPL_VER_GET(ctl->pkg_name, ctl->version);
+	return E_UA_OK;
+
+}
+
+static int set_tmpl_version(ua_callback_ctl_t* ctl)
+{
+	TMPL_VER_SET(ctl->pkg_name, ctl->version);
+	return E_UA_OK;
+
+}
+
+static install_state_t do_tmpl_pre_install(ua_callback_ctl_t* ctl)
+{
+	return INSTALL_IN_PROGRESS;
+
+}
+
+static install_state_t do_tmpl_install(ua_callback_ctl_t* ctl)
+{
+	return INSTALL_COMPLETED;
+
+}
+
+static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
+{
+	return;
+
+}
+
+static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
+{
+	return INSTALL_READY;
+
+}
+
+#else
+
 static int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
 	TMPL_VER_GET(pkgName, *version);
@@ -44,6 +86,8 @@ static install_state_t do_prepare_install(const char* type, const char* pkgName,
 	return INSTALL_READY;
 
 }
+
+#endif
 
 static int tmpl_on_dmc_presence(dmc_presence_t* dp)
 {

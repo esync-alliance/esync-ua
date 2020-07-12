@@ -23,7 +23,7 @@ class eSyncUA:
                  delta_cap='A:3;B:3;C100',
                  enable_delta=True,
                  reboot_support=False,
-                 debug=False,
+                 debug=3,
                  ready_download=False):
         """Class Constructor 
         Args:
@@ -43,7 +43,7 @@ class eSyncUA:
         self.host_port = host_port
         self.xl4bus_client_initialized = False
         if(debug):
-            self.libua_debug = 1
+            self.libua_debug = debug
         else :
             self.libua_debug = 0
         if(enable_delta):

@@ -76,7 +76,13 @@ set_empty(XL4_PROVIDE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_GETTIMEOFDAY 1)
 set_empty(XL4_HAVE_STD_MALLOC 1)
 set_empty(HAVE_LIMITS_H 1)
-
+if (USE_LEGACY_API)
+    message("Building libua with legacy API")
+else()
+    message("Building libua with API version 2.0")
+    set(LIBUA_API_VER "LIBUA_VER_2_0")
+    add_definitions(-DLIBUA_VER_2_0)    
+endif()
 if (CMAKE_CROSSCOMPILING)
     set(THREADS_PTHREAD_ARG 2)
 endif()
@@ -115,6 +121,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/utlist.h
     src/debug.h
     src/include/xl4ua.h
+    src/include/esyncua.h
 )
 
 if (SUPPORT_UA_DOWNLOAD)
@@ -201,7 +208,7 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-install(FILES src/include/xl4ua.h  DESTINATION include)
+install(FILES src/include/xl4ua.h src/include/esyncua.h DESTINATION include)
 
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
@@ -235,7 +242,7 @@ if(BUILD_PY_LIBUA)
             
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} ${SETUP_PY} develop --user )
+            COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} LIBUA_API_VER=${LIBUA_API_VER} ${PYTHON_EXECUTABLE} ${SETUP_PY} develop --user )
 
 		install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} ${SETUP_PY} install --record install_files.txt)")
 	endif()
