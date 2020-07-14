@@ -81,7 +81,7 @@ if (USE_LEGACY_API)
 else()
     message("Building libua with API version 2.0")
     set(LIBUA_API_VER "LIBUA_VER_2_0")
-    add_definitions(-DLIBUA_VER_2_0)    
+    add_definitions(-DLIBUA_VER_2_0)
 endif()
 if (CMAKE_CROSSCOMPILING)
     set(THREADS_PTHREAD_ARG 2)
@@ -185,7 +185,7 @@ endif()
 if (BUILD_BINS)
     add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
 
-    set(TMPL_UA_SOURCE     
+    set(TMPL_UA_SOURCE
         src/test_agents/main_updateagent.c
         src/test_agents/tmpl_updateagent.c
         src/test_agents/tmpl_updateagent.h
@@ -208,7 +208,7 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-install(FILES src/include/xl4ua.h src/include/esyncua.h DESTINATION include)
+install(FILES src/include/xl4ua.h src/include/esyncua.h src/delta_utils/delta_utils.h DESTINATION include)
 
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)
@@ -239,7 +239,7 @@ if(BUILD_PY_LIBUA)
             "${PY_LIBUA_DIR}/*.c"
             "${PY_LIBUA_DIR}/*.py"
             "${PY_LIBUA_DIR}/*.i")
-            
+
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} LIBUA_API_VER=${LIBUA_API_VER} ${PYTHON_EXECUTABLE} ${SETUP_PY} develop --user )
