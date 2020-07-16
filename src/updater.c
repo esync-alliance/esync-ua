@@ -267,8 +267,10 @@ void update_set_rollback_info(ua_component_context_t* uacc)
 				json_object_array_add(ua_ctrl_rb_versions, json_object_new_string(pf->version));
 
 				if (uacc->update_pkg.rollback_version) {
-					if (!strcmp(uacc->update_pkg.rollback_version, pf->version))
+					if (!strcmp(uacc->update_pkg.rollback_version, pf->version)) {
 						rb_type = URB_UA_INITIATED;
+						break;
+					}
 				}
 
 				free_pkg_file(pf);
@@ -419,27 +421,18 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				Z_FREE(tmp_rb_file_info.file);
 
 			} else {
-				if ( comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) == URB_DMC_INITIATED ) {
-					A_INFO_MSG("Rollback package file is not available locally, asking eSync client to download it.");
+				A_INFO_MSG("Rollback package file cannot be located for %s, version: %s", uacc->update_pkg.name, next_rb_version);
+				tmp_cur_version = next_rb_version;
+				next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
+				if (next_rb_version) {
+					A_INFO_MSG("Rollback will try the next version(%s).", next_rb_version);
+					update_sts = INSTALL_ROLLBACK;
 					update_send_rollback_status(uacc, next_rb_version);
-					tmp_cur_version = next_rb_version;
-					next_rb_version = NULL;
-					update_sts      = INSTALL_ROLLBACK;
 
-				} else {
-					A_INFO_MSG("Rollback package file cannot be located for %s, version: %s", uacc->update_pkg.name, next_rb_version);
-					tmp_cur_version = next_rb_version;
-					next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
-					if (next_rb_version) {
-						A_INFO_MSG("Rollback will try the next version(%s).", next_rb_version);
-						update_sts = INSTALL_ROLLBACK;
-						update_send_rollback_status(uacc, next_rb_version);
+				}else {
+					A_INFO_MSG("No more rollback version for %s, signal INSTALL_FAILED", uacc->update_pkg.name);
+					update_sts = INSTALL_FAILED;
 
-					}else {
-						A_INFO_MSG("No more rollback version for %s, signal INSTALL_FAILED", uacc->update_pkg.name);
-						update_sts = INSTALL_FAILED;
-
-					}
 				}
 			}
 		}
