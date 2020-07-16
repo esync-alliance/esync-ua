@@ -120,9 +120,14 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/uthash.h
     src/utlist.h
     src/debug.h
-    src/include/xl4ua.h
-    src/include/esyncua.h
 )
+
+if (USE_LEGACY_API)
+    set(LIB_SOURCE ${LIB_SOURCE} src/include/xl4ua.h)
+else()
+    set(LIB_SOURCE ${LIB_SOURCE} src/include/esyncua.h)
+endif()
+
 
 if (SUPPORT_UA_DOWNLOAD)
     set(LIB_SOURCE ${LIB_SOURCE}
@@ -208,7 +213,12 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-install(FILES src/include/xl4ua.h src/include/esyncua.h src/delta_utils/delta_utils.h DESTINATION include)
+install(FILES src/delta_utils/delta_utils.h DESTINATION include)
+if (USE_LEGACY_API)
+    install(FILES src/include/xl4ua.h DESTINATION include)
+else()
+    install(FILES src/include/esyncua.h DESTINATION include)
+endif()
 
 if(UNIT_TEST)
     find_library(CMOCKA_LIB NAMES cmocka PATHS /usr/local/lib)

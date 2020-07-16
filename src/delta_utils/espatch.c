@@ -23,7 +23,13 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <xl4ua.h>
+
+#ifdef LIBUA_VER_2_0
+	#include "esyncua.h"
+#else
+	#include "xl4ua.h"
+#endif
+
 #include <libxl4bus/build_config.h>
 
 #define ESPERROR_STRINGS
