@@ -1980,6 +1980,12 @@ void ua_rollback_control(const char* pkgName, int disable)
 
 }
 
+int ua_unzip(const char* archive, const char* destpath)
+{
+	return unzip(archive, destpath);
+}
+
+
 #ifdef SUPPORT_UA_DOWNLOAD
 void ua_verify_ca_file_init(const char* path)
 {

@@ -479,6 +479,16 @@ XL4_PUB
  */
 void ua_rollback_control(const char* pkgName, int disable);
 
+XL4_PUB
+/**
+ * unzip utility.
+ * @param zipfile   pathname of zip archive.
+ * @param destpath  pathname of destination folder.
+ * @return          E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_unzip(const char* archive, const char* destpath);
+
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,

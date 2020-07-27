@@ -208,7 +208,7 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 #endif
 	if (err != E_UA_OK)
 		A_ERROR_MSG("Error get version for %s.", uacc->update_pkg.name);
-	A_ERROR_MSG("target_version = %s, install_version = %s", target_version, install_version);
+	A_INFO_MSG("target_version = %s, install_version = %s", target_version, install_version);
 	return (S(install_version) && !strcmp(target_version, install_version));
 
 }
