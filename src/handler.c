@@ -652,18 +652,19 @@ static int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, 
 
 	HASH_FIND_STR(*seq, name, s);
 	if (s) {
-		//A_INFO_MSG("found %s in seq num: %d", s->name, s->num);
 		if (s->num >= num) {
-			A_WARN_MSG("Got outdated command sequence number : %d for %s", seq, name);
+			A_WARN_MSG("Got outdated command sequence number for %s (%d >= %d)", name, s->num, num);
 			outdated = 1;
 		}
 		HASH_DEL(*seq, s);
 		f_free(s->name);
 		free(s);
+	} else {
+		A_INFO_MSG("Init incoming command sequence num for %s to %d", name, num);
 	}
 
 	s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
-	s->name = f_strdup(name);;
+	s->name = f_strdup(name);
 	s->num  = num;
 	HASH_ADD_KEYPTR( hh, *seq, s->name, strlen(s->name), s );
 
@@ -694,7 +695,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 		if ( !get_seq_num_from_json(jObj, &seq) &&
 		     !get_pkg_name_from_json(jObj, &pkg_name) ) {
 			if (handler_chk_incoming_seq_outdated(&uacc->seq_in, pkg_name, seq)) {
-				A_INFO_MSG("Skipping the installation command due to updated sequence");
+				A_INFO_MSG("Skipping the installation command due to outdated sequence number");
 				if (!jErr) json_object_put(jObj);
 				return;
 			}
@@ -1810,7 +1811,6 @@ void free_pkg_file(pkg_file_t* pkgFile)
 
 const char* ua_get_updateagent_version()
 {
-
 #ifdef LIBUA_VER_2_0
 	return ("libua_api_v2.0-" BUILD_VERSION);
 #else
