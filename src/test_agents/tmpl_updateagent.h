@@ -16,6 +16,8 @@
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 #include "util.h"
 #endif
+
+#define XL4_UNUSED(x) (void)x;
 typedef struct pkg_version {
 	char* version;
 	char* pkg;

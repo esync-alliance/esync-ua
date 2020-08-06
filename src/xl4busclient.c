@@ -200,6 +200,7 @@ static void on_xl4bus_message(xl4bus_client_t* client, xl4bus_message_t* msg)
 			A_INFO_MSG("Skipping message with an unsupported content type %s", NULL_STR(msg->content_type));
 		}
 	}
+	XL4_UNUSED(client);
 
 }
 
@@ -220,6 +221,7 @@ static void on_xl4bus_delivered(xl4bus_client_t* client, xl4bus_message_t* msg, 
 	free((char*) msg->data);
 	free(msg);
 	XL4_UNUSED(client);
+	XL4_UNUSED(arg);
 
 }
 
