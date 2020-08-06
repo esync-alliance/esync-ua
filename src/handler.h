@@ -270,7 +270,7 @@ typedef struct runner_info {
 	ua_component_context_t component;
 } runner_info_t;
 
-void handle_status(int status);
+void handle_status(unsigned int status);
 void handle_delivered(const char* msg, int ok);
 void handle_presence(int connected, int disconnected, esync_bus_conn_state_t conn);
 void handle_message(const char* type, const char* msg, size_t len);

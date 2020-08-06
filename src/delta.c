@@ -283,7 +283,7 @@ static void clear_delta_tool(delta_tool_hh_t* hash)
 }
 
 
-static int get_espatch_version(char* ver, int len)
+static int get_espatch_version(char* ver, unsigned int len)
 {
 	int rc = E_UA_OK;
 

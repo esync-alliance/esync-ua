@@ -223,7 +223,7 @@ static int libzip_unzip(const char* archive, const char* path)
 {
 	int i, len, fd, zerr, err = E_UA_OK;
 	char* buf = 0;
-	long sum;
+	unsigned long sum;
 	char* aux   = 0;
 	char* fpath = 0;
 	struct zip* za;
@@ -581,7 +581,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	int i, len, zerr, err = E_UA_OK;
 	char* buf = 0;
 	unsigned char hash[SHA256_DIGEST_LENGTH];
-	long sum;
+	unsigned long sum;
 	char* zstr = 0;
 	struct zip* za;
 	struct zip_file* zf;

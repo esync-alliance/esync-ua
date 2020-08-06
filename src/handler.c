@@ -371,7 +371,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 	return err;
 }
 
-void handle_status(int status)
+void handle_status(unsigned int status)
 {
 	char* sts_str[] = {
 		"RUNNING",
@@ -749,6 +749,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 	}
 
 	if (!jErr) json_object_put(jObj);
+	XL4_UNUSED(len);
 }
 
 
@@ -1183,15 +1184,21 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
 
 	}
+	XL4_UNUSED(uacc);
 }
 
 
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
+	XL4_UNUSED(uacc);
+	XL4_UNUSED(jsonObj);
 }
 
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
+	XL4_UNUSED(uacc);
+	XL4_UNUSED(jsonObj);
+
 }
 
 static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj)
@@ -1225,6 +1232,8 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 	}
 
 	pthread_mutex_unlock(&ua_intl.lock);
+	XL4_UNUSED(uacc);
+	
 }
 
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
@@ -1611,6 +1620,7 @@ static void send_download_status(ua_component_context_t* uacc, pkg_info_t* pkgIn
 	ua_send_message(jObject);
 
 	json_object_put(jObject);
+	XL4_UNUSED(uacc);
 }
 
 static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version)

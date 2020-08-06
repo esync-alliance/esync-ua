@@ -160,9 +160,9 @@ int update_record_save(ua_component_context_t* uacc)
 
 char* update_record_load(char* record_file)
 {
-	int len       = 0;
-	FILE* fd      = NULL;
-	char* jstring = NULL;
+	unsigned int len       	= 0;
+	FILE* fd      		= NULL;
+	char* jstring 		= NULL;
 
 	if (record_file && (fd = fopen(record_file, "r"))) {
 		fseek(fd, 0L, SEEK_END);

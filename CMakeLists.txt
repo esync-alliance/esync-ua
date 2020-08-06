@@ -166,7 +166,7 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wimplicit -Wreturn-type -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wimplicit -Wreturn-type -Werror -Wextra")
 
 if (BUILD_SHARED)
     add_library(ua-shared SHARED ${LIB_SOURCE})
