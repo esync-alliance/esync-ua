@@ -185,7 +185,7 @@ typedef struct {
 				(a)->icd.dtor(utarray_eltptr(a, (pos) + _ut_i));                        \
 			}                                                                         \
 		}                                                                           \
-		if ((a)->i > ((pos) + (len))) {                                             \
+		if ((a)->i > (((unsigned)pos) + ((unsigned)len))) {                                             \
 			memmove(_utarray_eltptr(a, pos), _utarray_eltptr(a, (pos) + (len)),       \
 			        ((a)->i - ((pos) + (len))) * (a)->icd.sz);                        \
 		}                                                                           \
