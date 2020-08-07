@@ -160,7 +160,7 @@ int update_record_save(ua_component_context_t* uacc)
 
 char* update_record_load(char* record_file)
 {
-	unsigned int len       	= 0;
+	int len       		= 0;
 	FILE* fd      		= NULL;
 	char* jstring 		= NULL;
 
@@ -171,7 +171,7 @@ char* update_record_load(char* record_file)
 
 		jstring = (char*)malloc(len+1);
 		if (jstring) {
-			if (fread(jstring, 1, len, fd) != len) {
+			if (fread(jstring, 1, len, fd) != (unsigned)len) {
 				free(jstring);
 				jstring = NULL;
 			}
