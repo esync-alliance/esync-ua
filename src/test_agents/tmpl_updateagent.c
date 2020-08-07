@@ -25,24 +25,28 @@ static int set_tmpl_version(ua_callback_ctl_t* ctl)
 
 static install_state_t do_tmpl_pre_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return INSTALL_IN_PROGRESS;
 
 }
 
 static install_state_t do_tmpl_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return INSTALL_COMPLETED;
 
 }
 
 static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return;
 
 }
 
 static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return INSTALL_READY;
 
 }

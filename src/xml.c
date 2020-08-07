@@ -371,7 +371,7 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 				//Increment rollback-order for each version.
 				if ((c = xmlNodeGetContent(n))) {
 					int rc = (int)snprintf(rb_order, sizeof(rb_order), "%d", atoi((const char*)c)+1);
-					if (rc > 0 && rc < sizeof(rb_order))
+					if (rc > 0 && rc < (int)sizeof(rb_order))
 						xmlNodeSetContent(n, XMLT rb_order);
 					else
 						err = E_UA_ERR;
