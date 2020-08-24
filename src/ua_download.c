@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <linux/limits.h>
 #include <sys/stat.h>
+#include "string_safe.h"
 
 #ifndef CRC32_H_
 #   include "Crc32.h"
@@ -166,7 +167,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 	         pkgInfo->name, pkgInfo->version,
 	         pkgInfo->version);
 	tmp_dlc->dl_encrytion_filename = JOIN(ua_intl.ua_dl_dir, tmp_filename);
-	strcpy(ua_dl_filename_buffer, tmp_dlc->dl_encrytion_filename);
+	strcpy_s(ua_dl_filename_buffer, tmp_dlc->dl_encrytion_filename, strlen(tmp_dlc->dl_encrytion_filename) +1);
 	ua_intl.ua_downloaded_filename = ua_dl_filename_buffer;
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x.z",
@@ -420,7 +421,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 			memset(dlc->dl_rec.e_tag, 0, sizeof(dlc->dl_rec.e_tag));
 			if (ddc->e_tag) {
 				dlc->dl_rec.e_tag_valid = 1;
-				strncpy(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag)-1);
+				strcpy_s(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag)-1);
 			} else {
 				dlc->dl_rec.e_tag_valid = 0;
 			}

@@ -113,6 +113,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/xml.c
     src/updater.c
     src/component.c
+    src/string_safe.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
@@ -126,6 +127,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/uthash.h
     src/utlist.h
     src/debug.h
+    src/string_safe.h
 )
 
 if (USE_LEGACY_API)

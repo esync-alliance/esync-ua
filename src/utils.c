@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include "debug.h"
+#include "string_safe.h"
 
 int get_type_from_json(json_object* jsonObj, char** value)
 {
@@ -113,7 +114,7 @@ int get_pkg_sha256_from_json(json_object* jsonObj, char* version, char value[SHA
 
 	if (!json_get_property(jsonObj, json_type_string, &sha256, "body", "package", "version-list", version, "sha-256", NULL) &&
 	    (strlen(sha256) == (SHA256_B64_LENGTH - 1))) {
-		strcpy(value, sha256);
+		strcpy_s(value, sha256, strlen(sha256) +1);
 	} else {
 		err = E_UA_ERR;
 	}
@@ -128,7 +129,7 @@ int get_pkg_delta_sha256_from_json(json_object* jsonObj, char* version, char val
 
 	if (!json_get_property(jsonObj, json_type_string, &sha256, "body", "package", "version-list", version, "delta-sha-256", NULL) &&
 	    (strlen(sha256) == (SHA256_B64_LENGTH - 1))) {
-		strcpy(value, sha256);
+		strcpy_s(value, sha256, strlen(sha256) +1);
 	} else {
 		err = E_UA_ERR;
 	}

@@ -5,6 +5,7 @@
 #include "xml.h"
 #include "utlist.h"
 #include "debug.h"
+#include "string_safe.h"
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name);
 static diff_info_t* get_xml_diff_info(xmlNodePtr ptr);
@@ -59,7 +60,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 			if ((p = get_xml_child(n, XMLT "old"))) {
 				if ((c = xmlNodeGetContent(p))) {
 					if (!*diffInfo->sha256.old && (strlen((const char*)c) == (SHA256_HEX_LENGTH - 1))) {
-						strcpy(diffInfo->sha256.old, (const char*)c);
+						strcpy_s(diffInfo->sha256.old, (const char*)c, strlen((const char*)c) +1);
 					}
 					xmlFree(c);
 				}
@@ -68,7 +69,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 			if ((p = get_xml_child(n, XMLT "new"))) {
 				if ((c = xmlNodeGetContent(p))) {
 					if (!*diffInfo->sha256.new && (strlen((const char*)c) == (SHA256_HEX_LENGTH - 1))) {
-						strcpy(diffInfo->sha256.new, (const char*)c);
+						strcpy_s(diffInfo->sha256.new, (const char*)c, strlen((const char*)c) +1);
 					}
 					xmlFree(c);
 				}
@@ -179,7 +180,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 		if (xmlStrEqual(n->name, XMLT "sha256")) {
 			if ((c = xmlNodeGetContent(n))) {
 				if (!*pkgFile->sha256b64 && (strlen((const char*)c) == (SHA256_B64_LENGTH - 1))) {
-					strcpy(pkgFile->sha256b64, (const char*)c);
+					strcpy_s(pkgFile->sha256b64, (const char*)c, strlen((const char*)c) +1);
 				}
 				xmlFree(c);
 			}
@@ -187,7 +188,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 		} else if (xmlStrEqual(n->name, XMLT "sha-of-sha")) {
 			if ((c = xmlNodeGetContent(n))) {
 				if (strlen((const char*)c) == (SHA256_B64_LENGTH - 1)) {
-					strcpy(pkgFile->sha_of_sha, (const char*)c);
+					strcpy_s(pkgFile->sha_of_sha, (const char*)c, strlen((const char*)c) +1);
 				}
 				xmlFree(c);
 			}
