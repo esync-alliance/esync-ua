@@ -11,7 +11,6 @@
 #include "ua_version.h"
 #include "updater.h"
 #include "component.h"
-#include "string_safe.h"
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>
@@ -339,7 +338,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 		BOLT_IF(!S(pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
 
 		if (S(logdata->timestamp)) {
-			strcpy_s(timestamp, logdata->timestamp, sizeof(timestamp) - 1);
+			strncpy(timestamp, logdata->timestamp, sizeof(timestamp) - 1);
 		} else {
 			time_t t          = time(NULL);
 			struct tm* cur_tm = gmtime(&t);
@@ -1699,8 +1698,8 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 		backupFile->downloaded = 1;
 
 		if (backupFile->file && backupFile->version) {
-			strcpy_s(backupFile->sha256b64, pkgFile->sha256b64, strlen(pkgFile->sha256b64) + 1);
-			strcpy_s(backupFile->sha_of_sha, pkgFile->sha_of_sha, strlen(pkgFile->sha_of_sha) + 1);
+			strcpy(backupFile->sha256b64, pkgFile->sha256b64);
+			strcpy(backupFile->sha_of_sha, pkgFile->sha_of_sha);
 
 			if (!strcmp(pkgFile->file, backupFile->file) ||
 			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {

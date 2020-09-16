@@ -2,7 +2,6 @@
 #include "xml.h"
 #include "utlist.h"
 #include "debug.h"
-#include "string_safe.h"
 #ifdef SHELL_COMMAND_DISABLE
 #include "delta_utils.h"
 #endif
@@ -305,7 +304,7 @@ static int get_espatch_version(char* ver, unsigned int len)
 				char* tmp = strstr(output, "version: ");
 				if (tmp && (strlen(tmp)- strlen("version: ") < len-1)) {
 					memset(ver, 0, len);
-					strcpy_s(ver, tmp+strlen("version: "), len);
+					strncpy(ver, tmp+strlen("version: "), len-1);
 					A_INFO_MSG("espatch outputs version: %s", ver);
 				} else {
 					A_ERROR_MSG("error: could not parse version from espatch output: %s.", output);
@@ -323,7 +322,7 @@ static int get_espatch_version(char* ver, unsigned int len)
 		rc = E_UA_ERR;
 		const char* version = espatch_get_version();
 		if (version) {
-			strcpy_s(ver, version, strlen(version) +1);
+			strncpy(ver, version, strlen(version));
 			rc = E_UA_OK;
 		}
 #endif
@@ -344,7 +343,7 @@ static char* get_config_delta_cap(char* delta_cap)
 			char* format = strstr(tmp, ":");
 			while (format) {
 				if (!strstr(delta_cap, "E:") && *(format+1) == '3') {
-					if (E_UA_OK == get_espatch_version(espatch_ver, sizeof(espatch_ver) -1 ))
+					if (E_UA_OK == get_espatch_version(espatch_ver, sizeof(espatch_ver)))
 						ret_cap = f_asprintf("%s;E:%s", delta_cap, espatch_ver);
 				} else if (*(format+1) == '4') {
 					delta_stg.use_external_algo = 1;
@@ -375,31 +374,31 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	char* delta_cap       = NULL;
 
 	HASH_FIND_STR(patchTool, "bsdiff", dth);
-	if (dth) strcat_s(format, "1,", strlen(format) +1);
+	if (dth) strcat(format, "1,");
 	HASH_FIND_STR(patchTool, "rfc3284", dth);
-	if (dth) strcat_s(format, "2,", strlen(format) +1);
+	if (dth) strcat(format, "2,");
 	HASH_FIND_STR(patchTool, "esdiff", dth);
 	if (dth) {
-		strcat_s(format, "3,",  strlen(format) +1);
-		espatch_ver_valid = get_espatch_version(espatch_ver, sizeof(espatch_ver) -1);
+		strcat(format, "3,");
+		espatch_ver_valid = get_espatch_version(espatch_ver, sizeof(espatch_ver));
 	}
 
 	HASH_FIND_STR(decompTool, "gzip", dth);
-	if (dth) strcat_s(compression, "1,", strlen(compression) +1);
+	if (dth) strcat(compression, "1,");
 	HASH_FIND_STR(decompTool, "bzip2", dth);
-	if (dth) strcat_s(compression, "2,", strlen(compression) +1);
+	if (dth) strcat(compression, "2,");
 	HASH_FIND_STR(decompTool, "xz", dth);
-	if (dth) strcat_s(compression, "3,", strlen(compression) +1);
+	if (dth) strcat(compression, "3,");
 
 	if (strlen(format) > 2)
 		format[strlen(format) - 1] = ';';
 	else
-		strcpy_s(format, "A:0;", strlen("A:0;") +1);
+		strcpy(format, "A:0;");
 
 	if (strlen(compression) > 2)
 		compression[strlen(compression) - 1] = ';';
 	else
-		strcpy_s(compression, "B:0;", strlen("B:0;") +1);
+		strcpy(compression, "B:0;");
 
 	if (strlen(format) > 0 || strlen(compression) > 0) {
 		if (espatch_ver_valid == E_UA_OK)
@@ -424,7 +423,7 @@ __attribute__((unused)) static char* expand_tool_args(const char* args, const ch
 
 	while (*s) {
 		if (((rp = old) && (strcasestr(s, ex = OFA) == s)) || ((rp = new) && (strcasestr(s, ex = NFA) == s)) || ((rp = diff) && (strcasestr(s, ex = PFA) == s))) {
-			strcpy_s(&res[i], rp, strlen(rp) +1);
+			strcpy(&res[i], rp);
 			i += strlen(rp);
 			s += strlen(ex);
 		} else {

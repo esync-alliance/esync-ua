@@ -14,7 +14,6 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <string.h>
-#include "string_safe.h"
 
 #define S(s)        (s && * s)
 #define SAFE_STR(s) ((s) ? (s) : "")
@@ -54,7 +53,7 @@ static inline char* join_path(const char* path, ... )
 		ret = f_realloc(ret, strlen(ret) + strlen(aux) + 2);
 		if (*ret && ret[(l = strlen(ret))-1] != '/')
 			*(ret + (l++)) = '/';
-		strcpy_s(ret + l, aux, strlen(aux) +1);
+		strcpy(ret + l, aux);
 	}
 	va_end(ap);
 	return ret;

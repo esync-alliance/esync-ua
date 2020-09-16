@@ -8,7 +8,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <inttypes.h>
-#include "string_safe.h"
 #ifdef __QNX__
 #define ffs _ffs
 #include <string.h>
@@ -383,7 +382,7 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 			if (res == ESPOK_INFO) {
 				res = espGetInfo(esp, &info);
 				if (info.comment)
-					strcpy_s(comment,info.comment,sizeof(comment));
+					strncpy(comment,info.comment,sizeof(comment));
 			}
 		} while (res == ESPOK_MORE || res == ESPOK);
 	}
