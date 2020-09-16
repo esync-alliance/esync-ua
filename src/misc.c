@@ -251,7 +251,7 @@ static int libzip_unzip(const char* archive, const char* path)
 				BOLT_SYS((fd = open(fpath, O_RDWR | O_TRUNC | O_CREAT, 0644)) < 0, "failed to open/create %s", fpath);
 
 				sum = 0;
-				while (sum != sb.size) {
+				while (sum != (long)sb.size) {
 					BOLT_IF((len = zip_fread(zf, buf, ua_rw_buff_size)) < 0,
 					        E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					BOLT_IF((write(fd, buf, len) < len), E_UA_ERR, "error writing %s", sb.name);
@@ -613,7 +613,7 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 				SHA256_Update(&ctx, sb.name, strlen(sb.name));
 
 				sum = 0;
-				while (sum != sb.size) {
+				while (sum != (long)sb.size) {
 					BOLT_IF((len = zip_fread(zf, buf,ua_rw_buff_size)) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					SHA256_Update(&ctx, buf, len);
 					sum += len;

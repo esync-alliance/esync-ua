@@ -94,6 +94,12 @@ configure_file(${CMAKE_SOURCE_DIR}/json-c-rename.h ${CMAKE_BINARY_DIR} COPYONLY)
 add_custom_command(OUTPUT PHONY ${CMAKE_BINARY_DIR}/ua_version.h COMMAND ${CMAKE_SOURCE_DIR}/make_version.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_definitions(-D_GNU_SOURCE)
 
+if(ESYNC_ALLIANCE)
+	add_definitions(-DESYNC_ALLIANCE)
+	set(UpdateAgentBinNAme "${binName}")
+else()
+	set(UpdateAgentBinNAme "tmpl-updateagent")
+endif() 
 set(LIB_SOURCE ${LIB_SOURCE}
     PHONY
     ${BCH}
@@ -160,7 +166,7 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wimplicit -Wreturn-type -Werror")
 
 if (BUILD_SHARED)
     add_library(ua-shared SHARED ${LIB_SOURCE})
@@ -201,11 +207,11 @@ if (BUILD_BINS)
         src/test_agents/util.h
         )
     endif()
-    add_executable(tmpl-updateagent ${TMPL_UA_SOURCE})
-    targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
+    add_executable(${UpdateAgentBinNAme} ${TMPL_UA_SOURCE})
+    targets_link_libraries(${UpdateAgentBinNAme} deltapatcher LIBRARIES ${USE_LIB} ${APP_DEPS})
 
     if (XL4_PROVIDE_THREADS)
-        targets_link_libraries(tmpl-updateagent deltapatcher LIBRARIES Threads::Threads)
+        targets_link_libraries(${UpdateAgentBinNAme} deltapatcher LIBRARIES Threads::Threads)
     else()
         message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
     endif()

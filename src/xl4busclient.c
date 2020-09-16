@@ -200,6 +200,7 @@ static void on_xl4bus_message(xl4bus_client_t* client, xl4bus_message_t* msg)
 			A_INFO_MSG("Skipping message with an unsupported content type %s", NULL_STR(msg->content_type));
 		}
 	}
+	XL4_UNUSED(client);
 
 }
 
@@ -207,6 +208,7 @@ static void on_xl4bus_message(xl4bus_client_t* client, xl4bus_message_t* msg)
 static void on_xl4bus_status(xl4bus_client_t* client, xl4bus_client_condition_t cond)
 {
 	handle_status((int) cond);
+	XL4_UNUSED(client);
 
 }
 
@@ -218,6 +220,8 @@ static void on_xl4bus_delivered(xl4bus_client_t* client, xl4bus_message_t* msg, 
 	xl4bus_free_address(msg->address, 1);
 	free((char*) msg->data);
 	free(msg);
+	XL4_UNUSED(client);
+	XL4_UNUSED(arg);
 
 }
 
@@ -266,6 +270,7 @@ static void on_xl4bus_presence(xl4bus_client_t* client, xl4bus_address_t* connec
 	}
 
 	handle_presence(num_connected, num_disconnected, connection_state);
+	XL4_UNUSED(client);
 
 }
 
@@ -273,6 +278,7 @@ static void on_xl4bus_reconnect(xl4bus_client_t* client)
 {
 	if (m_xl4bus_url)
 		xl4bus_init_client(&m_xl4bus_clt, m_xl4bus_url);
+	XL4_UNUSED(client);
 
 }
 

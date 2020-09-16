@@ -25,24 +25,28 @@ static int set_tmpl_version(ua_callback_ctl_t* ctl)
 
 static install_state_t do_tmpl_pre_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return INSTALL_IN_PROGRESS;
 
 }
 
 static install_state_t do_tmpl_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return INSTALL_COMPLETED;
 
 }
 
 static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return;
 
 }
 
 static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
 {
+	XL4_UNUSED(ctl);
 	return INSTALL_READY;
 
 }
@@ -52,6 +56,7 @@ static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
 static int get_tmpl_version(const char* type, const char* pkgName, char** version)
 {
 	TMPL_VER_GET(pkgName, *version);
+	XL4_UNUSED(type);
 	return E_UA_OK;
 
 }
@@ -59,30 +64,46 @@ static int get_tmpl_version(const char* type, const char* pkgName, char** versio
 static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
 {
 	TMPL_VER_SET(pkgName, version);
+	XL4_UNUSED(type);
 	return E_UA_OK;
 
 }
 
 static install_state_t do_tmpl_pre_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
 {
+	XL4_UNUSED(type);
+	XL4_UNUSED(pkgName);
+	XL4_UNUSED(version);
+	XL4_UNUSED(pkgFile);	
 	return INSTALL_IN_PROGRESS;
 
 }
 
 static install_state_t do_tmpl_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
 {
+	XL4_UNUSED(type);
+	XL4_UNUSED(pkgName);
+	XL4_UNUSED(version);
+	XL4_UNUSED(pkgFile);	
 	return INSTALL_COMPLETED;
 
 }
 
 static void do_tmpl_post_install(const char* type, const char* pkgName)
 {
+	XL4_UNUSED(type);
+	XL4_UNUSED(pkgName);
 	return;
 
 }
 
 static install_state_t do_prepare_install(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile)
 {
+	XL4_UNUSED(type);
+	XL4_UNUSED(pkgName);
+	XL4_UNUSED(version);
+	XL4_UNUSED(pkgFile);
+	XL4_UNUSED(*newFile);		
 	return INSTALL_READY;
 
 }
@@ -91,6 +112,7 @@ static install_state_t do_prepare_install(const char* type, const char* pkgName,
 
 static int tmpl_on_dmc_presence(dmc_presence_t* dp)
 {
+	XL4_UNUSED(dp);
 	return 0;
 
 }

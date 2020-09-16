@@ -359,7 +359,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 		}
 
 		json_object* jObject = json_object_new_object();
-		json_object_object_add(jObject, "type", json_object_new_string(LOG_REPORT));
+		json_object_object_add(jObject, "type", json_object_new_string(BMT_LOG_REPORT));
 		json_object_object_add(jObject, "body", bodyObject);
 
 		err = ua_send_message(jObject);
@@ -711,30 +711,30 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 #endif
 			}
 			if (!processed) {
-				if (!strcmp(type, QUERY_PACKAGE)) {
+				if (!strcmp(type, BMT_QUERY_PACKAGE)) {
 					process_run(uacc, process_query_package, jObj, 0);
-				} else if (!strcmp(type, READY_DOWNLOAD)) {
+				} else if (!strcmp(type, BMT_READY_DOWNLOAD)) {
 					process_run(uacc, process_ready_download, jObj, 0);
-				} else if (!strcmp(type, READY_UPDATE)) {
+				} else if (!strcmp(type, BMT_READY_UPDATE)) {
 					process_run(uacc, process_ready_update, jObj, 1);
-				} else if (!strcmp(type, PREPARE_UPDATE)) {
+				} else if (!strcmp(type, BMT_PREPARE_UPDATE)) {
 					process_run(uacc, process_prepare_update, jObj, 1);
-				} else if (!strcmp(type, CONFIRM_UPDATE)) {
+				} else if (!strcmp(type, BMT_CONFIRM_UPDATE)) {
 					process_run(uacc, process_confirm_update, jObj, 0);
-				} else if (!strcmp(type, DOWNLOAD_REPORT)) {
+				} else if (!strcmp(type, BMT_DOWNLOAD_REPORT)) {
 					process_run(uacc, process_download_report, jObj, 0);
-				} else if (!strcmp(type, SOTA_REPORT)) {
+				} else if (!strcmp(type, BMT_SOTA_REPORT)) {
 					process_run(uacc, process_sota_report, jObj, 0);
-				} else if (!strcmp(type, LOG_REPORT)) {
+				} else if (!strcmp(type, BMT_LOG_REPORT)) {
 					process_run(uacc, process_log_report, jObj, 0);
-				} else if (!strcmp(type, QUERY_SEQUENCE)) {
+				} else if (!strcmp(type, BMT_QUERY_SEQUENCE)) {
 					process_run(uacc, process_sequence_info, jObj, 0);
-				} else if (!strcmp(type, UPDATE_STATUS)) {
+				} else if (!strcmp(type, BMT_UPDATE_STATUS)) {
 					process_run(uacc, process_update_status, jObj, 0);
 				#ifdef SUPPORT_UA_DOWNLOAD
-				} else if (!strcmp(type, START_DOWNLOAD)) {
+				} else if (!strcmp(type, BMT_START_DOWNLOAD)) {
 					process_run(uacc, process_start_download, jObj, 1);
-				} else if (!strcmp(type, QUERY_TRUST)) {
+				} else if (!strcmp(type, BMT_QUERY_TRUST)) {
 					process_run(uacc, process_query_trust, jObj, 0);
 				#endif
 				} else {
@@ -749,6 +749,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 	}
 
 	if (!jErr) json_object_put(jObj);
+	XL4_UNUSED(len);
 }
 
 
@@ -917,7 +918,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 		}
 
 		json_object* jObject = json_object_new_object();
-		json_object_object_add(jObject, "type", json_object_new_string(QUERY_PACKAGE));
+		json_object_object_add(jObject, "type", json_object_new_string(BMT_QUERY_PACKAGE));
 		json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
 		json_object_object_add(jObject, "body", bodyObject);
 
@@ -1183,15 +1184,21 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
 
 	}
+	XL4_UNUSED(uacc);
 }
 
 
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
+	XL4_UNUSED(uacc);
+	XL4_UNUSED(jsonObj);
 }
 
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
+	XL4_UNUSED(uacc);
+	XL4_UNUSED(jsonObj);
+
 }
 
 static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj)
@@ -1225,6 +1232,8 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 	}
 
 	pthread_mutex_unlock(&ua_intl.lock);
+	XL4_UNUSED(uacc);
+	
 }
 
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
@@ -1580,7 +1589,7 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
-	json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+	json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
 	ua_send_message(jObject);
@@ -1605,12 +1614,13 @@ static void send_download_status(ua_component_context_t* uacc, pkg_info_t* pkgIn
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
-	json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+	json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
 	ua_send_message(jObject);
 
 	json_object_put(jObject);
+	XL4_UNUSED(uacc);
 }
 
 static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t* pkgInfo, char* report_version)
@@ -1629,7 +1639,7 @@ static int send_current_report_version(ua_component_context_t* uacc, pkg_info_t*
 	json_object_object_add(bodyObject, "package", pkgObject);
 
 	json_object* jObject = json_object_new_object();
-	json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+	json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
 	Z_FREE(uacc->update_status_info.reply_id);
@@ -1663,7 +1673,7 @@ static int send_update_report(const char* pkgName, const char* version, int inde
 		json_object_object_add(bodyObject, "stage", json_object_new_string(update_stage_string(us)));
 
 		json_object* jObject = json_object_new_object();
-		json_object_object_add(jObject, "type", json_object_new_string(UPDATE_REPORT));
+		json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_REPORT));
 		json_object_object_add(jObject, "body", bodyObject);
 
 		err = ua_send_message(jObject);
@@ -1938,7 +1948,7 @@ static int send_sequence_query(void)
 		ua_intl.query_reply_id = randstring(REPLY_ID_STR_LEN);
 
 		if (ua_intl.query_reply_id) {
-			json_object_object_add(jObject, "type", json_object_new_string(QUERY_SEQUENCE));
+			json_object_object_add(jObject, "type", json_object_new_string(BMT_QUERY_SEQUENCE));
 			json_object_object_add(jObject, "body", bodyObject);
 			json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.query_reply_id ));
 			json_object_object_add(bodyObject, "domain", json_object_new_string("change-notifications" ));
@@ -2100,7 +2110,7 @@ int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done)
 
 
 		json_object* jObject = json_object_new_object();
-		json_object_object_add(jObject, "type", json_object_new_string(UPDATE_STATUS));
+		json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 		json_object_object_add(jObject, "body", bodyObject);
 
 		A_DEBUG_MSG("Sending : %s", json_object_to_json_string(jObject));

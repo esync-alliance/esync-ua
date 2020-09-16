@@ -22,21 +22,30 @@
 #include <pthread.h>
 #define MSG_TIMEOUT     10
 
-#define QUERY_PACKAGE   "xl4.query-package"
-#define READY_DOWNLOAD  "xl4.ready-download"
-#define READY_UPDATE    "xl4.ready-update"
-#define PREPARE_UPDATE  "xl4.prepare-update"
-#define CONFIRM_UPDATE  "xl4.confirm-update"
-#define DOWNLOAD_REPORT "xl4.download-report"
-#define SOTA_REPORT     "xl4.sota-report"
-#define LOG_REPORT      "xl4.log-report"
-#define UPDATE_STATUS   "xl4.update-status"
-#define UPDATE_REPORT   "xl4.update-report"
-#define QUERY_SEQUENCE  "xl4.sequence-info"
+
+#if ESYNC_ALLIANCE
+#define BMT_PREFIX "esync."
+#else
+#define BMT_PREFIX "xl4."
+#endif
+
+#define BMT_QUERY_PACKAGE   BMT_PREFIX "query-package"
+#define BMT_READY_DOWNLOAD  BMT_PREFIX "ready-download"
+#define BMT_READY_UPDATE    BMT_PREFIX "ready-update"
+#define BMT_PREPARE_UPDATE  BMT_PREFIX "prepare-update"
+#define BMT_CONFIRM_UPDATE  BMT_PREFIX "confirm-update"
+#define BMT_DOWNLOAD_REPORT BMT_PREFIX "download-report"
+#define BMT_SOTA_REPORT     BMT_PREFIX "sota-report"
+#define BMT_LOG_REPORT      BMT_PREFIX "log-report"
+#define BMT_UPDATE_REPORT   BMT_PREFIX "update-report"
+#define BMT_UPDATE_STATUS   BMT_PREFIX "update-status"
+#define BMT_QUERY_SEQUENCE  BMT_PREFIX "sequence-info"
+#define BMT_SESSION_REQUEST BMT_PREFIX "session-request"
+
 
 #ifdef SUPPORT_UA_DOWNLOAD
-#define START_DOWNLOAD "xl4.start-download"
-#define QUERY_TRUST    "xl4.query-trust"
+#define START_DOWNLOAD BMT_PREFIX "start-download"
+#define QUERY_TRUST    BMT_PREFIX "query-trust"
 #endif
 
 typedef struct pkg_info {

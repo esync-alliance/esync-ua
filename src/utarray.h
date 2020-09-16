@@ -117,7 +117,7 @@ typedef struct {
 
 #define utarray_len(a)           ((a)->i)
 
-#define utarray_eltptr(a,j)      (((j) < (a)->i) ? _utarray_eltptr(a,j) : NULL)
+#define utarray_eltptr(a,j)      ((((unsigned)j) < (a)->i) ? _utarray_eltptr(a,j) : NULL)
 #define _utarray_eltptr(a,j)     ((a)->d + ((a)->icd.sz * (j)))
 
 #define utarray_insert(a,p,j)    do {                                            \
@@ -185,7 +185,7 @@ typedef struct {
 				(a)->icd.dtor(utarray_eltptr(a, (pos) + _ut_i));                        \
 			}                                                                         \
 		}                                                                           \
-		if ((a)->i > ((pos) + (len))) {                                             \
+		if ((a)->i > (((unsigned)pos) + ((unsigned)len))) {                                             \
 			memmove(_utarray_eltptr(a, pos), _utarray_eltptr(a, (pos) + (len)),       \
 			        ((a)->i - ((pos) + (len))) * (a)->icd.sz);                        \
 		}                                                                           \

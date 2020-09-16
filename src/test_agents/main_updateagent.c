@@ -25,6 +25,7 @@ static int stop = 0;
 static void sig_handler(int num)
 {
 	stop = 1;
+	XL4_UNUSED(num);
 }
 
 static void _help(const char* app)
