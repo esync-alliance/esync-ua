@@ -371,7 +371,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 	return err;
 }
 
-void handle_status(unsigned int status)
+void handle_status(int status)
 {
 	char* sts_str[] = {
 		"RUNNING",
