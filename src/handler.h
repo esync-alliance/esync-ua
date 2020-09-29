@@ -20,7 +20,7 @@
 #include "eua_json.h"
 #endif
 #include <pthread.h>
-#define MSG_TIMEOUT     10
+#define MSG_TIMEOUT 10
 
 
 #if ESYNC_ALLIANCE
@@ -142,12 +142,14 @@ typedef enum ua_internal_state {
 }ua_internal_state_t;
 
 
-typedef struct rollback_crtl {
+typedef struct comp_ctrl {
 	char* pkg_name;
 	int rb_disable;
+	char* custom_msg;
+
 	UT_hash_handle hh;
 
-}rollback_crtl_t;
+}comp_ctrl_t;
 
 
 typedef struct comp_sequence {
@@ -175,7 +177,7 @@ typedef struct ua_internal {
 	uint32_t backup_source;
 	pthread_mutex_t lock;
 	pthread_mutex_t backup_lock;
-	rollback_crtl_t* rb_crtl;
+	comp_ctrl_t* component_ctrl;
 	char* query_reply_id;
 	int seq_info_valid;
 	int enable_fake_rb_ver;
@@ -219,7 +221,6 @@ typedef struct comp_state_info {
 	ua_stage_t stage;
 	update_rollback_t rb_type;
 	char* fake_rb_ver;
-
 	UT_hash_handle hh;
 
 }comp_state_info_t;

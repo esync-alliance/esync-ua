@@ -42,6 +42,7 @@ static char* download_state_string(download_state_t state);
 static char* update_stage_string(update_stage_t stage);
 static char* log_type_string(log_type_t log);
 static void release_comp_sequence(comp_sequence_t* seq);
+static char* get_component_custom_message(char* pkgName);
 void* runner_loop(void* arg);
 
 #ifdef SUPPORT_UA_DOWNLOAD
@@ -802,6 +803,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	char* replyId      = NULL;
 	int uae            = E_UA_OK;
 	int fake_rb_ver    = 0;
+	char* custom_msg   = NULL;
 
 	if (uar->on_get_version == NULL) {
 		A_WARN_MSG("No get version callback for %s", pkgInfo.name);
@@ -813,8 +815,13 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	    !get_replyid_from_json(jsonObj, &replyId)) {
 		json_object* bodyObject = json_object_new_object();
 
+
 		if (comp_get_update_stage(uacc->st_info, pkgInfo.name) == UA_STATE_READY_UPDATE_STARTED) {
 			json_object_object_add(bodyObject, "do-not-disturb", json_object_new_boolean(1));
+			custom_msg = get_component_custom_message(pkgInfo.name);
+			if (custom_msg)
+				json_object_object_add(bodyObject, "message", json_object_new_string(custom_msg));
+
 		}else {
 			json_object* pkgObject = json_object_new_object();
 #ifdef LIBUA_VER_2_0
@@ -841,6 +848,10 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				A_INFO_MSG("Delta capability supported : %s", get_delta_capability());
 				json_object_object_add(pkgObject, "delta-cap", S(get_delta_capability()) ? json_object_new_string(get_delta_capability()) : NULL);
 			}
+
+			custom_msg = get_component_custom_message(pkgInfo.name);
+			if (custom_msg)
+				json_object_object_add(pkgObject, "message", json_object_new_string(custom_msg));
 
 			#ifdef SUPPORT_UA_DOWNLOAD
 			if (ua_intl.ua_download_required) {
@@ -1550,6 +1561,7 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 {
 	json_object* pkgObject = json_object_new_object();
 	pkg_info_t* pkgInfo    = &uacc->update_pkg;
+	char* custom_msg       = NULL;
 
 	json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
@@ -1557,6 +1569,10 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
 	if (pkgInfo->rollback_version) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
 	if (pkgInfo->rollback_versions) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
+
+	custom_msg = get_component_custom_message(pkgInfo->name);
+	if (custom_msg)
+		json_object_object_add(pkgObject, "message", json_object_new_string(custom_msg));
 
 
 	if ((state == INSTALL_FAILED) && (ue != UE_NONE) && pkgFile) {
@@ -1924,9 +1940,9 @@ void handler_set_internal_state(ua_internal_state_t st)
 
 int ua_rollback_disabled(const char* pkgName)
 {
-	rollback_crtl_t* rbc = NULL;
+	comp_ctrl_t* rbc = NULL;
 
-	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
+	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, rbc);
 	if (rbc) {
 		A_INFO_MSG("rollback_disabled flag for %s is set (%d)", rbc->pkg_name, rbc->rb_disable);
 		return rbc->rb_disable;
@@ -1967,13 +1983,13 @@ static int send_sequence_query(void)
 
 void ua_rollback_control(const char* pkgName, int disable)
 {
-	rollback_crtl_t* rbc = NULL;
+	comp_ctrl_t* rbc = NULL;
 
-	HASH_FIND_STR(ua_intl.rb_crtl, pkgName, rbc);
+	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, rbc);
 	if (rbc) {
 		if (!disable) {
 			A_INFO_MSG("Re-enable rollback for %s", rbc->pkg_name);
-			HASH_DEL(ua_intl.rb_crtl, rbc);
+			HASH_DEL(ua_intl.component_ctrl, rbc);
 			f_free(rbc->pkg_name);
 			free(rbc);
 		}
@@ -1981,13 +1997,69 @@ void ua_rollback_control(const char* pkgName, int disable)
 	} else {
 		if (disable) {
 			A_INFO_MSG("Disable rollback for %s", pkgName);
-			rbc             = (rollback_crtl_t*)malloc(sizeof(rollback_crtl_t));
+			rbc             = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
 			rbc->rb_disable = disable;
-			HASH_ADD_KEYPTR( hh, ua_intl.rb_crtl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
+			HASH_ADD_KEYPTR( hh, ua_intl.component_ctrl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
 		}
 	}
 
+}
+
+char* get_component_custom_message(char* pkgName)
+{
+	char* message   = NULL;
+	comp_ctrl_t* cs = NULL;
+
+	if (!pkgName) {
+		A_INFO_MSG("NIL pointer: pkgName=%p",pkgName);
+		return message;
+	}
+
+	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, cs);
+	if (cs && cs->custom_msg) {
+		message = cs->custom_msg;
+		A_INFO_MSG("custom message of %s is %s", pkgName, message ? message : "NIL");
+	}
+	return message;
+}
+
+int ua_set_custom_message(const char* pkgName, char* message)
+{
+	int rc          = E_UA_OK;
+	comp_ctrl_t* cs = NULL;
+
+	if (!pkgName) {
+		A_INFO_MSG("NIL pointer: pkgName=%p",pkgName);
+		return E_UA_ERR;
+	}
+
+	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, cs);
+	if (cs) {
+		Z_FREE(cs->custom_msg);
+		if (message) {
+			A_INFO_MSG("Update custom message of %s to %s", pkgName, message);
+			cs->custom_msg = f_strdup(message);
+		} else {
+			A_INFO_MSG("Reset custom message of %s", pkgName);
+		}
+	} else {
+		if (message) {
+			A_INFO_MSG("Init  custom message of %s to %s", pkgName, message);
+			cs = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+			memset(cs, 0, sizeof(comp_ctrl_t));
+			cs->pkg_name   = f_strdup(pkgName);
+			cs->custom_msg = f_strdup(message);
+			HASH_ADD_KEYPTR( hh,  ua_intl.component_ctrl, cs->pkg_name, strlen(cs->pkg_name ), cs );
+		}
+	}
+
+	return rc;
+}
+
+void ua_clear_custom_message(const char* pkgName)
+{
+	ua_set_custom_message(pkgName, NULL);
 }
 
 int ua_unzip(const char* archive, const char* destpath)
