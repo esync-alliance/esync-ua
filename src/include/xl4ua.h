@@ -282,6 +282,28 @@ XL4_PUB
  */
 void ua_rollback_control(const char* pkgName, int disable);
 
+XL4_PUB
+/**
+ * Set a custom message string to be included in query-package response,
+ * or/and installation status (update-status). Each subsequent call of this
+ * function will replace the message set previously.
+ * The message set by the last call will be included util user explicitly calls
+ * ua_clear_custom_message.
+ * @param pkgName package name of update component.
+ * @param message, message to be included.
+ * @return E_UA_OK, or E_UA_ERR
+ */
+int ua_set_custom_message(const char* pkgName, char* message);
+
+XL4_PUB
+/**
+ * Clear the message set previously by ua_set_custom_message, no more custom
+ * message string will be included after this call.
+ * @param pkgName package name of update component.
+ * @return none
+ */
+void ua_clear_custom_message(const char* pkgName);
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,
