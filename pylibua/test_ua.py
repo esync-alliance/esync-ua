@@ -11,7 +11,7 @@ class TestUA(eSyncUA):
     """Test Update Agent """
 
     def do_get_version(self, packageName):
-        filename = "/data/sota/esync/backup/" + packageName + "/" + packageName + ".txt"
+        filename = test_ua.backup_dir + "/backup/" + packageName + "/" + packageName + ".txt"
         version = None
         try:
             with open(filename, 'r') as f:
@@ -77,7 +77,7 @@ class TestUA(eSyncUA):
 
     def save_version_to_file(self, version, packageFile):
         pkg_name = packageFile[packageFile.rfind('/')+1:packageFile.rfind('-')]
-        filename = "/data/sota/esync/backup/" + pkg_name + "/" + pkg_name + ".txt"
+        filename = test_ua.backup_dir + "/backup/" + pkg_name + "/" + pkg_name + ".txt"
         try:
             with open(filename, 'w+') as f:
                 f.write(version + os.linesep)
@@ -94,6 +94,10 @@ if __name__ == "__main__":
                       action="store", dest="cert_dir", help="certificate directory", metavar="CERT")
     parser.add_option("-t", "--type", default='/ECU/ROM', type='string',
                       action="store", dest="node_type", help="handler type", metavar="TYPE")
+    parser.add_option("-c", "--temp", default='/tmp/esync', type='string', action="store",
+                      dest="cache", help="cache directory ", metavar="TEMP")
+    parser.add_option("-b", "--back", default='/data/sota/esync', type='string', action="store",
+                      dest="backup_dir", help="backup  directory ", metavar="BKUP")
     parser.add_option("-i", "--host", default='localhost', type='string',
                       action="store", dest="host", help="host (localhost)")
     parser.add_option("-p", "--port", default=9133, type='int',
@@ -123,6 +127,8 @@ if __name__ == "__main__":
                      delta_cap=options.cap,
                      enable_delta=(options.disable_delta is False),
                      debug=options.debug,
+                     backup_dir = options.backup_dir,
+                     cache_dir = options.cache,
                      ready_download=options.ready_download)
 
     test_ua.ssh_host = options.host

@@ -24,6 +24,8 @@ class eSyncUA:
                  enable_delta=True,
                  reboot_support=False,
                  debug=3,
+                 backup_dir = "/data/sota/esync/",
+                 cache_dir = "/tmp/esync/",
                  ready_download=False):
         """Class Constructor 
         Args:
@@ -42,6 +44,8 @@ class eSyncUA:
         self.version_dir = version_dir
         self.host_port = host_port
         self.xl4bus_client_initialized = False
+        self.backup_dir = backup_dir
+        self.cache_dir = cache_dir
         if(debug):
             self.libua_debug = debug
         else :
@@ -94,8 +98,8 @@ class eSyncUA:
 
         uacfg.url = self.host_port
         uacfg.cert_dir = self.cert_dir
-        uacfg.cache_dir = "/tmp/esync/"
-        uacfg.backup_dir = "/data/sota/esync/"
+        uacfg.cache_dir = self.cache_dir
+        uacfg.backup_dir = self.backup_dir
         uacfg.delta_config = self.delta_conf
         uacfg.delta = self.enable_delta
         uacfg.debug = self.libua_debug

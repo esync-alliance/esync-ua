@@ -74,8 +74,10 @@ if __name__ == "__main__":
                       dest="ssh_pw", help="ssh password ", metavar="PASS")
     parser.add_option("-a", "--cap", default='A:3;B:3;C:100', type='string', action="store",
                       help="delta capability ", metavar=" CAP")
-    parser.add_option("-c", "--temp", default='/tmp', type='string', action="store",
+    parser.add_option("-c", "--temp", default='/tmp/esync', type='string', action="store",
                       dest="cache", help="cache directory ", metavar="TEMP")
+    parser.add_option("-b", "--back", default='/data/sota/esync', type='string', action="store",
+                      dest="backup_dir", help="backup  directory ", metavar="BKUP")
     parser.add_option('-l', '--load', default=False, action='store_true', dest="ready_download",
                       help="enable  DOWNLOAD_CONSENT to ready-download")
     parser.add_option('-D', '--delta', default=False, action='store_true', dest="disable_delta",
@@ -91,6 +93,8 @@ if __name__ == "__main__":
                          delta_cap=options.cap,
                          enable_delta=(options.disable_delta is False),
                          debug=options.debug,
+                         backup_dir = options.backup_dir,
+                         cache_dir = options.cache,
                          ready_download=options.ready_download)
 
     sample_ua.ssh_host = options.host
