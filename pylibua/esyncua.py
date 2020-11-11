@@ -26,7 +26,8 @@ class eSyncUA:
                  debug=3,
                  backup_dir = "/data/sota/esync/",
                  cache_dir = "/tmp/esync/",
-                 ready_download=False):
+                 ready_download=False,
+                 enable_fake_rb_ver=False):
         """Class Constructor 
         Args:
             cert_dir(str): Top directory of UA certificates.
@@ -58,6 +59,10 @@ class eSyncUA:
             self.reboot_support = 1
         else:
             self.reboot_support = 0
+        if(enable_fake_rb_ver):
+            self.enable_fake_rb_ver = 1
+        else:
+            self.enable_fake_rb_ver = 0
 
         self.ua_version = None
 
@@ -104,6 +109,7 @@ class eSyncUA:
         uacfg.delta = self.enable_delta
         uacfg.debug = self.libua_debug
         uacfg.reboot_support = self.reboot_support
+        uacfg.enable_fake_rb_ver = self.enable_fake_rb_ver
         self.do_init()
         if (self.xl4bus_client_initialized == False and libuamodule.pua_start(self.nodeType, uacfg) == 0):
             self.xl4bus_client_initialized = True

@@ -116,6 +116,8 @@ if __name__ == "__main__":
                       help="enable  DOWNLOAD_CONSENT to ready-download")
     parser.add_option('-D', '--delta', default=False, action='store_true', dest="disable_delta",
                       help="disable delta")
+    parser.add_option('-F', '--fakerb', default=False, action='store_true', dest="enable_fake_rb_ver",
+                      help="enable fake rollback version")
     parser.add_option('-d', '--debug', default=3, action='store', type='int',
                       help="debug level(3), 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG", metavar="LVL")
     (options, args) = parser.parse_args()
@@ -129,7 +131,8 @@ if __name__ == "__main__":
                      debug=options.debug,
                      backup_dir = options.backup_dir,
                      cache_dir = options.cache,
-                     ready_download=options.ready_download)
+                     ready_download=options.ready_download,
+                     enable_fake_rb_ver = options.enable_fake_rb_ver)
 
     test_ua.ssh_host = options.host
     test_ua.ssh_user = options.ssh_user

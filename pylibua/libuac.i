@@ -47,5 +47,30 @@ typedef struct ua_cfg {
 	//1 = ua uses libary's reboot/resume support.
 	int reboot_support;
 
+	// specifies which source package file used for backup,
+	// when  delta reconstruction is triggered.
+	// 0 = Use the actual full path used for installation, this is default.
+	// 1 = Use the full path resulted from delta reconstruction.
+	// Both may or may not be the same full path.
+	int backup_source;
+
+	//Indicate whether to disable sha verification of downloaded package.
+	//0 = default, verify downloaded package against sha256
+	//1 = disable, do not verify downloaded package against sha256
+	int package_verification_disabled;
+
+	//Enable fake rollback version in query-package response.
+	//0 = default, do NOT use fake rollback version.
+	//1 = enable, use fake rollback version.
+	int enable_fake_rb_ver;
+
+#ifdef SUPPORT_UA_DOWNLOAD
+	// specifies whether UA is to handle package download.
+	int ua_download_required;
+	// specifies directory used for UA download.
+	char* ua_dl_dir;
+	// specifies sigca bundle  directory
+	char* sigca_dir;
+#endif
 } ua_cfg_t;
 
