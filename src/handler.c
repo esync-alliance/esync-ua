@@ -1991,6 +1991,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 			A_INFO_MSG("Re-enable rollback for %s", rbc->pkg_name);
 			HASH_DEL(ua_intl.component_ctrl, rbc);
 			f_free(rbc->pkg_name);
+			f_free(rbc->custom_msg);
 			free(rbc);
 		}
 
@@ -1998,6 +1999,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 		if (disable) {
 			A_INFO_MSG("Disable rollback for %s", pkgName);
 			rbc             = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+			memset(rbc, 0, sizeof(comp_ctrl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
 			rbc->rb_disable = disable;
 			HASH_ADD_KEYPTR( hh, ua_intl.component_ctrl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
