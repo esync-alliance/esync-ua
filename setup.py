@@ -19,15 +19,20 @@ if(libua_api_ver is not None):
 else:
     libua_name = 'ua'
 
-xl4bus_build = os.getenv("XL4BUS_DIR")
+xl4bus_build = os.getenv("XL4BUS_BIN_DIR")
+xl4bus_source = os.getenv("XL4BUS_SRC_DIR")
 if(xl4bus_build is not None and len(xl4bus_build) == 0):
     xl4bus_build = None
-	
-if(xl4bus_build is not None):
+if(xl4bus_source is not None and len(xl4bus_source) == 0):
+    xl4bus_source = None
+
+if(xl4bus_build is not None and xl4bus_source is not None):
     if('~' in xl4bus_build):
         xl4bus_build = os.path.expanduser(xl4bus_build)
+    if('~' in xl4bus_source):
+        xl4bus_source = os.path.expanduser(xl4bus_source)
     pylib_inc = [os.path.join(libua_dir, 'src/include'),
-                 os.path.join(xl4bus_build, '../src/include'),
+                 os.path.join(xl4bus_source, 'src/include'),
                  os.path.join(xl4bus_build, 'include')]
 else:
     pylib_inc = [os.path.join(libua_dir, 'src/include'), libua_build]
