@@ -381,7 +381,9 @@ static int zip_zip(const char* archive, const char* path)
 			free(op);
 		} while (0);
 
-		chdir(wd);
+		if (chdir(wd) != 0) {
+			A_WARN_MSG("chdir failed: %s\n", strerror(errno));
+		}
 		f_free(wd);
 	}
 	return err;

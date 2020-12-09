@@ -777,7 +777,7 @@ int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, int num
 			outdated = 1;
 		}else {
 			A_WARN_MSG("Update incoming command sequence number for %s from %d to %d)", name, s->num, num);
-			s->num = num;	
+			s->num = num;
 		}
 
 	} else {
@@ -1090,8 +1090,8 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			uacc->update_pkg.name = NULL;
 			uacc->update_pkg.name = NULL;
 			uacc->update_error = UE_NONE;
-			
-		} else 
+
+		} else
 			ua_send_message(jObject);
 
 		json_object_put(jObject);
@@ -1263,7 +1263,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 							send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 						}
 					}
-				}			
+				}
 
 			}
 
@@ -1484,7 +1484,7 @@ static void process_sota_report(ua_component_context_t* uacc, json_object* jsonO
 
 #ifdef SUPPORT_UA_DOWNLOAD
 	pkg_info_t pkgInfo = {0};
-	if ((!get_pkg_name_from_json(jsonObj, &pkgInfo.name)) && 
+	if ((!get_pkg_name_from_json(jsonObj, &pkgInfo.name)) &&
 			(!get_pkg_error_from_json(jsonObj, &pkgInfo.error)) ) {
 		if(pkgInfo.error != NULL) {
 			if(!strcmp("DCE_ABORTED", pkgInfo.error)) {
@@ -1580,7 +1580,7 @@ static void process_query_updates(ua_component_context_t* uacc, json_object* jso
 	if (!get_replyto_from_json(jsonObj, &replyTo) &&
 	    reply_id_matched(replyTo, ua_intl.query_reply_id)) {
 			ua_intl.query_updates = json_object_get(jsonObj);
-		
+
 	}
 
 	Z_FREE(ua_intl.query_reply_id);
@@ -2032,7 +2032,7 @@ int ua_send_current_report(const char * pkgName, const char * version)
 {
 
     int err = E_UA_OK;
- 
+
     if(pkgName!=NULL && *pkgName!=0 && version!=NULL && *version!=0) {
         json_object * pkgObject = json_object_new_object();
         json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
@@ -2050,9 +2050,9 @@ int ua_send_current_report(const char * pkgName, const char * version)
 
         json_object_put(jObject);
 	} else {
-		err = E_UA_ERR;		
-	}	
-   
+		err = E_UA_ERR;
+	}
+
     return err;
 }
 
@@ -2125,8 +2125,15 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 static char* install_state_string(install_state_t state)
 {
 	char* str          = NULL;
-	char* inst_state[] = {"INSTALL_READY", "INSTALL_IN_PROGRESS", "INSTALL_COMPLETED",
-		              "INSTALL_FAILED", "INSTALL_ABORTED", "INSTALL_ROLLBACK", NULL};
+	char* inst_state[] = {
+	    "INSTALL_READY",
+	    "INSTALL_IN_PROGRESS",
+	    "INSTALL_COMPLETED",
+	    "INSTALL_FAILED",
+	    "INSTALL_ABORTED",
+	    "INSTALL_ROLLBACK",
+	    NULL
+	};
 
 	switch (state) {
 		case INSTALL_READY: str       = inst_state[0];       break;
@@ -2135,6 +2142,10 @@ static char* install_state_string(install_state_t state)
 		case INSTALL_FAILED: str      = inst_state[3];       break;
 		case INSTALL_ABORTED: str     = inst_state[4];       break;
 		case INSTALL_ROLLBACK: str    = inst_state[5];       break;
+		default:
+			A_WARN_MSG("Unknown state:[%u] value, setting to INSTALL_FAILED", state);
+			str = "INSTALL_FAILED";
+			break;
 	}
 
 	return str;
@@ -2388,7 +2399,7 @@ static int is_fake_rb_version_enabled(const char* pkgName)
 	if(pkgName){
 		HASH_FIND_STR(ua_intl.component_ctrl, pkgName, ctl);
 		if (ctl)
-			enabled = ctl->enable_fake_rb_version;		
+			enabled = ctl->enable_fake_rb_version;
 	}
 
 	return enabled;
@@ -2518,7 +2529,7 @@ char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
 						A_INFO_MSG("found pkg name %s", target_pkg_name);
 
 						json_get_property(target_i, json_type_string, &target_pkg_version, "package", "version", NULL);
-						
+
 						if(target_pkg_version)
 							json_get_property(target_i, json_type_string, &target_pkg_file, "package", "version-list", target_pkg_version, "file", NULL);
 
