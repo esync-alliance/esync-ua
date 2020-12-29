@@ -145,6 +145,7 @@ typedef enum ua_internal_state {
 typedef struct comp_ctrl {
 	char* pkg_name;
 	int rb_disable;
+	update_rollback_t rb_type;
 	char* custom_msg;
 
 	UT_hash_handle hh;
@@ -208,18 +209,11 @@ typedef enum update_stage {
 	US_INSTALL
 } update_stage_t;
 
-typedef enum update_rollback {
-	URB_NONE,
-	URB_DMC_INITIATED, /* ready-update has rollback-version. */
-	URB_UA_INITIATED,  /* ready-update has rollback-versions. */
-
-} update_rollback_t;
 
 typedef struct comp_state_info {
 	char* pkg_name;
 	char* prepared_ver;
 	ua_stage_t stage;
-	update_rollback_t rb_type;
 	char* fake_rb_ver;
 	UT_hash_handle hh;
 

@@ -23,9 +23,7 @@ void update_release_comp_context(ua_component_context_t* uacc);
 
 int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* jsonObj, char* cache_dir, char* backup_dir);
 
-void update_set_rollback_info(ua_component_context_t* uacc);
-
-int update_send_rollback_status(ua_component_context_t* uacc, char* next_rb_version);
+int update_send_rollback_intent(ua_component_context_t* uacc, char* next_rb_version);
 
 install_state_t update_start_rollback_operations(ua_component_context_t* uacc, char* rb_version, int reboot_support);
 

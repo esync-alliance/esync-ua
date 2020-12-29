@@ -79,10 +79,10 @@ int comp_set_update_stage(comp_state_info_t** cs_head, char* pkg_name, ua_stage_
 	return rc;
 }
 
-update_rollback_t comp_get_rb_type(comp_state_info_t* cs_head, char* pkg_name)
+update_rollback_t comp_get_rb_type(comp_ctrl_t* cs_head, char* pkg_name)
 {
 	update_rollback_t ret = URB_NONE;
-	comp_state_info_t* cs = NULL;
+	comp_ctrl_t* cs       = NULL;
 
 	if (!pkg_name) {
 		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
@@ -93,14 +93,14 @@ update_rollback_t comp_get_rb_type(comp_state_info_t* cs_head, char* pkg_name)
 	if (cs) {
 		ret = cs->rb_type;
 	}
-	//A_INFO_MSG("%s rb_type is %d", pkg_name, ret);
+	A_INFO_MSG("%s rb_type is %d", pkg_name, ret);
 	return ret;
 }
 
-int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollback_t rb_type)
+int comp_set_rb_type(comp_ctrl_t** cs_head, char* pkg_name, update_rollback_t rb_type)
 {
-	int rc                = E_UA_OK;
-	comp_state_info_t* cs = NULL;
+	int rc          = E_UA_OK;
+	comp_ctrl_t* cs = NULL;
 
 	if (!pkg_name) {
 		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
@@ -113,8 +113,8 @@ int comp_set_rb_type(comp_state_info_t** cs_head, char* pkg_name, update_rollbac
 		cs->rb_type = rb_type;
 	} else {
 		A_INFO_MSG("init rb_type of %s  to %d", pkg_name, rb_type);
-		cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
-		memset(cs, 0, sizeof(comp_state_info_t));
+		cs = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+		memset(cs, 0, sizeof(comp_ctrl_t));
 		cs->pkg_name = f_strdup(pkg_name);
 		cs->rb_type  = rb_type;
 		HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );

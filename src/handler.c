@@ -1065,7 +1065,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
 		comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, NULL); //reset saved prepared_ver
 
-		update_set_rollback_info(uacc);
+		comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, uacc->update_pkg.rollback_versions ? URB_DMC_INITIATED : URB_NONE);
 
 		if (uacc->update_pkg.rollback_version) {
 			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version, ua_intl.reboot_support);
@@ -1076,7 +1076,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
 					update_sts = INSTALL_ROLLBACK;
-					update_send_rollback_status(uacc, rb_version);
+					update_send_rollback_intent(uacc, rb_version);
 				} else {
 					A_INFO_MSG("Failed to locate rollback info, informing terminal-failure.");
 					uacc->update_error = UE_TERMINAL_FAILURE;
@@ -1998,7 +1998,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 	} else {
 		if (disable) {
 			A_INFO_MSG("Disable rollback for %s", pkgName);
-			rbc             = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+			rbc = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
 			memset(rbc, 0, sizeof(comp_ctrl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
 			rbc->rb_disable = disable;
@@ -2006,6 +2006,14 @@ void ua_rollback_control(const char* pkgName, int disable)
 		}
 	}
 
+}
+
+int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type)
+{
+	if ( rb_type != URB_NONE )
+		return comp_set_rb_type(&ua_intl.component_ctrl, (char*)pkgName, rb_type);
+	else
+		return E_UA_ERR;
 }
 
 char* get_component_custom_message(char* pkgName)

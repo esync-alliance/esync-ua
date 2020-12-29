@@ -77,7 +77,7 @@ int main(int argc, char** argv)
 	scpi.sshpass_bin = "sshpass";
 #endif
 
-	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:ewidDh")) != -1) {
+	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:ewidDFh")) != -1) {
 		switch (c) {
 			case 'k':
 				cfg.cert_dir = optarg;

@@ -99,7 +99,7 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 		json_object_object_add(update_cc, "package", update_get_pkg_info_jo(&uacc->update_pkg));
 		json_object_object_add(update_cc, "update-file-info", update_get_update_file_info_jo(&uacc->update_file_info));
 
-		update_rollback_t rb_type = comp_get_rb_type(uacc->st_info, uacc->update_pkg.name);
+		update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
 		json_object_object_add(update_cc, "rb-type", json_object_new_int(rb_type));
 
 		ua_stage_t state= comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
@@ -123,7 +123,7 @@ int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc
 
 	update_rollback_t rb_type = URB_NONE;
 	err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL);
-	comp_set_rb_type(&uacc->st_info, uacc->update_pkg.name, rb_type);
+	comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, rb_type);
 
 	ua_stage_t state = UA_STATE_UNKNOWN;
 	err = json_get_property(update_cc, json_type_int, &state, "state", NULL);
@@ -160,9 +160,9 @@ int update_record_save(ua_component_context_t* uacc)
 
 char* update_record_load(char* record_file)
 {
-	int len       		= 0;
-	FILE* fd      		= NULL;
-	char* jstring 		= NULL;
+	int len	      = 0;
+	FILE* fd      = NULL;
+	char* jstring = NULL;
 
 	if (record_file && (fd = fopen(record_file, "r"))) {
 		fseek(fd, 0L, SEEK_END);
@@ -244,45 +244,6 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	return update_sts;
 }
 
-void update_set_rollback_info(ua_component_context_t* uacc)
-{
-	if (uacc) {
-		update_rollback_t rb_type = URB_NONE;
-
-		if (uacc->update_pkg.rollback_version) {
-			rb_type = URB_DMC_INITIATED;
-
-			char* fake_rb_ver = comp_get_fake_rb_version(uacc->st_info, uacc->update_pkg.name);
-			if (fake_rb_ver && !strcmp(fake_rb_ver, uacc->update_pkg.rollback_version)) {
-				rb_type = URB_UA_INITIATED;
-			}
-
-		}
-
-		json_object* ua_ctrl_rb_versions = NULL;
-		pkg_file_t* pf                   = NULL, * aux = NULL, * pkg_file = NULL;
-		if (uacc->backup_manifest && !parse_pkg_manifest(uacc->backup_manifest, &pkg_file)) {
-			ua_ctrl_rb_versions = json_object_new_array();
-			DL_FOREACH_SAFE(pkg_file, pf, aux) {
-				json_object_array_add(ua_ctrl_rb_versions, json_object_new_string(pf->version));
-
-				if (uacc->update_pkg.rollback_version) {
-					if (!strcmp(uacc->update_pkg.rollback_version, pf->version)) {
-						rb_type = URB_UA_INITIATED;
-						break;
-					}
-				}
-
-				free_pkg_file(pf);
-			}
-
-			json_object_put(ua_ctrl_rb_versions);
-		}
-
-		comp_set_rb_type(&uacc->st_info, uacc->update_pkg.name, rb_type);
-	}
-}
-
 char* update_get_next_rollback_version(ua_component_context_t* uacc, char* cur_version)
 {
 	char* rb_version = NULL;
@@ -341,9 +302,10 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 	return rc;
 }
 
-int update_send_rollback_status(ua_component_context_t* uacc, char* next_rb_version)
+int update_send_rollback_intent(ua_component_context_t* uacc, char* next_rb_version)
 {
 	pkg_file_t tmp_rb_file_info = {0};
+	int rc                      = E_UA_ERR;
 
 	uacc->update_pkg.rollback_version = next_rb_version;
 
@@ -352,14 +314,22 @@ int update_send_rollback_status(ua_component_context_t* uacc, char* next_rb_vers
 		tmp_rb_file_info.version    = next_rb_version;
 	}
 
-	send_install_status(uacc, INSTALL_ROLLBACK, &tmp_rb_file_info, UE_NONE);
+	update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
+	if (rb_type != URB_NONE) {
+		send_install_status(uacc,
+		                    rb_type == URB_DMC_INITIATED ? INSTALL_FAILED : INSTALL_ROLLBACK,
+		                    &tmp_rb_file_info,
+		                    UE_NONE);
+		rc = E_UA_OK;
+	}
+
 
 	if (tmp_rb_file_info.file) {
 		Z_FREE(tmp_rb_file_info.file);
 		Z_FREE(tmp_rb_file_info.version);
 	}
 
-	return 0;
+	return rc;
 
 }
 
@@ -371,7 +341,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	pkg_file_t tmp_rb_file_info = {0};
 
 	if (uacc && rb_version ) {
-		A_INFO_MSG("Starting rollback type(%d) to version(%s)", comp_get_rb_type(uacc->st_info, uacc->update_pkg.name), next_rb_version);
+		A_INFO_MSG("Starting rollback type(%d) to version(%s)", comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name), next_rb_version);
 		Z_FREE(uacc->update_file_info.version);
 		Z_FREE(uacc->update_file_info.file);
 		uacc->update_pkg.rollback_version = next_rb_version;
@@ -409,7 +379,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 						if (next_rb_version) {
 							A_INFO_MSG("Rollback will try the next version(%s).", next_rb_version);
 							update_sts = INSTALL_ROLLBACK;
-							update_send_rollback_status(uacc, next_rb_version);
+							update_send_rollback_intent(uacc, next_rb_version);
 
 						}
 						else
@@ -427,7 +397,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				if (next_rb_version) {
 					A_INFO_MSG("Rollback will try the next version(%s).", next_rb_version);
 					update_sts = INSTALL_ROLLBACK;
-					update_send_rollback_status(uacc, next_rb_version);
+					update_send_rollback_intent(uacc, next_rb_version);
 
 				}else {
 					A_INFO_MSG("No more rollback version for %s, signal INSTALL_FAILED", uacc->update_pkg.name);
@@ -470,7 +440,7 @@ void* update_resume_from_reboot(void* arg)
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else {
-			if (comp_get_rb_type(uacc->st_info, uacc->update_pkg.name) != URB_NONE) {
+			if (comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) != URB_NONE) {
 				A_INFO_MSG("Resume: update installation failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL)
