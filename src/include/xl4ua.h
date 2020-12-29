@@ -144,7 +144,11 @@ typedef enum update_rollback {
 	// If next rollback version is available, it's included in the status message.
 	// If no available rollback version, terminal-failure is set to true.
 	// This is the default when rollback-versions is included in ready-update message.
-	URB_DMC_INITIATED,
+	URB_DMC_INITIATED_WITH_UA_INTENT,
+
+	// UA signals INSTALL_FAILED after update failure. 
+	// No rollback version is included in the status message, regardless its availablity.
+	URB_DMC_INITIATED_NO_UA_INTENT,
 
 	// UA signals INSTALL_ROLLBACK after update failure.
 	// If next rollback version is available, it's included in the status message.
@@ -300,12 +304,12 @@ void ua_rollback_control(const char* pkgName, int disable);
 XL4_PUB
 /**
  * Set rollback type for pkgNmae.
- * The caller shall set the desired rollback type on every on_install callback.
- * Otherwise, it's reverted to the the default URB_DMC_INITIATED.
- * Note that rb_type is set to URB_NONE, this function has no effect.
+ * When rollback-versions available, default is set to URB_DMC_INITIATED_WITH_UA_INTENT.
+ * The caller shall set the desired rollback type in on_install callback.
+ * Note if rb_type is set to URB_NONE, this function has no effect.
  * @param pkgName package name of update component.
- * @param rb_type rollback type, either URB_DMC_INITIATED or URB_UA_INITIATED.
- * @return none
+ * @param rb_type rollback type.
+ * @return E_UA_OK, or E_UA_ERR
  */
 int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type);
 

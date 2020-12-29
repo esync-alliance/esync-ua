@@ -1065,7 +1065,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
 		comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, NULL); //reset saved prepared_ver
 
-		comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, uacc->update_pkg.rollback_versions ? URB_DMC_INITIATED : URB_NONE);
+		if(uacc->update_pkg.rollback_versions  && comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) == URB_NONE)
+			comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, URB_DMC_INITIATED_WITH_UA_INTENT);
 
 		if (uacc->update_pkg.rollback_version) {
 			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version, ua_intl.reboot_support);
@@ -1158,6 +1159,9 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
 				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_STARTED);
+				
+				if(comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) != URB_NONE)
+					comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, URB_NONE);
 
 				if (!get_body_rollback_from_json(jsonObj, &rollback)
 				    && rollback
@@ -1567,8 +1571,8 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
 	json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
 	json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
-	if (pkgInfo->rollback_version) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
-	if (pkgInfo->rollback_versions) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
+	if (pkgInfo->rollback_version && pkgFile) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
+	if (pkgInfo->rollback_versions && pkgFile) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
 
 	custom_msg = get_component_custom_message(pkgInfo->name);
 	if (custom_msg)

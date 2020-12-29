@@ -315,12 +315,17 @@ int update_send_rollback_intent(ua_component_context_t* uacc, char* next_rb_vers
 	}
 
 	update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
-	if (rb_type != URB_NONE) {
+	if(rb_type == URB_DMC_INITIATED_NO_UA_INTENT) {
+		send_install_status(uacc, INSTALL_FAILED, NULL, UE_NONE);
+		rc = E_UA_OK;
+
+	} else if (rb_type != URB_NONE) {
 		send_install_status(uacc,
-		                    rb_type == URB_DMC_INITIATED ? INSTALL_FAILED : INSTALL_ROLLBACK,
+		                    rb_type == URB_DMC_INITIATED_WITH_UA_INTENT ? INSTALL_FAILED : INSTALL_ROLLBACK,
 		                    &tmp_rb_file_info,
 		                    UE_NONE);
 		rc = E_UA_OK;
+
 	}
 
 
@@ -352,7 +357,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			send_install_status(uacc, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
 			A_INFO_MSG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
-			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
+			send_install_status(uacc, INSTALL_COMPLETED, &tmp_rb_file_info, UE_NONE);
 
 		}else {
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
