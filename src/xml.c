@@ -461,3 +461,11 @@ int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile)
 	}
 	return err;
 }
+
+void free_pkg_file(pkg_file_t* pkgFile)
+{
+	Z_FREE(pkgFile->version);
+	Z_FREE(pkgFile->file);
+	Z_FREE(pkgFile);
+
+}

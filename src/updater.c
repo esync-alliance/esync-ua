@@ -160,7 +160,7 @@ int update_record_save(ua_component_context_t* uacc)
 
 char* update_record_load(char* record_file)
 {
-	int len	      = 0;
+	int len       = 0;
 	FILE* fd      = NULL;
 	char* jstring = NULL;
 
@@ -315,7 +315,7 @@ int update_send_rollback_intent(ua_component_context_t* uacc, char* next_rb_vers
 	}
 
 	update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
-	if(rb_type == URB_DMC_INITIATED_NO_UA_INTENT) {
+	if (rb_type == URB_DMC_INITIATED_NO_UA_INTENT) {
 		send_install_status(uacc, INSTALL_FAILED, NULL, UE_NONE);
 		rc = E_UA_OK;
 

@@ -196,7 +196,7 @@ if (BUILD_STATIC)
 endif()
 
 if (BUILD_BINS)
-    add_executable(deltapatcher ${LIB_SOURCE} src/patcher.c)
+    add_executable(deltapatcher ${LIB_SOURCE} src/tools/patcher.c)
 
     set(TMPL_UA_SOURCE
         src/test_agents/main_updateagent.c
@@ -217,6 +217,21 @@ if (BUILD_BINS)
     else()
         message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
     endif()
+
+    set(MAKE_BACKUP_SOURCE 
+        src/tools/make_backup.c
+        src/xml.c
+        src/xml.h
+        src/misc.c
+        src/misc.h
+        src/common.c
+        src/common.h
+        src/delta.c
+        src/delta.h        )
+
+    add_executable(make_backup ${MAKE_BACKUP_SOURCE})
+    target_link_libraries(make_backup ${APP_DEPS})
+
 endif()
 
 set(CMAKE_VERBOSE_MAKEFILE on)

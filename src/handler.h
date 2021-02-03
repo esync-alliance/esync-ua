@@ -253,9 +253,6 @@ void handle_status(int status);
 void handle_delivered(const char* msg, int ok);
 void handle_presence(int connected, int disconnected, esync_bus_conn_state_t conn);
 void handle_message(const char* type, const char* msg, size_t len);
-
-void free_pkg_file(pkg_file_t* pkgFile);
-
 install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue);
 install_state_t pre_update_action(ua_component_context_t* uacc);
 install_state_t update_action(ua_component_context_t* uacc);
