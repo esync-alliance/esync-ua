@@ -17,5 +17,6 @@ int parse_pkg_manifest(char* xmlFile, pkg_file_t** pkgFile);
 int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile);
 int get_pkg_file_manifest(char* xmlFile, char* version, pkg_file_t* pkgFile);
 int remove_old_backup(char* xmlFile, char* version);
+void free_pkg_file(pkg_file_t* pkgFile);
 
 #endif /* UA_XML_H_ */

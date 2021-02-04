@@ -1065,7 +1065,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
 		comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, NULL); //reset saved prepared_ver
 
-		update_set_rollback_info(uacc);
+		if (uacc->update_pkg.rollback_versions  && comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) == URB_NONE)
+			comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, URB_DMC_INITIATED_WITH_UA_INTENT);
 
 		if (uacc->update_pkg.rollback_version) {
 			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version, ua_intl.reboot_support);
@@ -1076,7 +1077,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version) {
 					update_sts = INSTALL_ROLLBACK;
-					update_send_rollback_status(uacc, rb_version);
+					update_send_rollback_intent(uacc, rb_version);
 				} else {
 					A_INFO_MSG("Failed to locate rollback info, informing terminal-failure.");
 					uacc->update_error = UE_TERMINAL_FAILURE;
@@ -1158,6 +1159,9 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
 				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_STARTED);
+
+				if (comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) != URB_NONE)
+					comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, URB_NONE);
 
 				if (!get_body_rollback_from_json(jsonObj, &rollback)
 				    && rollback
@@ -1244,7 +1248,7 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 
 	pthread_mutex_unlock(&ua_intl.lock);
 	XL4_UNUSED(uacc);
-	
+
 }
 
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
@@ -1567,8 +1571,8 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
 	json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
 	json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
-	if (pkgInfo->rollback_version) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
-	if (pkgInfo->rollback_versions) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
+	if (pkgInfo->rollback_version && pkgFile) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
+	if (pkgInfo->rollback_versions && pkgFile) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
 
 	custom_msg = get_component_custom_message(pkgInfo->name);
 	if (custom_msg)
@@ -1825,16 +1829,6 @@ static char* log_type_string(log_type_t log)
 	return str;
 }
 
-
-void free_pkg_file(pkg_file_t* pkgFile)
-{
-	Z_FREE(pkgFile->version);
-	Z_FREE(pkgFile->file);
-	Z_FREE(pkgFile);
-
-}
-
-
 const char* ua_get_updateagent_version()
 {
 #ifdef LIBUA_VER_2_0
@@ -1998,7 +1992,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 	} else {
 		if (disable) {
 			A_INFO_MSG("Disable rollback for %s", pkgName);
-			rbc             = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+			rbc = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
 			memset(rbc, 0, sizeof(comp_ctrl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
 			rbc->rb_disable = disable;
@@ -2006,6 +2000,14 @@ void ua_rollback_control(const char* pkgName, int disable)
 		}
 	}
 
+}
+
+int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type)
+{
+	if ( rb_type != URB_NONE )
+		return comp_set_rb_type(&ua_intl.component_ctrl, (char*)pkgName, rb_type);
+	else
+		return E_UA_ERR;
 }
 
 char* get_component_custom_message(char* pkgName)
