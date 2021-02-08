@@ -2208,7 +2208,7 @@ int send_query_trust(void)
 
 	ua_intl.update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
 	if (ua_intl.update_status_info.reply_id) {
-		json_object_object_add(jObject, "type", json_object_new_string(QUERY_TRUST));
+		json_object_object_add(jObject, "type", json_object_new_string(BMT_QUERY_TRUST));
 		json_object_object_add(jObject, "body", bodyObject);
 		json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.update_status_info.reply_id ));
 		err = ua_send_message(jObject);

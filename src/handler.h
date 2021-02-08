@@ -44,8 +44,8 @@
 
 
 #ifdef SUPPORT_UA_DOWNLOAD
-#define START_DOWNLOAD BMT_PREFIX "start-download"
-#define QUERY_TRUST    BMT_PREFIX "query-trust"
+#define BMT_START_DOWNLOAD BMT_PREFIX "start-download"
+#define BMT_QUERY_TRUST    BMT_PREFIX "query-trust"
 #endif
 
 typedef struct pkg_info {

@@ -14,6 +14,10 @@ if(libua_build is not None and len(libua_build) == 0):
 libua_api_ver = os.getenv("LIBUA_API_VER")
 if(libua_api_ver is not None and len(libua_api_ver) == 0):
     libua_api_ver = None
+if(libua_api_ver is not None):
+    libua_name = 'ua_2'
+else:
+    libua_name = 'ua'
 
 xl4bus_build = os.getenv("XL4BUS_DIR")
 if(xl4bus_build is not None and len(xl4bus_build) == 0):
@@ -32,7 +36,7 @@ moduleconf = {
     'name': '_libuamodule',
     'sources': [os.path.join(libua_dir, 'pylibua/libuac.i'),
                 os.path.join(libua_dir, 'pylibua/pua.c')],
-    'libraries': ['ua', 'xl4bus', 'xml2', 'zip'],
+    'libraries': [libua_name, 'xl4bus', 'xml2', 'zip'],
     'include_dirs': pylib_inc,
     'extra_compile_args' : ["-Wall", "-Werror"]
 }
