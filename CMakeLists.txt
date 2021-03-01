@@ -273,10 +273,16 @@ if(BUILD_PY_LIBUA)
             "${PY_LIBUA_DIR}/*.py"
             "${PY_LIBUA_DIR}/*.i")
 
+	if (PYTHON_VER3)
+                set(PYTHON_BIN_PATH ${PYTHON3_EXECUTABLE})
+        else()
+                set(PYTHON_BIN_PATH ${PYTHON_EXECUTABLE})
+        endif()
+
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} LIBUA_API_VER=${LIBUA_API_VER} ${PYTHON_EXECUTABLE} ${SETUP_PY} develop --user )
+            COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} LIBUA_API_VER=${LIBUA_API_VER} ${PYTHON_BIN_PATH} ${SETUP_PY} develop --user )
 
-		install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} ${SETUP_PY} install --record install_files.txt)")
+		install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_BIN_PATH} ${SETUP_PY} install --record install_files.txt)")
 	endif()
 endif()
