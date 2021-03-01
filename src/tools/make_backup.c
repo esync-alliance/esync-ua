@@ -17,6 +17,15 @@
 #include "xml.h"
 #include "debug.h"
 
+#ifdef HAVE_INSTALL_LOG_HANDLER
+ua_log_handler_f ua_log_handler = 0;
+
+void ua_install_log_handler(ua_log_handler_f handler)
+{
+	ua_log_handler = handler;
+}
+#endif
+
 int ua_debug_lvl = 0;
 int ua_debug     = 1;
 
@@ -44,7 +53,7 @@ int main(int argc, char** argv)
 	char backup_dir[PATH_MAX] = "/data/sota/esync";
 	char* pkg_name            = 0;
 	char* backup_manifest     = 0;
-	pkg_file_t pf = {0};
+	pkg_file_t pf             = {0};
 
 	while ((c = getopt(argc, argv, ":b:p:v:ewidDFh")) != -1) {
 		switch (c) {
@@ -111,13 +120,13 @@ int main(int argc, char** argv)
 		} while (0);
 
 	} else {
-		if(!pkg_name)
+		if (!pkg_name)
 			printf("\nPlease provide package name.\n");
-		
-		if(!pf.file)
+
+		if (!pf.file)
 			printf("\nPlease provide package file path.\n");
 
-		if(!pf.version)
+		if (!pf.version)
 			printf("\nPlease provide package version.\n");
 
 		_help(argv[0]);
