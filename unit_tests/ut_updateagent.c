@@ -21,54 +21,7 @@ char instVer[60] = "\0";
 char* bkpDir;
 FILE* fp1;
 
-#ifdef LIBUA_VER_2_0
-
-int get_tmpl_version(ua_callback_ctl_t* ctl)
-{
-	return E_UA_OK;
-
-}
-
-static int set_tmpl_version(ua_callback_ctl_t* ctl)
-{
-	return E_UA_OK;
-
-}
-
-static install_state_t do_tmpl_pre_install(ua_callback_ctl_t* ctl)
-{
-	return INSTALL_IN_PROGRESS;
-
-}
-
-static install_state_t do_tmpl_install(ua_callback_ctl_t* ctl)
-{
-	return INSTALL_COMPLETED;
-
-}
-
-static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
-{
-	return;
-
-}
-
-static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
-{
-	return INSTALL_READY;
-
-}
-
-static download_state_t do_prepare_download(ua_callback_ctl_t* ctl)
-{
-	return DOWNLOAD_CONSENT;
-
-}
-
-#else
-
-// Read installed version from the version file
-int get_tmpl_version(const char* type, const char* pkgName, char** version)
+int get_v1_version(const char* type, const char* pkgName, char** version)
 {
 	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
 	getFileName(pkgName);
@@ -84,8 +37,7 @@ int get_tmpl_version(const char* type, const char* pkgName, char** version)
 	return E_UA_OK;
 }
 
-//write installed version to the version file
-static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
+static int set_v1_version(const char* type, const char* pkgName, const char* version)
 {
 	instVerFile = (char*) malloc(MAX_SIZE * sizeof(char));
 	getFileName(pkgName);
@@ -99,13 +51,7 @@ static int set_tmpl_version(const char* type, const char* pkgName, const char* v
 	return E_UA_OK;
 }
 
-static install_state_t do_tmpl_pre_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
-{
-	return INSTALL_IN_PROGRESS;
-
-}
-
-static install_state_t do_tmpl_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
+static install_state_t do_v1_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
 {
 	install_state_t rc     = INSTALL_COMPLETED;
 	static int cnt         = 0;
@@ -159,6 +105,77 @@ static install_state_t do_tmpl_install(const char* type, const char* pkgName, co
 		printf("Emulate installation failed(%d)\n", rc);
 
 	return rc;
+
+}
+
+#ifdef LIBUA_VER_2_0
+
+int get_tmpl_version(ua_callback_ctl_t* ctl)
+{
+	return get_v1_version(ctl->type, ctl->pkg_name, &ctl->version);
+
+}
+
+static int set_tmpl_version(ua_callback_ctl_t* ctl)
+{
+	return set_v1_version(ctl->type, ctl->pkg_name, ctl->version);
+
+}
+
+static install_state_t do_tmpl_pre_install(ua_callback_ctl_t* ctl)
+{
+	return INSTALL_IN_PROGRESS;
+
+}
+
+static install_state_t do_tmpl_install(ua_callback_ctl_t* ctl)
+{
+	return do_v1_install(ctl->type, ctl->pkg_name, ctl->version, ctl->pkg_path);
+
+}
+
+static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
+{
+	return;
+
+}
+
+static install_state_t do_prepare_install(ua_callback_ctl_t* ctl)
+{
+	return INSTALL_READY;
+
+}
+
+static download_state_t do_prepare_download(ua_callback_ctl_t* ctl)
+{
+	return DOWNLOAD_CONSENT;
+
+}
+
+#else
+
+// Read installed version from the version file
+int get_tmpl_version(const char* type, const char* pkgName, char** version)
+{
+	return get_v1_version(type, pkgName, version);
+
+}
+
+//write installed version to the version file
+static int set_tmpl_version(const char* type, const char* pkgName, const char* version)
+{
+	return set_v1_version(type, pkgName, version);
+
+}
+
+static install_state_t do_tmpl_pre_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
+{
+	return INSTALL_IN_PROGRESS;
+}
+
+static install_state_t do_tmpl_install(const char* type, const char* pkgName, const char* version, const char* pkgFile)
+{
+	return do_v1_install(type, pkgName, version, pkgFile);
 
 }
 
