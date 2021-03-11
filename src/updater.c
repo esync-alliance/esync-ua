@@ -266,7 +266,7 @@ static int update_package_available(pkg_file_t* update_file, char* version)
 	return avail;
 }
 
-static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t* rb_file_info, char* rb_version)
+static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t* rb_file_info, char* rb_version, int* from_backup)
 {
 	int rc = E_UA_ERR;
 
@@ -289,8 +289,10 @@ static int update_get_rollback_package(ua_component_context_t* uacc, pkg_file_t*
 		} else {
 			A_INFO_MSG("Getting RB info from backup manifest.");
 			if (E_UA_OK == get_pkg_file_manifest(uacc->backup_manifest, rb_version, rb_file_info)) {
-				if (update_package_available(rb_file_info, rb_version))
+				if (update_package_available(rb_file_info, rb_version)) {
+					if (from_backup) *from_backup = 1;
 					rc = E_UA_OK;
+				}
 				else {
 					free(rb_file_info->file);
 					free(rb_file_info->version);
@@ -309,7 +311,7 @@ int update_send_rollback_intent(ua_component_context_t* uacc, char* next_rb_vers
 
 	uacc->update_pkg.rollback_version = next_rb_version;
 
-	if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) != E_UA_OK) {
+	if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version, 0) != E_UA_OK) {
 		tmp_rb_file_info.downloaded = 0;
 		tmp_rb_file_info.version    = next_rb_version;
 	}
@@ -360,10 +362,11 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			send_install_status(uacc, INSTALL_COMPLETED, &tmp_rb_file_info, UE_NONE);
 
 		}else {
-			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version) == E_UA_OK) {
+			int bck = 0;
+			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version, &bck) == E_UA_OK) {
 				A_INFO_MSG("Rollback package found, rollback installation starts now.");
 
-				update_sts = prepare_install_action(uacc, &tmp_rb_file_info, 0,
+				update_sts = prepare_install_action(uacc, &tmp_rb_file_info, bck,
 				                                    &uacc->update_file_info, &uacc->update_error);
 
 				if (is_prepared_delta_package(uacc->update_file_info.file)) {
