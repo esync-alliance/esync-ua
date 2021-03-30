@@ -19,7 +19,7 @@ static void on_xl4bus_status(struct xl4bus_client* client, xl4bus_client_conditi
 static void on_xl4bus_delivered(struct xl4bus_client* client, xl4bus_message_t* msg, void* arg, int ok);
 static void on_xl4bus_presence(struct xl4bus_client* client, xl4bus_address_t* connected, xl4bus_address_t* disconnected);
 static void on_xl4bus_reconnect(struct xl4bus_client* client);
-static int load_xl4_x509_creds(xl4bus_identity_t* identity, char* dir);
+static int load_xl4_x509_creds(xl4bus_identity_t* identity, char* dir, char* pwd);
 static int load_simple_x509_creds(xl4bus_identity_t* identity, char* p_key_path,
                                   char* cert_path, char* ca_path, char* password);
 static void release_identity(xl4bus_identity_t* identity);
@@ -36,7 +36,7 @@ void debug_print(const char* msg)
 
 }
 
-int xl4bus_client_init(char* url, char* cert_dir)
+int xl4bus_client_init(char* url, char* cert_dir, char* pwd)
 {
 	int err = E_UA_OK;
 	xl4bus_ll_cfg_t ll_cfg;
@@ -71,7 +71,7 @@ int xl4bus_client_init(char* url, char* cert_dir)
 #else
 
 		A_INFO_MSG("Loading x509 credentials from : %s", cert_dir);
-		BOLT_IF(load_xl4_x509_creds(&m_xl4bus_clt.identity, cert_dir), E_UA_ERR, "x509 credentials load failed!");
+		BOLT_IF(load_xl4_x509_creds(&m_xl4bus_clt.identity, cert_dir, pwd), E_UA_ERR, "x509 credentials load failed!");
 
 #endif
 		if (m_xl4bus_url)
@@ -283,13 +283,13 @@ static void on_xl4bus_reconnect(xl4bus_client_t* client)
 }
 
 
-static int load_xl4_x509_creds(xl4bus_identity_t* identity, char* dir)
+static int load_xl4_x509_creds(xl4bus_identity_t* identity, char* dir, char* pwd)
 {
 	char* p_key = f_asprintf("%s/private.pem", dir);
 	char* cert  = f_asprintf("%s/cert.pem", dir);
 	char* ca    = f_asprintf("%s/../ca/ca.pem", dir);
 
-	int ret = load_simple_x509_creds(identity, p_key, cert, ca, 0);
+	int ret = load_simple_x509_creds(identity, p_key, cert, ca, pwd);
 
 	free(p_key);
 	free(cert);

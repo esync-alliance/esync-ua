@@ -110,7 +110,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		}
 		#endif
 
-		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir));
+		BOLT_SUB(xl4bus_client_init(uaConfig->url, uaConfig->cert_dir, uaConfig->private_key_password));
 		BOLT_SYS(pthread_mutex_init(&ua_intl.backup_lock, 0), "lock init");
 		BOLT_SYS(pthread_mutex_init(&ua_intl.lock, 0), "backup lock init");
 

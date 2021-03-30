@@ -6,6 +6,6 @@
 #define FAKE_RAND_STRING	"ABCDEFGHIJKLMNOPQRSTUVWX"
 int test_ua_setup(void** state);
 int test_ua_teardown(void** state);
-int __wrap_xl4bus_client_init(char* url, char* cert_dir);
+int __wrap_xl4bus_client_init(char* url, char* cert_dir, char* pwd);
 
 #endif //TEST_SETUP_H_
