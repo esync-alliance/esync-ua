@@ -804,6 +804,8 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 	int uae            = E_UA_OK;
 	int fake_rb_ver    = 0;
 	char* custom_msg   = NULL;
+	char* backup_manifest = NULL;
+	
 
 	if (uar->on_get_version == NULL) {
 		A_WARN_MSG("No get version callback for %s", pkgInfo.name);
@@ -865,7 +867,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 			fake_rb_ver = delta_use_external_algo() || ua_rollback_disabled(pkgInfo.name);
 
-			if ( !(S(ua_intl.backup_dir) && (uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG))) ) {
+			if ( !(S(ua_intl.backup_dir) && (backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG))) ) {
 				fake_rb_ver = 1;
 			}
 
@@ -874,7 +876,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				json_object* verListObject = json_object_new_object();
 				json_object* rbVersArray   = json_object_new_array();
 
-				if (!parse_pkg_manifest(uacc->backup_manifest, &pkgFile)) {
+				if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
 					DL_FOREACH_SAFE(pkgFile, pf, aux) {
 						json_object* versionObject = json_object_new_object();
 
@@ -925,7 +927,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			}
 
 			json_object_object_add(bodyObject, "package", pkgObject);
-			Z_FREE(uacc->backup_manifest);
+			Z_FREE(backup_manifest);
 		}
 
 		json_object* jObject = json_object_new_object();
@@ -1117,20 +1119,22 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
-	int err             = E_UA_OK;
+	int err             = E_UA_ERR;
 	pkg_file_t* pkgFile = f_malloc(sizeof(pkg_file_t));
 
-	if (pkgManifest == NULL || diffFile == NULL || newFile == NULL || pkgFile == NULL ||
-	    (get_pkg_file_manifest(pkgManifest, version, pkgFile)) ||
-	    delta_reconstruct(pkgFile->file, diffFile, newFile)) {
-		err = E_UA_ERR;
-		if (err) {
-			A_INFO_MSG("Delta reconstruction failed!");
-		} else {
-			A_INFO_MSG("Delta reconstruction success!");
-		}
+	if (pkgManifest && diffFile && newFile && pkgFile &&
+	    (get_pkg_file_manifest(pkgManifest, version, pkgFile) == E_UA_OK) ) {
+
+			err = delta_reconstruct(pkgFile->file, diffFile, newFile);
 
 	}
+
+	if (err) {
+		A_INFO_MSG("Delta reconstruction failed!");
+	} else {
+		A_INFO_MSG("Delta reconstruction success!");
+	}
+
 	if (pkgFile != NULL)
 		free_pkg_file(pkgFile);
 
