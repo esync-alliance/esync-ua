@@ -59,7 +59,7 @@ int test_ua_teardown(void** state)
 	return 0;
 }
 
-int __wrap_xl4bus_client_init(char* url, char* cert_dir)
+int __wrap_xl4bus_client_init(char* url, char* cert_dir, char* pwd)
 {
 	return 0;
 }

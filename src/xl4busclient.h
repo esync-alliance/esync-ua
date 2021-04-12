@@ -7,7 +7,7 @@
 
 #include <libxl4bus/types.h>
 
-int xl4bus_client_init(char* url, char* cert_dir);
+int xl4bus_client_init(char* url, char* cert_dir, char* pwd);
 
 int xl4bus_client_stop(void);
 

@@ -296,6 +296,10 @@ typedef struct ua_cfg {
 	//1 = enable, use fake rollback version.
 	int enable_fake_rb_ver;
 
+	//Password for x.509 certificate private key encryption. 
+	//It's only used when private_key_password is not NULL.
+	char* private_key_password;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 	// specifies whether UA is to handle package download.
 	int ua_download_required;
