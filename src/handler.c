@@ -175,7 +175,8 @@ int ua_register(ua_handler_t* uah, int len)
 
 	for (int i = 0; i < len; i++) {
 		do {
-			ri                 = f_malloc(sizeof(runner_info_t));
+			ri = f_malloc(sizeof(runner_info_t));
+			memset(ri, 0, sizeof(runner_info_t));
 			ri->component.type = f_strdup((uah + i)->type_handler);
 			ri->component.uar  = (*(uah + i)->get_routine)();
 #ifdef LIBUA_VER_2_0
@@ -797,15 +798,15 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	ua_routine_t* uar  = (uacc != NULL) ? uacc->uar : NULL;
-	pkg_info_t pkgInfo = {0};
-	char* installedVer = NULL;
-	char* replyId      = NULL;
-	int uae            = E_UA_OK;
-	int fake_rb_ver    = 0;
-	char* custom_msg   = NULL;
+	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
+	pkg_info_t pkgInfo    = {0};
+	char* installedVer    = NULL;
+	char* replyId         = NULL;
+	int uae               = E_UA_OK;
+	int fake_rb_ver       = 0;
+	char* custom_msg      = NULL;
 	char* backup_manifest = NULL;
-	
+
 
 	if (uar->on_get_version == NULL) {
 		A_WARN_MSG("No get version callback for %s", pkgInfo.name);
@@ -1124,8 +1125,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (pkgManifest && diffFile && newFile && pkgFile &&
 	    (get_pkg_file_manifest(pkgManifest, version, pkgFile) == E_UA_OK) ) {
-
-			err = delta_reconstruct(pkgFile->file, diffFile, newFile);
+		err = delta_reconstruct(pkgFile->file, diffFile, newFile);
 
 	}
 

@@ -49,7 +49,7 @@ int update_set_pkg_info(json_object* jo_pkg, pkg_info_t* pkg)
 			json_get_property(jo_pkg, json_type_string, &pkg->rollback_version, "package", "rollback-version", NULL);
 
 		if (err == E_UA_OK)
-			json_get_property(jo_pkg, json_type_object, &pkg->rollback_versions, "package", "rollback-versions", NULL);
+			json_get_property(jo_pkg, json_type_array, &pkg->rollback_versions, "package", "rollback-versions", NULL);
 
 	}
 
@@ -140,6 +140,7 @@ int update_record_save(ua_component_context_t* uacc)
 	int err  = E_UA_OK;
 	FILE* fd = NULL;
 
+	A_INFO_MSG("Save record file %s", NULL_STR(uacc->record_file));
 	if (uacc && uacc->record_file && (fd = fopen(uacc->record_file, "w"))) {
 		json_object* jo_rec = update_get_comp_context_jo(uacc);
 		char* str_rec       = (char*)json_object_to_json_string(jo_rec);
@@ -174,7 +175,8 @@ char* update_record_load(char* record_file)
 			if (fread(jstring, 1, len, fd) != (unsigned)len) {
 				free(jstring);
 				jstring = NULL;
-			}
+			}else
+				jstring[len] = 0;
 		}
 
 		fclose(fd);
@@ -223,10 +225,10 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 		send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 		update_sts = INSTALL_COMPLETED;
 	}else {
+		update_sts = pre_update_action(uacc);
+
 		if (reboot_support)
 			update_record_save(uacc);
-
-		update_sts = pre_update_action(uacc);
 
 		if (update_sts == INSTALL_IN_PROGRESS)
 			update_sts = update_action(uacc);
