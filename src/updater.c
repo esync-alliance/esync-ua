@@ -114,9 +114,10 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 	return update_cc;
 }
 
-int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc)
+int update_set_comp_context(ua_component_context_t* uacc, json_object* jo_update_cc)
 {
-	int err = E_UA_OK;
+	int err                = E_UA_OK;
+	json_object* update_cc = json_object_get(jo_update_cc);
 
 	err = update_set_update_file_info(update_cc, &uacc->update_file_info);
 	err = update_set_pkg_info(update_cc, &uacc->update_pkg);
@@ -453,8 +454,16 @@ void* update_resume_from_reboot(void* arg)
 			if (comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) != URB_NONE) {
 				A_INFO_MSG("Resume: update installation failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				if (rb_version != NULL)
+				if (rb_version != NULL) {
+					uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+					uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
+
 					update_start_rollback_operations(uacc, rb_version, 1);
+
+					Z_FREE(uacc->update_manifest);
+					Z_FREE(uacc->backup_manifest);
+
+				}
 				else
 					send_install_status(uacc, INSTALL_FAILED,
 					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
@@ -516,6 +525,7 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 				if (uacc && err == E_UA_OK) {
 					pthread_t thread_resume;
 					thread_resume_t* thread_arg = (thread_resume_t*)malloc(sizeof(thread_resume_t));
+					memset(thread_arg, 0, sizeof(thread_resume_t));
 					thread_arg->jo_update_rec = jo_update_rec;
 					thread_arg->uacc          = uacc;
 					if (pthread_create(&thread_resume, 0, update_resume_from_reboot, thread_arg)) {
