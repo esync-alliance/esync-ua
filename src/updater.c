@@ -74,15 +74,23 @@ int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_i
 {
 	int err                = E_UA_OK;
 	char* update_file_prop = "update-file-info";
+	char* tmp_str          = 0;
 
 	if (jo_update_inf && update_inf) {
-		err = json_get_property(jo_update_inf, json_type_string, &update_inf->file, update_file_prop, "file", NULL);
-		if (err == E_UA_OK)
-			err = json_get_property(jo_update_inf, json_type_string, &update_inf->version, update_file_prop, "version", NULL);
-		if (err == E_UA_OK)
-			err = json_get_property(jo_update_inf, json_type_string, &update_inf->sha256b64, update_file_prop, "sha256", NULL);
+		err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "file", NULL);
+		if (err == E_UA_OK) {
+			update_inf->file = f_strdup(tmp_str);
+			err              = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "version", NULL);
+		}
+
+		if (err == E_UA_OK) {
+			update_inf->version = f_strdup(tmp_str);
+			err                 = json_get_property(jo_update_inf, json_type_string, &update_inf->sha256b64, update_file_prop, "sha256", NULL);
+		}
+
 		if (err == E_UA_OK)
 			err = json_get_property(jo_update_inf, json_type_int, &update_inf->downloaded, update_file_prop, "downloaded", NULL);
+
 		if (err == E_UA_OK)
 			err = json_get_property(jo_update_inf, json_type_int, &update_inf->rollback_order, update_file_prop, "rollback-order", NULL);
 
@@ -429,8 +437,12 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 		A_INFO_MSG("Rollback to version %s has succeeded.", uacc->update_file_info.version);
 
 	} else if (update_sts == INSTALL_FAILED) {
-		A_INFO_MSG("Rollback has exhausted all available versions, informing terminal-failure.");
-		uacc->update_error = UE_TERMINAL_FAILURE;
+		A_INFO_MSG("Rollback has exhausted all available versions.");
+		update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
+		if (rb_type != URB_DMC_INITIATED_NO_UA_INTENT){
+			A_INFO_MSG("Signal rollback terminal-failure.");
+			uacc->update_error = UE_TERMINAL_FAILURE;
+		}
 		send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
 
 	}
@@ -475,6 +487,7 @@ void* update_resume_from_reboot(void* arg)
 		}
 
 		remove(uacc->record_file);
+		update_release_comp_context(uacc);
 		json_object_put(t_arg->jo_update_rec);
 		Z_FREE(t_arg);
 		A_INFO_MSG("Resume operations after reboot have completed");
