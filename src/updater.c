@@ -49,7 +49,7 @@ int update_set_pkg_info(json_object* jo_pkg, pkg_info_t* pkg)
 			json_get_property(jo_pkg, json_type_string, &pkg->rollback_version, "package", "rollback-version", NULL);
 
 		if (err == E_UA_OK)
-			json_get_property(jo_pkg, json_type_object, &pkg->rollback_versions, "package", "rollback-versions", NULL);
+			json_get_property(jo_pkg, json_type_array, &pkg->rollback_versions, "package", "rollback-versions", NULL);
 
 	}
 
@@ -74,17 +74,21 @@ int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_i
 {
 	int err                = E_UA_OK;
 	char* update_file_prop = "update-file-info";
+	char* tmp_str          = 0;
 
 	if (jo_update_inf && update_inf) {
-		err = json_get_property(jo_update_inf, json_type_string, &update_inf->file, update_file_prop, "file", NULL);
-		if (err == E_UA_OK)
-			err = json_get_property(jo_update_inf, json_type_string, &update_inf->version, update_file_prop, "version", NULL);
-		if (err == E_UA_OK)
-			err = json_get_property(jo_update_inf, json_type_string, &update_inf->sha256b64, update_file_prop, "sha256", NULL);
-		if (err == E_UA_OK)
-			err = json_get_property(jo_update_inf, json_type_int, &update_inf->downloaded, update_file_prop, "downloaded", NULL);
-		if (err == E_UA_OK)
-			err = json_get_property(jo_update_inf, json_type_int, &update_inf->rollback_order, update_file_prop, "rollback-order", NULL);
+		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "file", NULL)) == E_UA_OK)
+			update_inf->file = f_strdup(tmp_str);
+
+		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "version", NULL)) == E_UA_OK)
+			update_inf->version = f_strdup(tmp_str);
+
+		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "sha256", NULL)) == E_UA_OK)
+			strncpy(update_inf->sha256b64, tmp_str, sizeof(update_inf->sha256b64));
+
+		err = json_get_property(jo_update_inf, json_type_int, &update_inf->downloaded, update_file_prop, "downloaded", NULL);
+
+		err = json_get_property(jo_update_inf, json_type_int, &update_inf->rollback_order, update_file_prop, "rollback-order", NULL);
 
 	}
 
@@ -116,18 +120,18 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 
 int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc)
 {
-	int err = E_UA_OK;
+	int err                = E_UA_OK;
 
 	err = update_set_update_file_info(update_cc, &uacc->update_file_info);
 	err = update_set_pkg_info(update_cc, &uacc->update_pkg);
 
 	update_rollback_t rb_type = URB_NONE;
-	err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL);
-	comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, rb_type);
+	if((err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL)) == E_UA_OK)
+		comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, rb_type);
 
 	ua_stage_t state = UA_STATE_UNKNOWN;
-	err = json_get_property(update_cc, json_type_int, &state, "state", NULL);
-	comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, state);
+	if((err = json_get_property(update_cc, json_type_int, &state, "update-state", NULL)) == E_UA_OK)
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, state);
 
 	err = json_get_property(update_cc, json_type_int, &uacc->update_error, "update-error", NULL);
 
@@ -140,6 +144,7 @@ int update_record_save(ua_component_context_t* uacc)
 	int err  = E_UA_OK;
 	FILE* fd = NULL;
 
+	A_INFO_MSG("Save record file %s", NULL_STR(uacc->record_file));
 	if (uacc && uacc->record_file && (fd = fopen(uacc->record_file, "w"))) {
 		json_object* jo_rec = update_get_comp_context_jo(uacc);
 		char* str_rec       = (char*)json_object_to_json_string(jo_rec);
@@ -174,7 +179,8 @@ char* update_record_load(char* record_file)
 			if (fread(jstring, 1, len, fd) != (unsigned)len) {
 				free(jstring);
 				jstring = NULL;
-			}
+			}else
+				jstring[len] = 0;
 		}
 
 		fclose(fd);
@@ -223,10 +229,10 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 		send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 		update_sts = INSTALL_COMPLETED;
 	}else {
+		update_sts = pre_update_action(uacc);
+
 		if (reboot_support)
 			update_record_save(uacc);
-
-		update_sts = pre_update_action(uacc);
 
 		if (update_sts == INSTALL_IN_PROGRESS)
 			update_sts = update_action(uacc);
@@ -426,9 +432,15 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 		A_INFO_MSG("Rollback to version %s has succeeded.", uacc->update_file_info.version);
 
 	} else if (update_sts == INSTALL_FAILED) {
-		A_INFO_MSG("Rollback has exhausted all available versions, informing terminal-failure.");
-		uacc->update_error = UE_TERMINAL_FAILURE;
-		send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
+		A_INFO_MSG("Rollback has exhausted all available versions.");
+		update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
+		if (rb_type == URB_DMC_INITIATED_NO_UA_INTENT){
+			send_install_status(uacc, INSTALL_FAILED, NULL, UE_NONE);
+		}else{
+			A_INFO_MSG("Signal rollback terminal-failure.");
+			uacc->update_error = UE_TERMINAL_FAILURE;
+			send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
+		}
 
 	}
 
@@ -448,22 +460,32 @@ void* update_resume_from_reboot(void* arg)
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
 
 		}else {
-			if (comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) != URB_NONE) {
-				A_INFO_MSG("Resume: update installation failed, continue next rollback action.");
+			update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
+			if (rb_type == URB_DMC_INITIATED_WITH_UA_INTENT || rb_type == URB_UA_INITIATED){
+				A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				if (rb_version != NULL)
+				if (rb_version != NULL) {
+					uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+					uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
+
 					update_start_rollback_operations(uacc, rb_version, 1);
+
+					Z_FREE(uacc->update_manifest);
+					Z_FREE(uacc->backup_manifest);
+
+				}
 				else
 					send_install_status(uacc, INSTALL_FAILED,
 					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
 
 			}else {
-				A_ERROR_MSG("Resume: update installation has failed, informing eSync client.");
+				A_ERROR_MSG("Resume: update installation had failed, informing eSync client.");
 				send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 			}
 		}
 
 		remove(uacc->record_file);
+		update_release_comp_context(uacc);
 		json_object_put(t_arg->jo_update_rec);
 		Z_FREE(t_arg);
 		A_INFO_MSG("Resume operations after reboot have completed");
@@ -514,6 +536,7 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 				if (uacc && err == E_UA_OK) {
 					pthread_t thread_resume;
 					thread_resume_t* thread_arg = (thread_resume_t*)malloc(sizeof(thread_resume_t));
+					memset(thread_arg, 0, sizeof(thread_resume_t));
 					thread_arg->jo_update_rec = jo_update_rec;
 					thread_arg->uacc          = uacc;
 					if (pthread_create(&thread_resume, 0, update_resume_from_reboot, thread_arg)) {

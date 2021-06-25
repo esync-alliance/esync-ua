@@ -175,7 +175,8 @@ int ua_register(ua_handler_t* uah, int len)
 
 	for (int i = 0; i < len; i++) {
 		do {
-			ri                 = f_malloc(sizeof(runner_info_t));
+			ri = f_malloc(sizeof(runner_info_t));
+			memset(ri, 0, sizeof(runner_info_t));
 			ri->component.type = f_strdup((uah + i)->type_handler);
 			ri->component.uar  = (*(uah + i)->get_routine)();
 #ifdef LIBUA_VER_2_0
@@ -797,15 +798,15 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	ua_routine_t* uar  = (uacc != NULL) ? uacc->uar : NULL;
-	pkg_info_t pkgInfo = {0};
-	char* installedVer = NULL;
-	char* replyId      = NULL;
-	int uae            = E_UA_OK;
-	int fake_rb_ver    = 0;
-	char* custom_msg   = NULL;
+	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
+	pkg_info_t pkgInfo    = {0};
+	char* installedVer    = NULL;
+	char* replyId         = NULL;
+	int uae               = E_UA_OK;
+	int fake_rb_ver       = 0;
+	char* custom_msg      = NULL;
 	char* backup_manifest = NULL;
-	
+
 
 	if (uar->on_get_version == NULL) {
 		A_WARN_MSG("No get version callback for %s", pkgInfo.name);
@@ -1000,7 +1001,9 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_STARTED);
 
 		get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
-		pkgFile.version       = S(uacc->update_pkg.rollback_version) ? uacc->update_pkg.rollback_version : uacc->update_pkg.version;
+		pkgFile.version = S(uacc->update_pkg.rollback_version) ? uacc->update_pkg.rollback_version : uacc->update_pkg.version;
+		if (uacc->update_pkg.rollback_version)
+			get_pkg_rollback_versions_from_json(jsonObj, &uacc->update_pkg.rollback_versions);
 		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 
 		if (( (!get_pkg_file_from_json(jsonObj, pkgFile.version, &pkgFile.file)
@@ -1124,8 +1127,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (pkgManifest && diffFile && newFile && pkgFile &&
 	    (get_pkg_file_manifest(pkgManifest, version, pkgFile) == E_UA_OK) ) {
-
-			err = delta_reconstruct(pkgFile->file, diffFile, newFile);
+		err = delta_reconstruct(pkgFile->file, diffFile, newFile);
 
 	}
 
@@ -1486,7 +1488,7 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 	}
 
 	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED)))
-		send_install_status(uacc, state, 0, UE_NONE);
+		send_install_status(uacc, state, pkgFile, UE_NONE);
 
 	return state;
 }
@@ -1576,7 +1578,7 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
 	json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
 	if (pkgInfo->rollback_version && pkgFile) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
-	if (pkgInfo->rollback_versions && pkgFile) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
+	if (pkgInfo->rollback_version && pkgInfo->rollback_versions && pkgFile) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
 
 	custom_msg = get_component_custom_message(pkgInfo->name);
 	if (custom_msg)
