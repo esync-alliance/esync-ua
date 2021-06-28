@@ -77,7 +77,10 @@ class TestUA(eSyncUA):
 
     def save_version_to_file(self, version, packageFile):
         pkg_name = packageFile[packageFile.rfind('/')+1:packageFile.rfind('-')]
-        filename = test_ua.backup_dir + "/backup/" + pkg_name + "/" + pkg_name + ".txt"
+        bak_dir = test_ua.backup_dir + "/backup/" + pkg_name
+        if not os.path.exists(bak_dir):
+            os.makedirs(bak_dir)
+        filename = bak_dir + "/" + pkg_name + ".txt"
         try:
             with open(filename, 'w+') as f:
                 f.write(version + os.linesep)
