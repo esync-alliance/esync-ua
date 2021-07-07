@@ -879,19 +879,20 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 				if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
 					DL_FOREACH_SAFE(pkgFile, pf, aux) {
-						json_object* versionObject = json_object_new_object();
+						if(S(installedVer) && pf->version && !strcmp(installedVer, pf->version)){
+							json_object* versionObject = json_object_new_object();
 
-						json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
-						json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded ? 1 : 0));
-						json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
+							json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
+							json_object_object_add(versionObject, "downloaded", json_object_new_boolean(pf->downloaded ? 1 : 0));
+							json_object_object_add(versionObject, "rollback-order", json_object_new_int(pf->rollback_order));
 
-						if (ua_intl.delta) {
-							json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
+							if (ua_intl.delta) {
+								json_object_object_add(versionObject, "sha-256", json_object_new_string(pf->sha_of_sha));
+							}
+
+							json_object_object_add(verListObject, pf->version, versionObject);
+							json_object_array_add(rbVersArray, json_object_new_string(pf->version));
 						}
-
-						json_object_object_add(verListObject, pf->version, versionObject);
-						json_object_array_add(rbVersArray, json_object_new_string(pf->version));
-
 						DL_DELETE(pkgFile, pf);
 						free_pkg_file(pf);
 					}
