@@ -120,17 +120,17 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 
 int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc)
 {
-	int err                = E_UA_OK;
+	int err = E_UA_OK;
 
 	err = update_set_update_file_info(update_cc, &uacc->update_file_info);
 	err = update_set_pkg_info(update_cc, &uacc->update_pkg);
 
 	update_rollback_t rb_type = URB_NONE;
-	if((err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL)) == E_UA_OK)
+	if ((err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL)) == E_UA_OK)
 		comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, rb_type);
 
 	ua_stage_t state = UA_STATE_UNKNOWN;
-	if((err = json_get_property(update_cc, json_type_int, &state, "update-state", NULL)) == E_UA_OK)
+	if ((err = json_get_property(update_cc, json_type_int, &state, "update-state", NULL)) == E_UA_OK)
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, state);
 
 	err = json_get_property(update_cc, json_type_int, &uacc->update_error, "update-error", NULL);
@@ -227,6 +227,7 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	if (!uacc->update_pkg.rollback_version && update_installed_version_same(uacc, uacc->update_pkg.version)) {
 		A_INFO_MSG("Found installed version is same as requested target version.");
 		send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
+		post_update_action(uacc);
 		update_sts = INSTALL_COMPLETED;
 	}else {
 		update_sts = pre_update_action(uacc);
@@ -234,11 +235,10 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 		if (reboot_support)
 			update_record_save(uacc);
 
-		if (update_sts == INSTALL_IN_PROGRESS)
+		if (update_sts == INSTALL_IN_PROGRESS) {
 			update_sts = update_action(uacc);
-
-		if (update_sts == INSTALL_COMPLETED)
 			post_update_action(uacc);
+		}
 
 		if (reboot_support)
 			remove(uacc->record_file);
@@ -366,6 +366,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			A_INFO_MSG("Found installed version is same as requested rollback version.");
 			update_sts = INSTALL_COMPLETED;
 			send_install_status(uacc, INSTALL_COMPLETED, &tmp_rb_file_info, UE_NONE);
+			post_update_action(uacc);
 
 		}else {
 			int bck = 0;
@@ -379,6 +380,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 					//E115-417: No rollback is available when standalone delta is used.
 					A_INFO_MSG("package %s is for preprared delta, rollback is not avaialbe, returning INSTALL_FAILED", uacc->update_file_info.file);
 					update_sts = INSTALL_FAILED;
+					post_update_action(uacc);
 
 				} else {
 					if (update_sts == INSTALL_READY) {
@@ -416,6 +418,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				}else {
 					A_INFO_MSG("No more rollback version for %s, signal INSTALL_FAILED", uacc->update_pkg.name);
 					update_sts = INSTALL_FAILED;
+					post_update_action(uacc);
 
 				}
 			}
@@ -434,7 +437,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 	} else if (update_sts == INSTALL_FAILED) {
 		A_INFO_MSG("Rollback has exhausted all available versions.");
 		update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
-		if (rb_type == URB_DMC_INITIATED_NO_UA_INTENT){
+		if (rb_type == URB_DMC_INITIATED_NO_UA_INTENT) {
 			send_install_status(uacc, INSTALL_FAILED, NULL, UE_NONE);
 		}else{
 			A_INFO_MSG("Signal rollback terminal-failure.");
@@ -456,12 +459,12 @@ void* update_resume_from_reboot(void* arg)
 		uacc->worker.worker_running = 1;
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			A_INFO_MSG("Resume: update installation was successful.");
-			post_update_action(uacc);
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
+			post_update_action(uacc);
 
 		}else {
 			update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
-			if (rb_type == URB_DMC_INITIATED_WITH_UA_INTENT || rb_type == URB_UA_INITIATED){
+			if (rb_type == URB_DMC_INITIATED_WITH_UA_INTENT || rb_type == URB_UA_INITIATED) {
 				A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL) {
@@ -473,12 +476,15 @@ void* update_resume_from_reboot(void* arg)
 					Z_FREE(uacc->update_manifest);
 					Z_FREE(uacc->backup_manifest);
 
-				}
-				else
+				}else {
+					post_update_action(uacc);
+					A_ERROR_MSG("Resume: no more rollback version, signaling terminal-failure.");
 					send_install_status(uacc, INSTALL_FAILED,
 					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
+				}
 
 			}else {
+				post_update_action(uacc);
 				A_ERROR_MSG("Resume: update installation had failed, informing eSync client.");
 				send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 			}
