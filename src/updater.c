@@ -457,9 +457,12 @@ void* update_resume_from_reboot(void* arg)
 
 	if (uacc) {
 		uacc->worker.worker_running = 1;
+		uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			A_INFO_MSG("Resume: update installation was successful.");
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
+			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 			post_update_action(uacc);
 
 		}else {
@@ -468,13 +471,8 @@ void* update_resume_from_reboot(void* arg)
 				A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL) {
-					uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
-					uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 
 					update_start_rollback_operations(uacc, rb_version, 1);
-
-					Z_FREE(uacc->update_manifest);
-					Z_FREE(uacc->backup_manifest);
 
 				}else {
 					post_update_action(uacc);
@@ -492,6 +490,8 @@ void* update_resume_from_reboot(void* arg)
 
 		remove(uacc->record_file);
 		update_release_comp_context(uacc);
+		Z_FREE(uacc->update_manifest);
+		Z_FREE(uacc->backup_manifest);
 		json_object_put(t_arg->jo_update_rec);
 		Z_FREE(t_arg);
 		A_INFO_MSG("Resume operations after reboot have completed");
