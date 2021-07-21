@@ -136,6 +136,7 @@ typedef struct runner_info_hash_tree {
 typedef enum ua_internal_state {
 	UAI_STATE_NOT_KNOWN,
 	UAI_STATE_INITIALIZED,
+	UAI_STATE_HANDLER_REGISTERED,
 	UAI_STATE_RESUME_STARTED,
 	UAI_STATE_RESUME_DONE,
 

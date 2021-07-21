@@ -196,6 +196,7 @@ int ua_register(ua_handler_t* uah, int len)
 			ri->component.update_status_info.reply_id = NULL;
 			ri->component.record_file                 = ua_intl.record_file;
 			ri->component.enable_fake_rb_ver          = ua_intl.enable_fake_rb_ver;
+			ua_intl.state                             = UAI_STATE_HANDLER_REGISTERED;
 			A_INFO_MSG("Registered: %s", ri->component.type);
 		} while (0);
 
@@ -258,6 +259,8 @@ int ua_unregister(ua_handler_t* uah, int len)
 
 		utarray_done(&ri_list);
 	}
+
+	ua_intl.state = UAI_STATE_INITIALIZED;
 
 	Z_FREE(ri_tree);
 
@@ -419,6 +422,10 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 			break;
 		case BUS_CONN_DMC_NOT_CONNECTED:
 		case BUS_CONN_DMC_CONNECTED:
+			//Nothing can be done until handler has been registered.
+			while (ua_intl.state < UAI_STATE_HANDLER_REGISTERED)
+				sleep(1);
+
 			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
 				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
 
@@ -879,7 +886,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 				if (!parse_pkg_manifest(backup_manifest, &pkgFile)) {
 					DL_FOREACH_SAFE(pkgFile, pf, aux) {
-						if(S(installedVer) && pf->version && !strcmp(installedVer, pf->version)){
+						if (S(installedVer) && pf->version && !strcmp(installedVer, pf->version)) {
 							json_object* versionObject = json_object_new_object();
 
 							json_object_object_add(versionObject, "file", json_object_new_string(pf->file));
