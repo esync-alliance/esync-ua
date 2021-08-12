@@ -352,16 +352,20 @@ static int zip_zip(const char* archive, const char* path)
 	int err = E_UA_OK;
 
 	if (archive && path) {
+		char* wd = get_current_dir_name();
 		do {
+			BOLT_SYS(chdir(path), "failed to chdir to %s", path);
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
 			remove(archive);
 
 			char cmd[]   = "zip";
-			char* argv[] = {cmd, "-r", "-j", (char*)archive, (char*)path, NULL};
+			char* argv[] = {cmd, "-r", (char*)archive, ".", NULL};
 			BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
 
 		} while (0);
 
+		chdir(wd);
+		f_free(wd);
 	}
 	return err;
 }

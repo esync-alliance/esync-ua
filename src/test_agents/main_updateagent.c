@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
 	signal(SIGINT, sig_handler);
 
-	ua_debug_lvl = cfg.delta;
+	ua_debug_lvl = cfg.debug;
 
 	if (ua_init(&cfg)) {
 		printf("Updateagent failed!");
