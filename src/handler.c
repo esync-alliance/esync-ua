@@ -1098,7 +1098,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 				}
 			}
 
-			if (update_sts != INSTALL_COMPLETED && !access(uacc->update_manifest, F_OK)) {
+			if (update_sts == INSTALL_ROLLBACK && !access(uacc->update_manifest, F_OK)) {
 				A_INFO_MSG("Removing temp manifest %s", uacc->update_manifest);
 				remove(uacc->update_manifest);
 			}
