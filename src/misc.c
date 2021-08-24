@@ -617,10 +617,15 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 				SHA256_Update(&ctx, sb.name, strlen(sb.name));
 
 				sum = 0;
-				while (sum != (long)sb.size) {
+				len = ua_rw_buff_size;
+				while (len == ua_rw_buff_size) {
 					BOLT_IF((len = zip_fread(zf, buf,ua_rw_buff_size)) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					SHA256_Update(&ctx, buf, len);
 					sum += len;
+				}
+
+				if (sum != sb.size) {
+					A_INFO_MSG("ZIP warning: reported size of file %s is %d, total bytes read: %d", sb.name, sb.size, sum);
 				}
 
 				sl = f_malloc(sizeof(struct sha256_list));
