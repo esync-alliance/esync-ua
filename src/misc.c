@@ -252,7 +252,7 @@ static int libzip_unzip(const char* archive, const char* path)
 
 				sum = 0;
 				while (sum != (long)sb.size) {
-					BOLT_IF((len = zip_fread(zf, buf, ua_rw_buff_size)) < 0,
+					BOLT_IF((len = zip_fread(zf, buf, ua_rw_buff_size)) == -1,
 					        E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					BOLT_IF((write(fd, buf, len) < len), E_UA_ERR, "error writing %s", sb.name);
 					sum += len;
@@ -582,10 +582,11 @@ int calc_sha256_hex(const char* fpath, char obuff[SHA256_HEX_LENGTH])
 
 int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 {
-	int i, len, zerr, err = E_UA_OK;
+	int i, zerr, err = E_UA_OK;
 	char* buf = 0;
 	unsigned char hash[SHA256_DIGEST_LENGTH];
-	long sum;
+	zip_uint64_t sum = 0;
+	zip_int64_t len = 0;
 	char* zstr = 0;
 	struct zip* za;
 	struct zip_file* zf;
@@ -617,15 +618,17 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 				SHA256_Update(&ctx, sb.name, strlen(sb.name));
 
 				sum = 0;
-				len = ua_rw_buff_size;
-				while (len == ua_rw_buff_size) {
-					BOLT_IF((len = zip_fread(zf, buf,ua_rw_buff_size)) < 0, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
-					SHA256_Update(&ctx, buf, len);
-					sum += len;
+				len = (zip_int64_t)ua_rw_buff_size;
+				while (len == (zip_int64_t)ua_rw_buff_size) {
+					BOLT_IF((len = zip_fread(zf, buf, (zip_uint64_t)ua_rw_buff_size)) == -1, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
+					if(len > 0) {
+						SHA256_Update(&ctx, buf, len);
+						sum += (zip_uint64_t)len;
+					}
 				}
 
 				if (sum != sb.size) {
-					A_INFO_MSG("ZIP warning: reported size of file %s is %d, total bytes read: %d", sb.name, sb.size, sum);
+					A_INFO_MSG("ZIP warning: reported size of file %s is %" PRIu64 ", total bytes read: %" PRIu64 "", sb.name, sb.size, sum);
 				}
 
 				sl = f_malloc(sizeof(struct sha256_list));
