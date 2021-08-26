@@ -1167,12 +1167,15 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 			return;
 		}
 
+		comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_STARTED);
+
 		char* update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
+		char* delta_dir = JOIN(ua_intl.cache_dir, "delta");
+
 
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
-				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_STARTED);
 
 				if (comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) != URB_NONE)
 					comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, URB_NONE);
@@ -1186,15 +1189,21 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 				A_INFO_MSG("Removing update_manifest %s", update_manifest);
 				remove(update_manifest);
-				comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
 			} else {
 				A_ERROR_MSG("confirm-update did not find temp manifest %s", update_manifest);
 			}
 
 		}else
 			A_ERROR_MSG("Could not form manifest file path.");
+
+		if(delta_dir && !access(delta_dir, F_OK	)) {
+			rmdirp(delta_dir);
+		}
+
+		Z_FREE(delta_dir);
 		Z_FREE(backup_manifest);
 		Z_FREE(update_manifest);
+		comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
 
 	} else
 		A_ERROR_MSG("Could not parse info from confirm-update.");
