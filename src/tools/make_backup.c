@@ -16,6 +16,12 @@
 #include "misc.h"
 #include "xml.h"
 #include "debug.h"
+#include "ua_version.h"
+
+#ifndef BUILD_VERSION
+#define BUILD_VERSION                         "1.0"
+#endif
+#define BUILD_DATETIME                        __DATE__ " "__TIME__
 
 #ifdef HAVE_INSTALL_LOG_HANDLER
 ua_log_handler_f ua_log_handler = 0;
@@ -54,6 +60,8 @@ int main(int argc, char** argv)
 	char* pkg_name            = 0;
 	char* backup_manifest     = 0;
 	pkg_file_t pf             = {0};
+
+	printf("make_backup version: %s build on %s\n", BUILD_VERSION, BUILD_DATETIME);
 
 	while ((c = getopt(argc, argv, ":b:p:v:ewidDFh")) != -1) {
 		switch (c) {
@@ -108,12 +116,13 @@ int main(int argc, char** argv)
 			backup_manifest = JOIN(backup_dir, "backup", pkg_name, MANIFEST_PKG);
 			BOLT_SYS(chkdirp(dest_file), "failed to create directory for %s", dest_file);
 
+			BOLT_IF(copy_file(pf.file, dest_file), err, "failed to copy file from %s to %s", pf.file, dest_file);
+			pf.file = f_strdup(dest_file);
+
 			calc_sha256_x(pf.file, pf.sha_of_sha);
 			calculate_sha256_b64(pf.file, pf.sha256b64);
 
 			BOLT_IF(add_pkg_file_manifest(backup_manifest, &pf), err, "failed to create manifest %s", backup_manifest);
-
-			BOLT_IF(copy_file(pf.file, dest_file), err, "failed to copy file from %s to %s", pf.file, dest_file);
 
 			A_INFO_MSG("eSync backup has been created in %s/backup/%s", backup_dir, pkg_name);
 
