@@ -15,7 +15,7 @@
 #endif
 #include "debug.h"
 
-char* f_asprintf(char* fmt, ...)
+char* f_asprintf(const char* fmt, ...)
 {
 	char* ret;
 	va_list ap;
