@@ -84,7 +84,7 @@ int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_i
 			update_inf->version = f_strdup(tmp_str);
 
 		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "sha256", NULL)) == E_UA_OK)
-			strncpy(update_inf->sha256b64, tmp_str, sizeof(update_inf->sha256b64));
+			strcpy_s(update_inf->sha256b64, tmp_str, sizeof(update_inf->sha256b64));
 
 		err = json_get_property(jo_update_inf, json_type_int, &update_inf->downloaded, update_file_prop, "downloaded", NULL);
 

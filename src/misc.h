@@ -53,7 +53,8 @@ static inline char* join_path(const char* path, ... )
 		ret = f_realloc(ret, strlen(ret) + strlen(aux) + 2);
 		if (*ret && ret[(l = strlen(ret))-1] != '/')
 			*(ret + (l++)) = '/';
-		strncpy(ret + l, aux, strlen(aux));
+		size_t laux = strlen(aux);
+		strcpy_s(ret + l, aux, laux + 1);
 	}
 	va_end(ap);
 	return ret;

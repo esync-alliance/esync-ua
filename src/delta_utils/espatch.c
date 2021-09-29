@@ -60,7 +60,8 @@ XL4_PUB void* es_malloc(size_t size,const char *srcref)
 		return NULL;
 	}
 	*ptr = size;
-	return (void*)(ptr+1);
+	size_t *inputbuffer = ptr + 1;
+	return (void*)(inputbuffer);
 }
 
 XL4_PUB void es_free(void* ptr,const char *srcref)
@@ -382,7 +383,7 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 			if (res == ESPOK_INFO) {
 				res = espGetInfo(esp, &info);
 				if (info.comment)
-					strncpy(comment,info.comment,sizeof(comment));
+					strcpy_s(comment,info.comment,sizeof(comment));
 			}
 		} while (res == ESPOK_MORE || res == ESPOK);
 	}

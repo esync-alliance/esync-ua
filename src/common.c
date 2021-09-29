@@ -15,6 +15,20 @@
 #endif
 #include "debug.h"
 
+size_t strcpy_s(char *dst, const char *src, size_t size)
+{
+    if (size == 0)
+        return 0;
+    if (strlen(src) >= size) {
+        memcpy(dst, src, size-1);
+        dst[size-1] = 0;
+        return size-1;
+    }
+    strncpy(dst, src, size-1);
+    dst[size-1] = 0;
+    return strlen(dst);
+}
+
 char* f_asprintf(const char* fmt, ...)
 {
 	char* ret;

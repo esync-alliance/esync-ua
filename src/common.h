@@ -10,6 +10,8 @@
 
 #define XL4_UNUSED(x) (void)x;
 
+size_t strcpy_s(char *dst, const char *src, size_t size);
+
 char* f_asprintf(const char* fmt, ...);
 char* f_strdup(const char*);
 char* f_strndup(const void* s, size_t len);

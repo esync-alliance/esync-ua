@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 	while ((c = getopt(argc, argv, ":b:p:v:ewidDFh")) != -1) {
 		switch (c) {
 			case 'b':
-				strncpy(backup_dir, optarg, sizeof(backup_dir));
+				strcpy_s(backup_dir, optarg, sizeof(backup_dir));
 				break;
 			case 'p':
 				pkg_name = f_strdup(optarg);

@@ -166,7 +166,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 	         pkgInfo->name, pkgInfo->version,
 	         pkgInfo->version);
 	tmp_dlc->dl_encrytion_filename = JOIN(ua_intl.ua_dl_dir, tmp_filename);
-	strcpy(ua_dl_filename_buffer, tmp_dlc->dl_encrytion_filename);
+	strcpy_s(ua_dl_filename_buffer, tmp_dlc->dl_encrytion_filename, sizeof(ua_dl_filename_buffer));
 	ua_intl.ua_downloaded_filename = ua_dl_filename_buffer;
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x.z",
