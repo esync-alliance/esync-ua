@@ -24,8 +24,8 @@ static char* libzip_get_error(int ze);
 size_t ua_rw_buff_size = 16 * 1024;
 
 struct sha256_list {
-	unsigned char sha256[SHA256_DIGEST_LENGTH];
 	struct sha256_list* next;
+	unsigned char sha256[SHA256_DIGEST_LENGTH];
 };
 
 int sha256cmp(struct sha256_list* a, struct sha256_list* b)
@@ -170,7 +170,7 @@ int newdirp(const char* path, int umask)
 }
 
 #ifndef SHELL_COMMAND_DISABLE
-int run_cmd(char* cmd, char* argv[])
+int run_cmd(const char* cmd, char* const argv[])
 {
 	int rc     = E_UA_OK;
 	int status = 0;
@@ -288,10 +288,13 @@ static int zip_unzip(const char* archive, const char* path)
 		do {
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", path);
 
-			char cmd[]   = "unzip";
-			char* argv[] = {cmd, "-o", (char*)archive, "-d", (char*)path, NULL};
-			BOLT_SYS(run_cmd(cmd, argv), "failed to unzip files");
-
+			char* op_a = f_asprintf("%s", archive);
+			char* op_p = f_asprintf("%s", path);
+			char* const argv[] = {"unzip", "-o", op_a, "-d", op_p, NULL};
+			A_INFO_MSG("shell command(%s %s %s %s %s)\n", argv[0], argv[1], argv[2], argv[3], argv[4]);
+			BOLT_SYS(run_cmd(argv[0], argv), "failed to unzip files");
+			free(op_a);
+			free(op_p);
 		} while (0);
 
 	}
@@ -358,10 +361,11 @@ static int zip_zip(const char* archive, const char* path)
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
 			remove(archive);
 
-			char cmd[]   = "zip";
-			char* argv[] = {cmd, "-r", (char*)archive, ".", NULL};
-			BOLT_SYS(run_cmd(cmd, argv), "failed to zip files");
-
+			char* op = f_asprintf("%s", archive);
+			char* const argv[] = {"zip", "-r", op, ".", NULL};
+			A_INFO_MSG("shell command(%s %s %s %s)\n", argv[0], argv[1], argv[2], argv[3]);
+			BOLT_SYS(run_cmd(argv[0], argv), "failed to zip files");
+			free(op);
 		} while (0);
 
 		chdir(wd);
@@ -768,7 +772,7 @@ int is_cmd_runnable(const char* cmd)
 
 char* randstring(int length)
 {
-	char* string     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
+	const char* string     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
 	size_t stringLen = strlen(string);
 	char* randomString;
 
@@ -781,7 +785,7 @@ char* randstring(int length)
 	unsigned int key = 0;
 
 	for (int n = 0; n < length; n++) {
-		key             = rand() % stringLen;
+		key             = random() % stringLen;
 		randomString[n] = string[key];
 	}
 

@@ -53,7 +53,7 @@ static inline char* join_path(const char* path, ... )
 		ret = f_realloc(ret, strlen(ret) + strlen(aux) + 2);
 		if (*ret && ret[(l = strlen(ret))-1] != '/')
 			*(ret + (l++)) = '/';
-		strcpy(ret + l, aux);
+		strncpy(ret + l, aux, strlen(aux));
 	}
 	va_end(ap);
 	return ret;
@@ -93,7 +93,7 @@ int mkdirp(const char* path, int umask);
 int newdirp(const char* path, int umask);
 int rmdirp(const char* path);
 int chkdirp(const char* path);
-int run_cmd(char* cmd, char* argv[]);
+int run_cmd(const char* cmd, char* const argv[]);
 char* randstring(int length);
 int reply_id_matched(char* s1, char* s2);
 #endif /* UA_MISC_H_ */
