@@ -71,13 +71,7 @@ int ua_init(ua_cfg_t* uaConfig)
 	do {
 		ua_debug = uaConfig->debug + 0;
 
-		BOLT_IF(!uaConfig || !S(uaConfig->url)
-#ifdef USE_XL4BUS_TRUST
-		        || !S(uaConfig->ua_type)
-#else
-		        || !S(uaConfig->cert_dir)
-#endif
-		        , E_UA_ARG, "configuration error");
+		BOLT_IF(!uaConfig || !S(uaConfig->url) || !S(UACONF), E_UA_ARG, "configuration error");
 
 		BOLT_IF(uaConfig->delta && (!S(uaConfig->cache_dir) || !S(uaConfig->backup_dir)), E_UA_ARG, "cache and backup directory are must for delta");
 

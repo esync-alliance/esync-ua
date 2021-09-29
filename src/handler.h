@@ -42,6 +42,11 @@
 #define BMT_QUERY_SEQUENCE  BMT_PREFIX "sequence-info"
 #define BMT_SESSION_REQUEST BMT_PREFIX "session-request"
 
+#ifdef USE_XL4BUS_TRUST
+	#define UACONF (uaConfig->ua_type)
+#else
+	#define UACONF (uaConfig->cert_dir)
+#endif
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #define BMT_START_DOWNLOAD BMT_PREFIX "start-download"
