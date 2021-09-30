@@ -9,6 +9,7 @@
 #include "porting.h"
 
 #define XL4_UNUSED(x) (void)x;
+#define BASE_TEN_CONVERSION 10
 
 size_t strcpy_s(char *dst, const char *src, size_t size);
 

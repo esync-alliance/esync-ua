@@ -23,8 +23,9 @@ int main(int argc, char** argv)
 {
 	A_INFO_MSG("Delta Patcher %s\n", BUILD_VERSION);
 
-	int err = E_UA_OK;
-	int c   = 0;
+	int err   = E_UA_OK;
+	int c     = 0;
+	char *end = NULL;
 	delta_cfg_t cfg;
 	memset(&cfg, 0, sizeof(delta_cfg_t));
 
@@ -43,7 +44,7 @@ int main(int argc, char** argv)
 				ua_debug = 1;
 				break;
 			case 'm':
-				if ((ua_rw_buff_size = atoi(optarg) * 1024) > 0)
+				if ((ua_rw_buff_size = strtol(optarg, &end, BASE_TEN_CONVERSION) * 1024) > 0)
 					break;
 			case 'h':
 			default:

@@ -172,7 +172,7 @@ char* update_record_load(char* record_file)
 	if (record_file && (fd = fopen(record_file, "r"))) {
 		fseek(fd, 0L, SEEK_END);
 		len = ftell(fd);
-		rewind(fd);
+		fseek(fd, 0L, SEEK_SET);
 
 		jstring = (char*)malloc(len+1);
 		if (jstring) {
