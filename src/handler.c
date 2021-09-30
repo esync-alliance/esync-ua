@@ -1763,8 +1763,8 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 		backupFile->downloaded = 1;
 
 		if (backupFile->file && backupFile->version) {
-			strcpy(backupFile->sha256b64, pkgFile->sha256b64);
-			strcpy(backupFile->sha_of_sha, pkgFile->sha_of_sha);
+			strcpy_s(backupFile->sha256b64, pkgFile->sha256b64, sizeof(backupFile->sha256b64));
+			strcpy_s(backupFile->sha_of_sha, pkgFile->sha_of_sha, sizeof(backupFile->sha_of_sha));
 
 			if (!strcmp(pkgFile->file, backupFile->file) ||
 			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {
