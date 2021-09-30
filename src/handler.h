@@ -65,17 +65,15 @@ typedef struct pkg_info {
 } pkg_info_t;
 
 typedef struct pkg_file {
+	struct pkg_file* next;
+	struct pkg_file* prev;
+	int downloaded;
+	int rollback_order;
 	char* version;
 	char* file;
 	char sha256b64[SHA256_B64_LENGTH];
 	char delta_sha256b64[SHA256_B64_LENGTH];
 	char sha_of_sha[SHA256_B64_LENGTH];
-	int downloaded;
-	int rollback_order;
-
-	struct pkg_file* next;
-	struct pkg_file* prev;
-
 } pkg_file_t;
 
 typedef struct incoming_msg {
@@ -191,6 +189,7 @@ typedef struct ua_internal {
 	comp_sequence_t* seq_out;
 
 #ifdef SUPPORT_UA_DOWNLOAD
+	async_update_status_t update_status_info;
 	int ua_download_required;
 	char* ua_downloaded_filename;
 	char* ua_dl_dir;
@@ -198,7 +197,6 @@ typedef struct ua_internal {
 	int ua_dl_download_timeout_ms;
 	char* ua_dl_ca_file;
 	char* verify_ca_file[MAX_VERIFY_CA_COUNT];
-	async_update_status_t update_status_info;
 #endif
 
 } ua_internal_t;

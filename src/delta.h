@@ -28,17 +28,16 @@ typedef enum diff_type {
 } diff_type_t;
 
 typedef struct diff_info {
+	struct diff_info* next;
+	struct diff_info* prev;
 	diff_type_t type;
 	char* name;
+	char* format;
+	char* compression;
 	struct {
 		char old[SHA256_HEX_LENGTH];
 		char new[SHA256_HEX_LENGTH];
 	} sha256;
-	char* format;
-	char* compression;
-
-	struct diff_info* next;
-	struct diff_info* prev;
 } diff_info_t;
 
 
