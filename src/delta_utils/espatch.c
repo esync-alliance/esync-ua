@@ -243,7 +243,8 @@ void read_file(int fd)
 	buf = malloc(buf_size);
 	if (!buf) return;
 	lseek(fd,0,SEEK_SET);
-	while(read(fd, buf, buf_size) > 0);
+	while(read(fd, buf, buf_size) > 0) {
+	}
 	free(buf);
 }
 #endif
@@ -368,7 +369,7 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 
 		do {
 			if (fuzz_input) {
-				fuzz = rand() % (inputbufsize/2);
+				fuzz = random() % (inputbufsize/2);
 				if (fuzz > inputbufsize-ix)
 					fuzz = 0;
 			}

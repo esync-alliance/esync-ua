@@ -97,7 +97,7 @@ update_rollback_t comp_get_rb_type(comp_ctrl_t* cs_head, char* pkg_name)
 	return ret;
 }
 
-int comp_set_rb_type(comp_ctrl_t** cs_head, char* pkg_name, update_rollback_t rb_type)
+int comp_set_rb_type(comp_ctrl_t** cs_head, const char* pkg_name, update_rollback_t rb_type)
 {
 	int rc          = E_UA_OK;
 	comp_ctrl_t* cs = NULL;

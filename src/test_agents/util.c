@@ -62,7 +62,7 @@ scp_info_t* scp_init(scp_info_t* scp)
 	return NULL;
 }
 
-char* scp_get_file(scp_info_t* scp, char* remote_path)
+char* scp_get_file(scp_info_t* scp, const char* remote_path)
 {
 	char* argv[9]                = {0};
 	char full_scp_path[PATH_MAX] = {0};
@@ -144,7 +144,7 @@ int do_transfer_file(const char* type, const char* pkgName, const char* version,
 	scp_info_t* scp = scp_get_info();
 
 	if (scp && scp->url) {
-		if ((*newFile = scp_get_file(scp, (char*)pkgFile)) == NULL)
+		if ((*newFile = scp_get_file(scp, pkgFile)) == NULL)
 			rc = E_UA_ERR;
 	} else {
 		A_INFO_MSG("SCP url is not set, not transferring file remotely.");

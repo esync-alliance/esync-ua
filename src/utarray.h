@@ -224,7 +224,8 @@ typedef struct {
 /* last we pre-define a few icd for common utarrays of ints and strings */
 static void utarray_str_cpy(void* dst, const void* src)
 {
-	char** _src = (char**)src, ** _dst = (char**)dst;
+	const char** _src = (const char**)src;
+	char** _dst = (char**)dst;
 
 	*_dst = (*_src == NULL) ? NULL : strdup(*_src);
 }

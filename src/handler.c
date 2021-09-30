@@ -2055,7 +2055,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type)
 {
 	if ( rb_type != URB_NONE )
-		return comp_set_rb_type(&ua_intl.component_ctrl, (char*)pkgName, rb_type);
+		return comp_set_rb_type(&ua_intl.component_ctrl, pkgName, rb_type);
 	else
 		return E_UA_ERR;
 }
