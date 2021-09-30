@@ -73,7 +73,7 @@ json_object* update_get_update_file_info_jo(pkg_file_t* update_inf)
 int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_inf)
 {
 	int err                = E_UA_OK;
-	char* update_file_prop = "update-file-info";
+	const char* update_file_prop = "update-file-info";
 	char* tmp_str          = 0;
 
 	if (jo_update_inf && update_inf) {

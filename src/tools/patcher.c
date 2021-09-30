@@ -28,7 +28,8 @@ int main(int argc, char** argv)
 	delta_cfg_t cfg;
 	memset(&cfg, 0, sizeof(delta_cfg_t));
 
-	char* cache_dir = "/tmp/deltapatcher/";
+	char* dir_default[] = {"/tmp/deltapatcher/", NULL};
+	char* cache_dir = dir_default[0];
 
 	while ((c = getopt(argc, argv, ":c:a:m:dh")) != -1) {
 		switch (c) {

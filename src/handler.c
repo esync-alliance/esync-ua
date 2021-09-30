@@ -1818,15 +1818,17 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 
 static char* install_state_string(install_state_t state)
 {
-	char* str = NULL;
+	char* str           = NULL;
+	char* inst_state[]  = {"INSTALL_READY", "INSTALL_IN_PROGRESS", "INSTALL_COMPLETED",
+			"INSTALL_FAILED", "INSTALL_ABORTED", "INSTALL_ROLLBACK", NULL};
 
 	switch (state) {
-		case INSTALL_READY: str       = "INSTALL_READY";       break;
-		case INSTALL_IN_PROGRESS: str = "INSTALL_IN_PROGRESS"; break;
-		case INSTALL_COMPLETED: str   = "INSTALL_COMPLETED";   break;
-		case INSTALL_FAILED: str      = "INSTALL_FAILED";      break;
-		case INSTALL_ABORTED: str     = "INSTALL_ABORTED";     break;
-		case INSTALL_ROLLBACK: str    = "INSTALL_ROLLBACK";    break;
+		case INSTALL_READY: str       = inst_state[0];       break;
+		case INSTALL_IN_PROGRESS: str = inst_state[1];       break;
+		case INSTALL_COMPLETED: str   = inst_state[2];       break;
+		case INSTALL_FAILED: str      = inst_state[3];       break;
+		case INSTALL_ABORTED: str     = inst_state[4];       break;
+		case INSTALL_ROLLBACK: str    = inst_state[5];       break;
 	}
 
 	return str;
@@ -1835,12 +1837,13 @@ static char* install_state_string(install_state_t state)
 
 static char* download_state_string(download_state_t state)
 {
-	char* str = NULL;
+	char* str         = NULL;
+	char* dn_state[]  = {"DOWNLOAD_POSTPONED", "DOWNLOAD_CONSENT", "DOWNLOAD_DENIED", NULL};
 
 	switch (state) {
-		case DOWNLOAD_POSTPONED: str = "DOWNLOAD_POSTPONED"; break;
-		case DOWNLOAD_CONSENT: str   = "DOWNLOAD_CONSENT";   break;
-		case DOWNLOAD_DENIED: str    = "DOWNLOAD_DENIED";    break;
+		case DOWNLOAD_POSTPONED: str = dn_state[0];   break;
+		case DOWNLOAD_CONSENT: str   = dn_state[1];   break;
+		case DOWNLOAD_DENIED: str    = dn_state[2];   break;
 	}
 
 	return str;
@@ -1848,11 +1851,12 @@ static char* download_state_string(download_state_t state)
 
 static char* update_stage_string(update_stage_t stage)
 {
-	char* str = NULL;
+	char* str         = NULL;
+	char* up_stage[]  = {"US_TRANSFER", "US_INSTALL", NULL};
 
 	switch (stage) {
-		case US_TRANSFER: str = "US_TRANSFER"; break;
-		case US_INSTALL: str  = "US_INSTALL";   break;
+		case US_TRANSFER: str = up_stage[0];   break;
+		case US_INSTALL: str  = up_stage[1];   break;
 	}
 
 	return str;
@@ -1861,14 +1865,15 @@ static char* update_stage_string(update_stage_t stage)
 
 static char* log_type_string(log_type_t log)
 {
-	char* str = NULL;
+	char* str         = NULL;
+	char* log_type[]  = {"EVENT", "INFO", "WARN", "ERROR", "SEVERE", NULL};
 
 	switch (log) {
-		case LOG_EVENT: str  = "EVENT";  break;
-		case LOG_INFO: str   = "INFO";   break;
-		case LOG_WARN: str   = "WARN";   break;
-		case LOG_ERROR: str  = "ERROR";  break;
-		case LOG_SEVERE: str = "SEVERE"; break;
+		case LOG_EVENT: str  = log_type[0];   break;
+		case LOG_INFO: str   = log_type[1];   break;
+		case LOG_WARN: str   = log_type[2];   break;
+		case LOG_ERROR: str  = log_type[3];   break;
+		case LOG_SEVERE: str = log_type[4];   break;
 	}
 
 	return str;

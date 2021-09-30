@@ -265,8 +265,10 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 	uint8_t *rdbuf = NULL;
 	const size_t rdbuf_size = 4096;
 	struct espinfo info;
-	char comment[128]="";
+	char comment[128];
 	size_t totalpatchlen=0;
+
+	bzero(comment, sizeof(comment));
 
 	if (use_scratch_file) {
 		if (scratchfile == NULL) {

@@ -72,9 +72,12 @@ int main(int argc, char** argv)
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	scp_info_t scpi;
 	memset(&scpi, 0, sizeof(scp_info_t));
-	scpi.local_dir   = "/tmp/esync/scp";
-	scpi.scp_bin     = "scp";
-	scpi.sshpass_bin = "sshpass";
+
+	char* op[]  = {"/tmp/esync/scp", "scp", "sshpass", NULL};
+
+	scpi.local_dir   = op[0];
+	scpi.scp_bin     = op[1];
+	scpi.sshpass_bin = op[2];
 #endif
 
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:ewidDFh")) != -1) {

@@ -56,10 +56,13 @@ static void _help(const char* app)
 int main(int argc, char** argv)
 {
 	int c                     = 0, err = 0;
-	char backup_dir[PATH_MAX] = "/data/sota/esync";
 	char* pkg_name            = 0;
 	char* backup_manifest     = 0;
 	pkg_file_t pf             = {0};
+
+	char backup_dir[PATH_MAX];
+	bzero(backup_dir, sizeof(backup_dir));
+	strcpy_s(backup_dir, "/data/sota/esync", sizeof(backup_dir));
 
 	printf("make_backup version: %s build on %s\n", BUILD_VERSION, BUILD_DATETIME);
 

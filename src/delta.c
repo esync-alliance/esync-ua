@@ -333,8 +333,10 @@ static int get_espatch_version(char* ver, int len)
 
 static char* get_config_delta_cap(char* delta_cap)
 {
-	char espatch_ver[7] = "";
+	char espatch_ver[7];
 	char* ret_cap       = NULL;
+
+	bzero(espatch_ver, sizeof(espatch_ver));
 
 	if (delta_cap) {
 		char* tmp_cap = f_strdup(delta_cap);
@@ -366,12 +368,18 @@ static char* get_config_delta_cap(char* delta_cap)
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool)
 {
 	int memory            = 100;
-	char format[16]       = "A:";
-	char compression[16]  = "B:";
-	char espatch_ver[7]   = "";
 	int espatch_ver_valid = E_UA_ERR;
 	delta_tool_hh_t* dth  = 0;
 	char* delta_cap       = NULL;
+
+	char format[16];
+	char compression[16];
+	char espatch_ver[7];
+	bzero(format, sizeof(format));
+	bzero(compression, sizeof(compression));
+	bzero(espatch_ver, sizeof(espatch_ver));
+	strcpy_s(format, "A:", sizeof(format));
+	strcpy_s(compression, "B:", sizeof(compression));
 
 	HASH_FIND_STR(patchTool, "bsdiff", dth);
 	if (dth) strcat(format, "1,");
