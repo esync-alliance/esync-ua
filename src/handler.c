@@ -799,7 +799,19 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
+	if (uacc == NULL) {
+		A_ERROR_MSG("uacc is NULL.");
+		return;
+	}
+	if (jsonObj == NULL) {
+		A_ERROR_MSG("jsonObj is NULL.");
+		return;
+	}
+	ua_routine_t* uar     = uacc->uar;
+	if (uar == NULL) {
+		A_ERROR_MSG("uar is NULL.");
+		return;
+	}
 	pkg_info_t pkgInfo    = {0};
 	char* installedVer    = NULL;
 	char* replyId         = NULL;
@@ -1448,7 +1460,15 @@ static download_state_t prepare_download_action(ua_component_context_t* uacc, pk
 
 install_state_t pre_update_action(ua_component_context_t* uacc)
 {
-	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
+	if (uacc == NULL) {
+		A_ERROR_MSG("uacc is NULL.");
+		return INSTALL_FAILED;
+	}
+	ua_routine_t* uar = uacc->uar;
+	if (uar == NULL) {
+		A_ERROR_MSG("uar is NULL.");
+		return INSTALL_FAILED;
+	}
 	install_state_t state = INSTALL_IN_PROGRESS;
 	pkg_info_t* pkgInfo   = &uacc->update_pkg;
 	pkg_file_t* pkgFile   = &uacc->update_file_info;
@@ -1559,7 +1579,15 @@ install_state_t update_action(ua_component_context_t* uacc)
 
 void post_update_action(ua_component_context_t* uacc)
 {
-	ua_routine_t* uar = (uacc != NULL) ? uacc->uar : NULL;
+	if (uacc == NULL) {
+		A_ERROR_MSG("uacc is NULL.");
+		return;
+	}
+	ua_routine_t* uar = uacc->uar;
+	if (uar == NULL) {
+		A_ERROR_MSG("uar is NULL.");
+		return;
+	}
 
 	if (uar->on_post_install) {
 #ifdef LIBUA_VER_2_0
