@@ -229,7 +229,7 @@ if (BUILD_BINS)
         src/delta.c
         src/delta.h        )
 
-    add_executable(make_backup ${MAKE_BACKUP_SOURCE})
+    add_executable(make_backup ${MAKE_BACKUP_SOURCE} ${CMAKE_BINARY_DIR}/ua_version.h)
     target_link_libraries(make_backup ${APP_DEPS})
 
 endif()
