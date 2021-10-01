@@ -304,7 +304,7 @@ static int get_espatch_version(char* ver, int len)
 				char* tmp = strstr(output, "version: ");
 				if (tmp && (strlen(tmp)- strlen("version: ") < len-1)) {
 					memset(ver, 0, len);
-					strncpy(ver, tmp+strlen("version: "), len-1);
+					strcpy_s(ver, tmp+strlen("version: "), len);
 					A_INFO_MSG("espatch outputs version: %s", ver);
 				} else {
 					A_ERROR_MSG("error: could not parse version from espatch output: %s.", output);
@@ -322,7 +322,7 @@ static int get_espatch_version(char* ver, int len)
 		rc = E_UA_ERR;
 		const char* version = espatch_get_version();
 		if (version) {
-			strncpy(ver, version, strlen(version));
+			strcpy_s(ver, version, strlen(version)+1);
 			rc = E_UA_OK;
 		}
 #endif

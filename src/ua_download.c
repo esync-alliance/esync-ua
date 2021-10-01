@@ -421,7 +421,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 			memset(dlc->dl_rec.e_tag, 0, sizeof(dlc->dl_rec.e_tag));
 			if (ddc->e_tag) {
 				dlc->dl_rec.e_tag_valid = 1;
-				strncpy(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag)-1);
+				strcpy_s(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag));
 			} else {
 				dlc->dl_rec.e_tag_valid = 0;
 			}
