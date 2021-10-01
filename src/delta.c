@@ -401,12 +401,12 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	if (strlen(format) > 2)
 		format[strlen(format) - 1] = ';';
 	else
-		strcpy(format, "A:0;");
+		strcpy_s(format, "A:0;", sizeof(format));
 
 	if (strlen(compression) > 2)
 		compression[strlen(compression) - 1] = ';';
 	else
-		strcpy(compression, "B:0;");
+		strcpy_s(compression, "B:0;", sizeof(compression));
 
 	if (strlen(format) > 0 || strlen(compression) > 0) {
 		if (espatch_ver_valid == E_UA_OK)
@@ -431,6 +431,7 @@ __attribute__((unused)) static char* expand_tool_args(const char* args, const ch
 
 	while (*s) {
 		if (((rp = old) && (strcasestr(s, ex = OFA) == s)) || ((rp = new) && (strcasestr(s, ex = NFA) == s)) || ((rp = diff) && (strcasestr(s, ex = PFA) == s))) {
+#undef strcpy
 			strcpy(&res[i], rp);
 			i += strlen(rp);
 			s += strlen(ex);
