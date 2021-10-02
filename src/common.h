@@ -6,11 +6,33 @@
 #define UA_COMMON_H_
 
 #include <stddef.h>
+#include <string.h>
 #include "porting.h"
 
 #define XL4_UNUSED(x) (void)x;
 #define BASE_TEN_CONVERSION 10
 
+/* Force error if string.h functions are used */
+#define strcpy(a,b)     _Pragma("GCC error \"strcpy not safe use strcpy_s\"")
+#define strncpy(a,b,c)  _Pragma("GCC error \"strncpy not safe use strcpy_s\"")
+
+/**
+ * strcpy_s - Copy a C-string into a sized buffer
+ * @dest:  Where to copy the string to
+ * @src:   Where to copy the string from
+ * @count: Size of destination buffer
+ *
+ * Copy the string, or as much of it as fits, into the dest buffer.  The
+ * behavior is undefined if the string buffers overlap.  The destination
+ * buffer is always NUL terminated, unless it's zero-sized.
+ *
+ * Preferred to strncpy() since it always returns a valid string, and
+ * doesn't unnecessarily force the tail of the destination buffer to be
+ * zeroed.
+ *
+ * Returns:
+ * * The number of characters copied (not including the trailing %NUL)
+ */
 size_t strcpy_s(char *dst, const char *src, size_t size);
 
 char* f_asprintf(const char* fmt, ...);

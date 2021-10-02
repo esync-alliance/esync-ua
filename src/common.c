@@ -24,6 +24,7 @@ size_t strcpy_s(char *dst, const char *src, size_t size)
         dst[size-1] = 0;
         return size-1;
     }
+#undef strncpy
     strncpy(dst, src, size-1);
     dst[size-1] = 0;
     return strlen(dst);
