@@ -6,6 +6,8 @@
 #include "delta_utils.h"
 #endif
 #include <zip.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
@@ -135,6 +137,109 @@ int delta_use_external_algo(void)
 	return delta_stg.use_external_algo;
 }
 
+char* read_pwd(char* path) {
+	char pwd_buf[64];
+	FILE *fp = fopen(path, "r");
+	if(fp != NULL) {
+		if (fgets(pwd_buf, sizeof(pwd_buf), fp) != NULL){
+			printf("%s", pwd_buf);
+			fclose(fp);
+			return f_strdup(pwd_buf);
+		}	
+	}
+	return NULL;
+}
+
+int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repackaging) {
+	int status = E_UA_OK;
+	char unsquash_cmd[PATH_MAX]    = { 0 };
+	char unsq_cmd[PATH_MAX]    = { 0 };
+	char squashfs_cmd[PATH_MAX]    = { 0 };
+	char run_cmd[PATH_MAX]    = { 0 };
+	FILE* pf;
+	char output[64];
+	char* squash_dir = JOIN(delta_stg.cache_dir, "art");
+
+	if(!repackaging) {
+		A_INFO_MSG("squash_dir: %s\n", squash_dir);
+		if (squash_dir) {
+			if (!access(squash_dir, W_OK)) {
+				rmdirp(squash_dir);
+			}
+		}
+
+		int ret_dir = mkdir(squash_dir, 0777);
+		if (ret_dir != 0) {
+			A_INFO_MSG("tempdir: squsash up directory creation failed\n");
+		}
+
+		memset(unsquash_cmd, 0, PATH_MAX);
+		snprintf(unsquash_cmd, (PATH_MAX - 1), "%s %s %s",UNSQUASH_BIN_PATH, "-mkfs-time", (char*)squashFile);
+		pf = popen(unsquash_cmd, "r");
+		if (!pf) {
+			A_ERROR_MSG("Could not run unsqush to determine mkfs-time");
+			return -1;
+
+		}else {
+			if (fgets(output, sizeof(output), pf) != NULL) {
+			}
+			pclose(pf);
+		}
+		snprintf(unsq_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, "test.bin");
+	}else {
+		snprintf(unsq_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, "test1.bin");
+	}
+
+	memset(run_cmd, 0, PATH_MAX);
+	if(getuid() != 0) {
+		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
+		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
+		
+	}else {
+		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
+	}
+
+	if(system(run_cmd)) {
+		A_ERROR_MSG("failed to unsquash: %s\n", squashFile);
+		return E_UA_SYS;
+	}
+
+	memset(squashfs_cmd, 0, PATH_MAX);
+	if(!repackaging) {
+		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , di->old_name, "-noI -noId -noD -noF -noX -noappend -mkfs-time" ,output);
+	}else {
+		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , di->name, di->nesting.un_squash_fs.mk_squash_fs_options);
+	}
+	
+	memset(run_cmd, 0, PATH_MAX);
+	if(getuid() != 0) {
+		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
+		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s", "echo", pwd_buf , "|", "sudo", "-S", squashfs_cmd);
+	}else {
+		snprintf(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
+	}
+
+	if(system(run_cmd)) {
+			A_ERROR_MSG("failed to mksquash: %s\n", squashFile);
+   		return E_UA_SYS;;
+	}
+	
+	if(repackaging) {
+		rmdirp(squashFile);
+		memset(run_cmd, 0, PATH_MAX);
+		snprintf(run_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, di->name);
+		A_INFO_MSG("copying file from %s to %s \n", run_cmd, squashFile);
+		copy_file(run_cmd,squashFile);
+		if(verify_file(squashFile, di->sha256.new) != E_UA_OK) {
+			status = E_UA_ERR;
+		}
+	}
+
+	return status;
+}
+
+
+
 int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const char* newPkgFile)
 {
 	int err = E_UA_OK;
@@ -177,6 +282,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 		DL_FOREACH_SAFE(diList, di, aux) {
 			if (!err) {
+				bool squashfsDone = 0;
 				if(di->old_name != NULL)
 					oldFile  = JOIN(oldPath, di->old_name);
 				else
@@ -184,6 +290,13 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 				diffFile = JOIN(diffPath, di->name);
 				newFile  = JOIN(newPath, di->name);
+
+				if(di->nesting.un_squash_fs.un_squash_fs && di->nesting.squash_fs_uncompressed.squash_fs_uncompressed && di->nesting.single_file_delta.single_file_delta) {
+
+					if(process_squashfs_image(oldFile, di, 0) != E_UA_OK) err = E_UA_ERR;
+					oldFile = JOIN(delta_stg.cache_dir, "art", di->old_name);
+					squashfsDone = 1;
+				}
 
 				A_INFO_MSG("oldFile: %s", oldFile);
 				A_INFO_MSG("diffFile: %s", diffFile);
@@ -196,14 +309,24 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 					if (verify_file(oldFile, di->sha256.old) || copy_file(oldFile, newFile)) err = E_UA_ERR;
 
 				} else if (di->type == DT_CHANGED) {
-					if (verify_file(oldFile, di->sha256.old) || delta_patch(di, oldFile, newFile, diffFile) || verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
-
+					if(squashfsDone)  {
+						if (delta_patch(di, oldFile, newFile, diffFile)) err = E_UA_ERR;
+					} else {
+						if (verify_file(oldFile, di->sha256.old) || delta_patch(di, oldFile, newFile, diffFile) || verify_file(newFile, di->sha256.new)) err = E_UA_ERR;
+					}
 				}
 
 				if (!access(oldFile, R_OK))
 					remove(oldFile);
 				if (!access(diffFile, R_OK))
 					remove(diffFile);
+
+				if(squashfsDone) {
+					if(di->nesting.un_squash_fs.un_squash_fs && di->nesting.squash_fs_uncompressed.squash_fs_uncompressed && di->nesting.single_file_delta.single_file_delta) {
+						if (process_squashfs_image(newFile, di, 1) != E_UA_OK) err = E_UA_ERR;
+					}
+					squashfsDone = 0;		
+				}
 
 				free(oldFile);
 				free(diffFile);
@@ -221,6 +344,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 			BOLT_IF(copy_file(manifest_diff, manifest_new), E_UA_ERR, "failed to copy manifest");
 			rmdirp(diffPath);
 			BOLT_IF(zip(newPkgFile, newPath), E_UA_ERR, "zip failed: %s", newPkgFile);
+
 		}
 
 	} while (0);
@@ -240,6 +364,22 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	f_free(pkg_dir);
 	f_free(top_delta_dir);
 	Z_FREE(diff_manifest);
+
+	if (!access(JOIN(delta_stg.cache_dir, "art"), R_OK)) {
+		char* tempDir = JOIN(delta_stg.cache_dir, "art");
+		if(getuid() != 0) {
+			char run_cmd[PATH_MAX]    = { 0 };
+			memset(run_cmd, 0, PATH_MAX);
+			char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
+			snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", tempDir);
+			if(system(run_cmd)) {
+				return E_UA_SYS;
+			}
+		}else {
+			rmdirp(tempDir);
+		}
+	}
+	
 
 	return err;
 }
@@ -548,7 +688,10 @@ void free_diff_info(diff_info_t* di)
 	Z_FREE(di->name);
 	Z_FREE(di->format);
 	Z_FREE(di->compression);
+	Z_FREE(di->old_name);
+	//Z_FREE(di->nesting.un_squash_fs.un_squash_fs);
 	Z_FREE(di);
 
 }
+
 
