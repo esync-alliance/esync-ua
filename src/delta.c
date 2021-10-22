@@ -142,12 +142,31 @@ char* read_pwd(char* path) {
 	FILE *fp = fopen(path, "r");
 	if(fp != NULL) {
 		if (fgets(pwd_buf, sizeof(pwd_buf), fp) != NULL){
-			printf("%s", pwd_buf);
 			fclose(fp);
 			return f_strdup(pwd_buf);
 		}	
 	}
 	return NULL;
+}
+
+/**
+ * Replace all occurrence of a character in given string.
+ */
+void replaceAll(char * str, char oldChar, char newChar)
+{
+    int i = 0;
+
+    /* Run till end of string */
+    while(str[i] != '\0')
+    {
+        /* If occurrence of character is found */
+        if(str[i] == oldChar)
+        {
+            str[i] = newChar;
+        }
+
+        i++;
+    }
 }
 
 int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repackaging) {
@@ -156,8 +175,11 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 	char unsq_cmd[PATH_MAX]    = { 0 };
 	char squashfs_cmd[PATH_MAX]    = { 0 };
 	char run_cmd[PATH_MAX]    = { 0 };
+	char cp_cmd[PATH_MAX]    = { 0 };
+	char str[PATH_MAX] = {0};
 	FILE* pf;
 	char output[64];
+
 	char* squash_dir = JOIN(delta_stg.cache_dir, "art");
 
 	if(!repackaging) {
@@ -183,6 +205,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 		}else {
 			if (fgets(output, sizeof(output), pf) != NULL) {
 			}
+			A_INFO_MSG("MKFS TIME: %s\n", output);
 			pclose(pf);
 		}
 		snprintf(unsq_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, "test.bin");
@@ -205,10 +228,16 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 	}
 
 	memset(squashfs_cmd, 0, PATH_MAX);
+	memset(str, 0, PATH_MAX);
+
 	if(!repackaging) {
-		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , di->old_name, "-noI -noId -noD -noF -noX -noappend -mkfs-time" ,output);
+		snprintf(str, (PATH_MAX - 1), "%s", di->old_name);
+		replaceAll(str, '/', '%');
+		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir ,str, "-noI -noId -noD -noF -noX -noappend -mkfs-time" ,output);
 	}else {
-		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , di->name, di->nesting.un_squash_fs.mk_squash_fs_options);
+		snprintf(str, (PATH_MAX - 1), "%s", di->name);
+		replaceAll(str, '/', '%');
+		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , str, di->nesting.un_squash_fs.mk_squash_fs_options);
 	}
 	
 	memset(run_cmd, 0, PATH_MAX);
@@ -219,17 +248,18 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 		snprintf(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
 	}
 
+	A_INFO_MSG("mksquashfs command: %s\n", run_cmd);
 	if(system(run_cmd)) {
-			A_ERROR_MSG("failed to mksquash: %s\n", squashFile);
+		A_ERROR_MSG("failed to mksquash: %s\n", squashFile);
    		return E_UA_SYS;;
 	}
 	
 	if(repackaging) {
 		rmdirp(squashFile);
-		memset(run_cmd, 0, PATH_MAX);
-		snprintf(run_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, di->name);
-		A_INFO_MSG("copying file from %s to %s \n", run_cmd, squashFile);
-		copy_file(run_cmd,squashFile);
+		memset(cp_cmd, 0, PATH_MAX);
+		snprintf(cp_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, str);
+		A_INFO_MSG("copying file from %s to %s \n", cp_cmd, squashFile);
+		copy_file(cp_cmd,squashFile);
 		if(verify_file(squashFile, di->sha256.new) != E_UA_OK) {
 			status = E_UA_ERR;
 		}
@@ -294,7 +324,11 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 				if(di->nesting.un_squash_fs.un_squash_fs && di->nesting.squash_fs_uncompressed.squash_fs_uncompressed && di->nesting.single_file_delta.single_file_delta) {
 
 					if(process_squashfs_image(oldFile, di, 0) != E_UA_OK) err = E_UA_ERR;
-					oldFile = JOIN(delta_stg.cache_dir, "art", di->old_name);
+					
+					char str[PATH_MAX] = {0};
+					snprintf(str, (PATH_MAX - 1), "%s", di->old_name);
+					replaceAll(str, '/', '%');
+					oldFile = JOIN(delta_stg.cache_dir, "art", str);
 					squashfsDone = 1;
 				}
 
