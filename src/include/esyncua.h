@@ -260,6 +260,9 @@ typedef struct ua_cfg {
 	// specifies the backup directory
 	char* backup_dir;
 
+	// specifies the diagnostic file directory
+	char *diag_dir;
+
 	// enables delta support
 	// 0 = default, delta update is disable.
 	// 1 = delta update is enabled.

@@ -101,7 +101,8 @@ if(ESYNC_ALLIANCE)
 	set(UpdateAgentBinNAme "${binName}")
 else()
 	set(UpdateAgentBinNAme "tmpl-updateagent")
-endif() 
+endif()
+
 set(LIB_SOURCE ${LIB_SOURCE}
     PHONY
     ${BCH}
@@ -115,6 +116,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/xml.c
     src/updater.c
     src/component.c
+    src/diagnostic.c
     src/handler.h
     src/utils.h
     src/xl4busclient.h
@@ -128,6 +130,7 @@ set(LIB_SOURCE ${LIB_SOURCE}
     src/uthash.h
     src/utlist.h
     src/debug.h
+    src/diagnostic.h
 )
 
 if (USE_LEGACY_API)
@@ -218,7 +221,7 @@ if (BUILD_BINS)
         message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
     endif()
 
-    set(MAKE_BACKUP_SOURCE 
+    set(MAKE_BACKUP_SOURCE
         src/tools/make_backup.c
         src/xml.c
         src/xml.h
@@ -227,7 +230,12 @@ if (BUILD_BINS)
         src/common.c
         src/common.h
         src/delta.c
-        src/delta.h        )
+        src/delta.h
+        src/delta.h
+        src/handler.h
+        src/debug.h 
+        src/diagnostic.c 
+        src/diagnostic.h )
 
     add_executable(make_backup ${MAKE_BACKUP_SOURCE} ${CMAKE_BINARY_DIR}/ua_version.h)
     target_link_libraries(make_backup ${APP_DEPS})
@@ -286,3 +294,5 @@ if(BUILD_PY_LIBUA)
 		install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E env XL4BUS_DIR=${XL4BUS_DIR} LIBUA_BUILD=${CMAKE_BINARY_DIR} ${PYTHON_BIN_PATH} ${SETUP_PY} install --record install_files.txt)")
 	endif()
 endif()
+
+

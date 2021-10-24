@@ -89,6 +89,8 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.cache_dir                     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
 		ua_intl.backup_dir                    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
+		ua_intl.diag_dir					  = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
+		ua_intl.diag_file 					  = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
 		ua_intl.backup_source                 = uaConfig->backup_source;
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
@@ -1150,6 +1152,10 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 		A_INFO_MSG("Delta reconstruction failed!");
 	} else {
 		A_INFO_MSG("Delta reconstruction success!");
+		int ret;
+		ret = store_data(0, 0, "D_COMPLETE");
+		if (ret)
+			A_INFO_MSG("D_COMPLETE");
 	}
 
 	if (pkgFile != NULL)
@@ -1226,13 +1232,31 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 {
 	pkg_info_t pkgInfo = {0};
 	int64_t downloadedBytes, totalBytes;
+	int ret;
+	static bool tmp = TRUE;
 
 	if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-	    !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
-	    !get_total_bytes_from_json(jsonObj, &totalBytes)) {
+		!get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
+		!get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
+		!get_total_bytes_from_json(jsonObj, &totalBytes) &&
+		!get_pkg_id_from_json(jsonObj, &pkgInfo.id) &&
+		!get_pkg_stage_from_json(jsonObj, &pkgInfo.stage))
+	{
+		if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
+			tmp = TRUE;
+		
+		if (tmp == TRUE)
+		{
+			if ((!strcmp(pkgInfo.stage, "DS_DOWNLOAD")) || (!strcmp(pkgInfo.stage, "DS_VERIFY")))
+				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage);
+			
+			if (ret == E_UA_OK)
+				tmp = FALSE;
+			
+			if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
+				tmp = TRUE;
+		}
 		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
-
 	}
 	XL4_UNUSED(uacc);
 }
