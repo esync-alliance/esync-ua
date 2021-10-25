@@ -1140,6 +1140,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
 	int err             = E_UA_ERR;
+	int ret		    = E_UA_OK;
 	pkg_file_t* pkgFile = f_malloc(sizeof(pkg_file_t));
 
 	if (pkgManifest && diffFile && newFile && pkgFile &&
@@ -1150,10 +1151,12 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (err) {
 		A_INFO_MSG("Delta reconstruction failed!");
+		ret = store_data(0, 0, 0, 0, 0, "FAILED");
+		if (ret)
+			A_INFO_MSG("D_FAILED");
 	} else {
 		A_INFO_MSG("Delta reconstruction success!");
-		int ret;
-		ret = store_data(0, 0, "D_COMPLETE", 0);
+		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "SUCCESS");
 		if (ret)
 			A_INFO_MSG("D_COMPLETE");
 	}
@@ -1248,8 +1251,8 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 		if (tmp == TRUE)
 		{
 			if ((!strcmp(pkgInfo.stage, "DS_DOWNLOAD")) || (!strcmp(pkgInfo.stage, "DS_VERIFY")))
-				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes);
-			
+				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes, pkgInfo.version, 0);
+
 			if (ret == E_UA_OK)
 				tmp = FALSE;
 			

@@ -34,15 +34,17 @@ int persistent_file_exist(const char *filename)
     return err;
 }
 
-int store_data(char* id, char* pkgname, char* status, unsigned int value){
-    diag.id = id;
-    diag.pkgname = pkgname;
-    diag.d_status = status;
-    diag.d_start = 0;
-    diag.d_complete = 0;
-    diag.p_start = 0;
-    diag.p_stop = 0;
-    diag.t_length = value;
+int store_data(char* id, char* pkgname, char* status, unsigned int value, char* pkgversion, char* p_status) {
+    diag.id		 = id;
+    diag.pkgname	 = pkgname;
+    diag.d_status	 = status;
+    diag.pkgversion	 = pkgversion;
+    diag.p_status	 = p_status;
+    diag.d_start	 = 0;
+    diag.d_complete	 = 0;
+    diag.p_start	 = 0;
+    diag.p_stop	 = 0;
+    diag.t_length	 = value;
 
         int ret = E_UA_OK;
     if (persistent_file_exist(ua_intl.diag_file) == E_UA_ERR)
@@ -54,8 +56,8 @@ int store_data(char* id, char* pkgname, char* status, unsigned int value){
         }
         else
         {
-            fprintf(fp, "%s, %s, %s, %s, %s, %s, %s\n", "Campaign_ID", "Package_Name", "Download_length","Download_Start", "Download_Complete",
-                        "Patch_start", "Patch_Complete");
+            fprintf(fp, "%s, %s, %s, %s, %s, %s, %s, %s, %s\n", "Campaign_ID", "Package_Name", "Package_Version", "Download_Size", "Download_Start", "Download_Complete",
+                    "Patch_Start", "Patch_Complete", "Patch_Status");
             fclose(fp);
             A_INFO_MSG("data.csv file open success\n");
             ret = E_UA_OK;
@@ -72,7 +74,7 @@ int store_data(char* id, char* pkgname, char* status, unsigned int value){
     {
         diag.d_start = get_time();
         diag.t_size = ((float)diag.t_length / (1000 * 1000));
-        fprintf(fp, "\n%s, %s, %.2f %s, %s", diag.id, diag.pkgname, diag.t_size, "MB", diag.d_start);
+        fprintf(fp, "\n%s, %s, %s, %.2f %s, %s", diag.id, diag.pkgname, diag.pkgversion, diag.t_size, "MB", diag.d_start);
         fclose(fp);
     }
     else if (!strcmp(diag.d_status,DOWNLOAD_COMPLETE))
@@ -90,7 +92,7 @@ int store_data(char* id, char* pkgname, char* status, unsigned int value){
     else if (!strcmp(diag.d_status, PATCH_COMPLETE))
     {
         diag.p_stop = get_time();
-        fprintf(fp, "%s, %s\n", "", diag.p_stop);
+        fprintf(fp, "%s, %s, %s\n", "", diag.p_stop, diag.p_status);
         fclose(fp);
     }
     return ret;
