@@ -12,7 +12,7 @@
 
 int persistent_file_exist(const char *filename);
 char* get_time(void);
-int store_data(char *id, char *pkgname, char *status);
+int store_data(char *id, char *pkgname, char *status, unsigned int value);
 
 typedef struct diag_csv
 {
@@ -23,6 +23,8 @@ typedef struct diag_csv
     char* p_start;
     char* p_stop;
     char* d_status;
+    unsigned int t_length;
+    float t_size;
 } diag_t;
 
 #endif /* UA_DIAGNOSTIC_H_ */

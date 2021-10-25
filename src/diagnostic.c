@@ -34,7 +34,7 @@ int persistent_file_exist(const char *filename)
     return err;
 }
 
-int store_data(char* id, char* pkgname, char* status){
+int store_data(char* id, char* pkgname, char* status, unsigned int value){
     diag.id = id;
     diag.pkgname = pkgname;
     diag.d_status = status;
@@ -42,9 +42,9 @@ int store_data(char* id, char* pkgname, char* status){
     diag.d_complete = 0;
     diag.p_start = 0;
     diag.p_stop = 0;
+    diag.t_length = value;
 
-    
-    int ret = E_UA_OK;
+        int ret = E_UA_OK;
     if (persistent_file_exist(ua_intl.diag_file) == E_UA_ERR)
     {
         FILE *fp = fopen(ua_intl.diag_file, "w");
@@ -54,7 +54,7 @@ int store_data(char* id, char* pkgname, char* status){
         }
         else
         {
-            fprintf(fp, "%s, %s, %s, %s, %s, %s\n", "Campaign_ID", "Package_Name", "Download_Start", "Download_Complete",
+            fprintf(fp, "%s, %s, %s, %s, %s, %s, %s\n", "Campaign_ID", "Package_Name", "Download_length","Download_Start", "Download_Complete",
                         "Patch_start", "Patch_Complete");
             fclose(fp);
             A_INFO_MSG("data.csv file open success\n");
@@ -71,7 +71,8 @@ int store_data(char* id, char* pkgname, char* status){
     else if (!strcmp(diag.d_status,DOWNLOAD_START)) 
     {
         diag.d_start = get_time();
-        fprintf(fp, "\n%s, %s, %s", diag.id, diag.pkgname, diag.d_start);
+        diag.t_size = ((float)diag.t_length / (1000 * 1000));
+        fprintf(fp, "\n%s, %s, %.2f %s, %s", diag.id, diag.pkgname, diag.t_size, "MB", diag.d_start);
         fclose(fp);
     }
     else if (!strcmp(diag.d_status,DOWNLOAD_COMPLETE))

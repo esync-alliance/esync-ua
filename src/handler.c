@@ -1153,7 +1153,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 	} else {
 		A_INFO_MSG("Delta reconstruction success!");
 		int ret;
-		ret = store_data(0, 0, "D_COMPLETE");
+		ret = store_data(0, 0, "D_COMPLETE", 0);
 		if (ret)
 			A_INFO_MSG("D_COMPLETE");
 	}
@@ -1248,7 +1248,7 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 		if (tmp == TRUE)
 		{
 			if ((!strcmp(pkgInfo.stage, "DS_DOWNLOAD")) || (!strcmp(pkgInfo.stage, "DS_VERIFY")))
-				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage);
+				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes);
 			
 			if (ret == E_UA_OK)
 				tmp = FALSE;

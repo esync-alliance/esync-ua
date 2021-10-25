@@ -476,7 +476,7 @@ int libzip_find_file(const char* archive, const char* path)
 		} else {
 			A_ERROR_MSG("file: %s found in zip: %s", path, archive);
 			int ret;
-			ret = store_data(0, 0, "D_START");
+			ret = store_data(0, 0, "D_START", 0);
 			if (ret)
 				A_INFO_MSG("D_START");
 			err = E_UA_OK;
