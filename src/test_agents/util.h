@@ -69,7 +69,7 @@ typedef struct scp_info {
 
 int xl4_run_cmd(char* argv[]);
 scp_info_t* scp_init(scp_info_t* scp);
-char* scp_get_file(scp_info_t* scp, char* remote_path);
+char* scp_get_file(scp_info_t* scp, const char* remote_path);
 scp_info_t* scp_get_info(void);
 
 #ifdef LIBUA_VER_2_0

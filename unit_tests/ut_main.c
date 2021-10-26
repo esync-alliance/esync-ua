@@ -195,13 +195,13 @@ int main(int argc, char** argv)
 	int sel = -1;
 
 	handler_type = UT_DEFAULT_HANDLER_TYPE;
-	strcpy(case_dir, "../unit_tests/cases/");
+	strcpy_s(case_dir, "../unit_tests/cases/", sizeof(case_dir) - 1);
 
 	while ((c = getopt(argc, argv, ":c:i:t:f:h")) != -1) {
 		switch (c) {
 			case 'c':
 				memset(case_dir, 0, sizeof(case_dir));
-				strncpy(case_dir, optarg, sizeof(case_dir) - 1);
+				strcpy_s(case_dir, optarg, sizeof(case_dir) - 1);
 				break;
 			case 'i':
 				sel = atoi(optarg) - 1;
