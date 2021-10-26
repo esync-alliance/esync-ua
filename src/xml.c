@@ -59,7 +59,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 			if ((p = get_xml_child(n, XMLT "old"))) {
 				if ((c = xmlNodeGetContent(p))) {
 					if (!*diffInfo->sha256.old && (strlen((const char*)c) == (SHA256_HEX_LENGTH - 1))) {
-						strcpy(diffInfo->sha256.old, (const char*)c);
+						strcpy_s(diffInfo->sha256.old, (const char*)c, sizeof(diffInfo->sha256.old));
 					}
 					xmlFree(c);
 				}
@@ -68,7 +68,7 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 			if ((p = get_xml_child(n, XMLT "new"))) {
 				if ((c = xmlNodeGetContent(p))) {
 					if (!*diffInfo->sha256.new && (strlen((const char*)c) == (SHA256_HEX_LENGTH - 1))) {
-						strcpy(diffInfo->sha256.new, (const char*)c);
+						strcpy_s(diffInfo->sha256.new, (const char*)c, sizeof(diffInfo->sha256.new));
 					}
 					xmlFree(c);
 				}
@@ -179,7 +179,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 		if (xmlStrEqual(n->name, XMLT "sha256")) {
 			if ((c = xmlNodeGetContent(n))) {
 				if (!*pkgFile->sha256b64 && (strlen((const char*)c) == (SHA256_B64_LENGTH - 1))) {
-					strcpy(pkgFile->sha256b64, (const char*)c);
+					strcpy_s(pkgFile->sha256b64, (const char*)c, sizeof(pkgFile->sha256b64));
 				}
 				xmlFree(c);
 			}
@@ -187,7 +187,7 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 		} else if (xmlStrEqual(n->name, XMLT "sha-of-sha")) {
 			if ((c = xmlNodeGetContent(n))) {
 				if (strlen((const char*)c) == (SHA256_B64_LENGTH - 1)) {
-					strcpy(pkgFile->sha_of_sha, (const char*)c);
+					strcpy_s(pkgFile->sha_of_sha, (const char*)c, sizeof(pkgFile->sha_of_sha));
 				}
 				xmlFree(c);
 			}
@@ -210,13 +210,15 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 
 		} else if (xmlStrEqual(n->name, XMLT "downloaded")) {
 			if ((c = xmlNodeGetContent(n))) {
-				pkgFile->downloaded = atoi((const char*)c);
+				char *end = NULL;
+				pkgFile->downloaded = strtol((const char*)c, &end, BASE_TEN_CONVERSION);
 				xmlFree(c);
 			}
 
 		}else if (xmlStrEqual(n->name, XMLT "rollback-order")) {
 			if ((c = xmlNodeGetContent(n))) {
-				pkgFile->rollback_order = atoi((const char*)c);
+				char *end = NULL;
+				pkgFile->rollback_order = strtol((const char*)c, &end, BASE_TEN_CONVERSION);
 				xmlFree(c);
 			}
 
@@ -370,7 +372,8 @@ int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 			else if ((n = get_xml_child(node, XMLT "rollback-order"))) {
 				//Increment rollback-order for each version.
 				if ((c = xmlNodeGetContent(n))) {
-					int rc = (int)snprintf(rb_order, sizeof(rb_order), "%d", atoi((const char*)c)+1);
+					char *end = NULL;
+					int rc = (int)snprintf(rb_order, sizeof(rb_order), "%ld", strtol((const char*)c, &end, BASE_TEN_CONVERSION)+1);
 					if (rc > 0 && rc < (int)sizeof(rb_order))
 						xmlNodeSetContent(n, XMLT rb_order);
 					else

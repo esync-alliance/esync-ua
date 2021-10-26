@@ -60,7 +60,8 @@ XL4_PUB void* es_malloc(size_t size,const char *srcref)
 		return NULL;
 	}
 	*ptr = size;
-	return (void*)(ptr+1);
+	size_t *inputbuffer = ptr + 1;
+	return (void*)(inputbuffer);
 }
 
 XL4_PUB void es_free(void* ptr,const char *srcref)
@@ -242,7 +243,8 @@ void read_file(int fd)
 	buf = malloc(buf_size);
 	if (!buf) return;
 	lseek(fd,0,SEEK_SET);
-	while(read(fd, buf, buf_size) > 0);
+	while(read(fd, buf, buf_size) > 0) {
+	}
 	free(buf);
 }
 #endif
@@ -264,8 +266,10 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 	uint8_t *rdbuf = NULL;
 	const size_t rdbuf_size = 4096;
 	struct espinfo info;
-	char comment[128]="";
+	char comment[128];
 	size_t totalpatchlen=0;
+
+	bzero(comment, sizeof(comment));
 
 	if (use_scratch_file) {
 		if (scratchfile == NULL) {
@@ -365,7 +369,7 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 
 		do {
 			if (fuzz_input) {
-				fuzz = rand() % (inputbufsize/2);
+				fuzz = random() % (inputbufsize/2);
 				if (fuzz > inputbufsize-ix)
 					fuzz = 0;
 			}
@@ -382,7 +386,7 @@ int espatch(const char *reffile, const char *newfile, const char * patchfile)
 			if (res == ESPOK_INFO) {
 				res = espGetInfo(esp, &info);
 				if (info.comment)
-					strncpy(comment,info.comment,sizeof(comment));
+					strcpy_s(comment,info.comment,sizeof(comment));
 			}
 		} while (res == ESPOK_MORE || res == ESPOK);
 	}

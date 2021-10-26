@@ -9,6 +9,8 @@
 #include <signal.h>
 #include "tmpl_updateagent.h"
 
+#define BASE_TEN_CONVERSION 10
+
 int ua_debug_lvl = 0;
 
 #ifdef LIBUA_VER_2_0
@@ -58,7 +60,8 @@ int main(int argc, char** argv)
 {
 	printf("updateagent %s, xl4bus %s\n", ua_get_updateagent_version(), ua_get_xl4bus_version());
 
-	int c = 0;
+	int c     = 0;
+	char *end = NULL;
 	ua_cfg_t cfg;
 	memset(&cfg, 0, sizeof(ua_cfg_t));
 
@@ -72,9 +75,12 @@ int main(int argc, char** argv)
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	scp_info_t scpi;
 	memset(&scpi, 0, sizeof(scp_info_t));
-	scpi.local_dir   = "/tmp/esync/scp";
-	scpi.scp_bin     = "scp";
-	scpi.sshpass_bin = "sshpass";
+
+	char* op[]  = {"/tmp/esync/scp", "scp", "sshpass", NULL};
+
+	scpi.local_dir   = op[0];
+	scpi.scp_bin     = op[1];
+	scpi.sshpass_bin = op[2];
 #endif
 
 	while ((c = getopt(argc, argv, ":k:u:b:c:a:m:t:H:U:P:C:ewidDFh")) != -1) {
@@ -130,8 +136,8 @@ int main(int argc, char** argv)
 				cfg.enable_fake_rb_ver = 1;
 				break;
 			case 'm':
-				if ((cfg.rw_buffer_size = atoi(optarg)) > 0)
-					break;
+				if ((cfg.rw_buffer_size = strtol(optarg, &end, BASE_TEN_CONVERSION)) > 0)
+				break;
 			case 'h':
 			default:
 				_help(argv[0]);

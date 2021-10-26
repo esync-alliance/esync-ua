@@ -304,7 +304,7 @@ static int get_espatch_version(char* ver, int len)
 				char* tmp = strstr(output, "version: ");
 				if (tmp && (strlen(tmp)- strlen("version: ") < len-1)) {
 					memset(ver, 0, len);
-					strncpy(ver, tmp+strlen("version: "), len-1);
+					strcpy_s(ver, tmp+strlen("version: "), len);
 					A_INFO_MSG("espatch outputs version: %s", ver);
 				} else {
 					A_ERROR_MSG("error: could not parse version from espatch output: %s.", output);
@@ -322,7 +322,7 @@ static int get_espatch_version(char* ver, int len)
 		rc = E_UA_ERR;
 		const char* version = espatch_get_version();
 		if (version) {
-			strncpy(ver, version, strlen(version));
+			strcpy_s(ver, version, strlen(version)+1);
 			rc = E_UA_OK;
 		}
 #endif
@@ -333,8 +333,10 @@ static int get_espatch_version(char* ver, int len)
 
 static char* get_config_delta_cap(char* delta_cap)
 {
-	char espatch_ver[7] = "";
+	char espatch_ver[7];
 	char* ret_cap       = NULL;
+
+	bzero(espatch_ver, sizeof(espatch_ver));
 
 	if (delta_cap) {
 		char* tmp_cap = f_strdup(delta_cap);
@@ -366,12 +368,18 @@ static char* get_config_delta_cap(char* delta_cap)
 static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* decompTool)
 {
 	int memory            = 100;
-	char format[16]       = "A:";
-	char compression[16]  = "B:";
-	char espatch_ver[7]   = "";
 	int espatch_ver_valid = E_UA_ERR;
 	delta_tool_hh_t* dth  = 0;
 	char* delta_cap       = NULL;
+
+	char format[16];
+	char compression[16];
+	char espatch_ver[7];
+	bzero(format, sizeof(format));
+	bzero(compression, sizeof(compression));
+	bzero(espatch_ver, sizeof(espatch_ver));
+	strcpy_s(format, "A:", sizeof(format));
+	strcpy_s(compression, "B:", sizeof(compression));
 
 	HASH_FIND_STR(patchTool, "bsdiff", dth);
 	if (dth) strcat(format, "1,");
@@ -393,12 +401,12 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	if (strlen(format) > 2)
 		format[strlen(format) - 1] = ';';
 	else
-		strcpy(format, "A:0;");
+		strcpy_s(format, "A:0;", sizeof(format));
 
 	if (strlen(compression) > 2)
 		compression[strlen(compression) - 1] = ';';
 	else
-		strcpy(compression, "B:0;");
+		strcpy_s(compression, "B:0;", sizeof(compression));
 
 	if (strlen(format) > 0 || strlen(compression) > 0) {
 		if (espatch_ver_valid == E_UA_OK)
@@ -423,6 +431,7 @@ __attribute__((unused)) static char* expand_tool_args(const char* args, const ch
 
 	while (*s) {
 		if (((rp = old) && (strcasestr(s, ex = OFA) == s)) || ((rp = new) && (strcasestr(s, ex = NFA) == s)) || ((rp = diff) && (strcasestr(s, ex = PFA) == s))) {
+#undef strcpy
 			strcpy(&res[i], rp);
 			i += strlen(rp);
 			s += strlen(ex);

@@ -73,7 +73,7 @@ json_object* update_get_update_file_info_jo(pkg_file_t* update_inf)
 int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_inf)
 {
 	int err                = E_UA_OK;
-	char* update_file_prop = "update-file-info";
+	const char* update_file_prop = "update-file-info";
 	char* tmp_str          = 0;
 
 	if (jo_update_inf && update_inf) {
@@ -84,7 +84,7 @@ int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_i
 			update_inf->version = f_strdup(tmp_str);
 
 		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "sha256", NULL)) == E_UA_OK)
-			strncpy(update_inf->sha256b64, tmp_str, sizeof(update_inf->sha256b64));
+			strcpy_s(update_inf->sha256b64, tmp_str, sizeof(update_inf->sha256b64));
 
 		err = json_get_property(jo_update_inf, json_type_int, &update_inf->downloaded, update_file_prop, "downloaded", NULL);
 
@@ -172,7 +172,7 @@ char* update_record_load(char* record_file)
 	if (record_file && (fd = fopen(record_file, "r"))) {
 		fseek(fd, 0L, SEEK_END);
 		len = ftell(fd);
-		rewind(fd);
+		fseek(fd, 0L, SEEK_SET);
 
 		jstring = (char*)malloc(len+1);
 		if (jstring) {

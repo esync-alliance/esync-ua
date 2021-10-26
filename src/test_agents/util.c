@@ -62,11 +62,12 @@ scp_info_t* scp_init(scp_info_t* scp)
 	return NULL;
 }
 
-char* scp_get_file(scp_info_t* scp, char* remote_path)
+char* scp_get_file(scp_info_t* scp, const char* remote_path)
 {
 	char* argv[9]                = {0};
 	char full_scp_path[PATH_MAX] = {0};
 	int err                      = E_UA_OK;
+	char* argv_op[]              = {"-p", "-o", "StrictHostKeyChecking no", NULL};
 
 	if (scp && scp->url && scp->user && scp->local_dir && remote_path) {
 		if (snprintf(full_scp_path, sizeof(full_scp_path) - 1, "%s@%s:%s", scp->user, scp->url, remote_path) <= 0) {
@@ -87,17 +88,17 @@ char* scp_get_file(scp_info_t* scp, char* remote_path)
 		if (err == E_UA_OK) {
 			if (scp->password) {
 				argv[0] = scp->sshpass_bin;
-				argv[1] = "-p";
+				argv[1] = argv_op[0];
 				argv[2] = scp->password;
 				argv[3] = scp->scp_bin;
-				argv[4] = "-o";
-				argv[5] = "StrictHostKeyChecking no";
+				argv[4] = argv_op[1];
+				argv[5] = argv_op[2];
 				argv[6] = full_scp_path;
 				argv[7] = scp->dest_path;
 			} else {
 				argv[0] = scp->scp_bin;
-				argv[1] = "-o";
-				argv[2] = "StrictHostKeyChecking no";
+				argv[1] = argv_op[1];
+				argv[2] = argv_op[2];
 				argv[3] = full_scp_path;
 				argv[4] = scp->dest_path;
 			}
@@ -143,7 +144,7 @@ int do_transfer_file(const char* type, const char* pkgName, const char* version,
 	scp_info_t* scp = scp_get_info();
 
 	if (scp && scp->url) {
-		if ((*newFile = scp_get_file(scp, (char*)pkgFile)) == NULL)
+		if ((*newFile = scp_get_file(scp, pkgFile)) == NULL)
 			rc = E_UA_ERR;
 	} else {
 		A_INFO_MSG("SCP url is not set, not transferring file remotely.");

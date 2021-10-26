@@ -71,13 +71,7 @@ int ua_init(ua_cfg_t* uaConfig)
 	do {
 		ua_debug = uaConfig->debug + 0;
 
-		BOLT_IF(!uaConfig || !S(uaConfig->url)
-#ifdef USE_XL4BUS_TRUST
-		        || !S(uaConfig->ua_type)
-#else
-		        || !S(uaConfig->cert_dir)
-#endif
-		        , E_UA_ARG, "configuration error");
+		BOLT_IF(!uaConfig || !S(uaConfig->url) || !S(UACONF), E_UA_ARG, "configuration error");
 
 		BOLT_IF(uaConfig->delta && (!S(uaConfig->cache_dir) || !S(uaConfig->backup_dir)), E_UA_ARG, "cache and backup directory are must for delta");
 
@@ -343,7 +337,7 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 		BOLT_IF(!S(pkgType) || !(logdata->message || logdata->binary), E_UA_ARG, "log report invalid");
 
 		if (S(logdata->timestamp)) {
-			strncpy(timestamp, logdata->timestamp, sizeof(timestamp) - 1);
+			strcpy_s(timestamp, logdata->timestamp, sizeof(timestamp));
 		} else {
 			time_t t          = time(NULL);
 			struct tm* cur_tm = gmtime(&t);
@@ -805,7 +799,19 @@ static void process_run(ua_component_context_t* uacc, process_f func, json_objec
 
 static void process_query_package(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
+	if (uacc == NULL) {
+		A_ERROR_MSG("uacc is NULL.");
+		return;
+	}
+	if (jsonObj == NULL) {
+		A_ERROR_MSG("jsonObj is NULL.");
+		return;
+	}
+	ua_routine_t* uar     = uacc->uar;
+	if (uar == NULL) {
+		A_ERROR_MSG("uar is NULL.");
+		return;
+	}
 	pkg_info_t pkgInfo    = {0};
 	char* installedVer    = NULL;
 	char* replyId         = NULL;
@@ -1454,7 +1460,15 @@ static download_state_t prepare_download_action(ua_component_context_t* uacc, pk
 
 install_state_t pre_update_action(ua_component_context_t* uacc)
 {
-	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
+	if (uacc == NULL) {
+		A_ERROR_MSG("uacc is NULL.");
+		return INSTALL_FAILED;
+	}
+	ua_routine_t* uar = uacc->uar;
+	if (uar == NULL) {
+		A_ERROR_MSG("uar is NULL.");
+		return INSTALL_FAILED;
+	}
 	install_state_t state = INSTALL_IN_PROGRESS;
 	pkg_info_t* pkgInfo   = &uacc->update_pkg;
 	pkg_file_t* pkgFile   = &uacc->update_file_info;
@@ -1565,7 +1579,15 @@ install_state_t update_action(ua_component_context_t* uacc)
 
 void post_update_action(ua_component_context_t* uacc)
 {
-	ua_routine_t* uar = (uacc != NULL) ? uacc->uar : NULL;
+	if (uacc == NULL) {
+		A_ERROR_MSG("uacc is NULL.");
+		return;
+	}
+	ua_routine_t* uar = uacc->uar;
+	if (uar == NULL) {
+		A_ERROR_MSG("uar is NULL.");
+		return;
+	}
 
 	if (uar->on_post_install) {
 #ifdef LIBUA_VER_2_0
@@ -1741,8 +1763,8 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 		backupFile->downloaded = 1;
 
 		if (backupFile->file && backupFile->version) {
-			strcpy(backupFile->sha256b64, pkgFile->sha256b64);
-			strcpy(backupFile->sha_of_sha, pkgFile->sha_of_sha);
+			strcpy_s(backupFile->sha256b64, pkgFile->sha256b64, sizeof(backupFile->sha256b64));
+			strcpy_s(backupFile->sha_of_sha, pkgFile->sha_of_sha, sizeof(backupFile->sha_of_sha));
 
 			if (!strcmp(pkgFile->file, backupFile->file) ||
 			    !sha256xcmp(backupFile->file, backupFile->sha256b64)) {
@@ -1796,15 +1818,17 @@ static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg
 
 static char* install_state_string(install_state_t state)
 {
-	char* str = NULL;
+	char* str           = NULL;
+	char* inst_state[]  = {"INSTALL_READY", "INSTALL_IN_PROGRESS", "INSTALL_COMPLETED",
+			"INSTALL_FAILED", "INSTALL_ABORTED", "INSTALL_ROLLBACK", NULL};
 
 	switch (state) {
-		case INSTALL_READY: str       = "INSTALL_READY";       break;
-		case INSTALL_IN_PROGRESS: str = "INSTALL_IN_PROGRESS"; break;
-		case INSTALL_COMPLETED: str   = "INSTALL_COMPLETED";   break;
-		case INSTALL_FAILED: str      = "INSTALL_FAILED";      break;
-		case INSTALL_ABORTED: str     = "INSTALL_ABORTED";     break;
-		case INSTALL_ROLLBACK: str    = "INSTALL_ROLLBACK";    break;
+		case INSTALL_READY: str       = inst_state[0];       break;
+		case INSTALL_IN_PROGRESS: str = inst_state[1];       break;
+		case INSTALL_COMPLETED: str   = inst_state[2];       break;
+		case INSTALL_FAILED: str      = inst_state[3];       break;
+		case INSTALL_ABORTED: str     = inst_state[4];       break;
+		case INSTALL_ROLLBACK: str    = inst_state[5];       break;
 	}
 
 	return str;
@@ -1813,12 +1837,13 @@ static char* install_state_string(install_state_t state)
 
 static char* download_state_string(download_state_t state)
 {
-	char* str = NULL;
+	char* str         = NULL;
+	char* dn_state[]  = {"DOWNLOAD_POSTPONED", "DOWNLOAD_CONSENT", "DOWNLOAD_DENIED", NULL};
 
 	switch (state) {
-		case DOWNLOAD_POSTPONED: str = "DOWNLOAD_POSTPONED"; break;
-		case DOWNLOAD_CONSENT: str   = "DOWNLOAD_CONSENT";   break;
-		case DOWNLOAD_DENIED: str    = "DOWNLOAD_DENIED";    break;
+		case DOWNLOAD_POSTPONED: str = dn_state[0];   break;
+		case DOWNLOAD_CONSENT: str   = dn_state[1];   break;
+		case DOWNLOAD_DENIED: str    = dn_state[2];   break;
 	}
 
 	return str;
@@ -1826,11 +1851,12 @@ static char* download_state_string(download_state_t state)
 
 static char* update_stage_string(update_stage_t stage)
 {
-	char* str = NULL;
+	char* str         = NULL;
+	char* up_stage[]  = {"US_TRANSFER", "US_INSTALL", NULL};
 
 	switch (stage) {
-		case US_TRANSFER: str = "US_TRANSFER"; break;
-		case US_INSTALL: str  = "US_INSTALL";   break;
+		case US_TRANSFER: str = up_stage[0];   break;
+		case US_INSTALL: str  = up_stage[1];   break;
 	}
 
 	return str;
@@ -1839,14 +1865,15 @@ static char* update_stage_string(update_stage_t stage)
 
 static char* log_type_string(log_type_t log)
 {
-	char* str = NULL;
+	char* str         = NULL;
+	char* log_type[]  = {"EVENT", "INFO", "WARN", "ERROR", "SEVERE", NULL};
 
 	switch (log) {
-		case LOG_EVENT: str  = "EVENT";  break;
-		case LOG_INFO: str   = "INFO";   break;
-		case LOG_WARN: str   = "WARN";   break;
-		case LOG_ERROR: str  = "ERROR";  break;
-		case LOG_SEVERE: str = "SEVERE"; break;
+		case LOG_EVENT: str  = log_type[0];   break;
+		case LOG_INFO: str   = log_type[1];   break;
+		case LOG_WARN: str   = log_type[2];   break;
+		case LOG_ERROR: str  = log_type[3];   break;
+		case LOG_SEVERE: str = log_type[4];   break;
 	}
 
 	return str;
@@ -2028,7 +2055,7 @@ void ua_rollback_control(const char* pkgName, int disable)
 int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type)
 {
 	if ( rb_type != URB_NONE )
-		return comp_set_rb_type(&ua_intl.component_ctrl, (char*)pkgName, rb_type);
+		return comp_set_rb_type(&ua_intl.component_ctrl, pkgName, rb_type);
 	else
 		return E_UA_ERR;
 }

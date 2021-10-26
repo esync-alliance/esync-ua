@@ -26,6 +26,7 @@
 static ua_dl_context_t* ua_dlc = 0;
 static char ua_dl_filename_buffer[PATH_MAX];
 extern ua_internal_t ua_intl;
+char* dl_info_err[]  = {"DLE_DOWNLOAD", "DLE_VERIFY", NULL};
 
 static void ua_dl_release(ua_dl_context_t* dlc);
 static void ua_dl_init_dl_rec(ua_dl_record_t* dl_rec);
@@ -166,7 +167,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 	         pkgInfo->name, pkgInfo->version,
 	         pkgInfo->version);
 	tmp_dlc->dl_encrytion_filename = JOIN(ua_intl.ua_dl_dir, tmp_filename);
-	strcpy(ua_dl_filename_buffer, tmp_dlc->dl_encrytion_filename);
+	strcpy_s(ua_dl_filename_buffer, tmp_dlc->dl_encrytion_filename, sizeof(ua_dl_filename_buffer));
 	ua_intl.ua_downloaded_filename = ua_dl_filename_buffer;
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x.z",
@@ -420,7 +421,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 			memset(dlc->dl_rec.e_tag, 0, sizeof(dlc->dl_rec.e_tag));
 			if (ddc->e_tag) {
 				dlc->dl_rec.e_tag_valid = 1;
-				strncpy(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag)-1);
+				strcpy_s(dlc->dl_rec.e_tag, ddc->e_tag, sizeof(dlc->dl_rec.e_tag));
 			} else {
 				dlc->dl_rec.e_tag_valid = 0;
 			}
@@ -453,7 +454,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 	}else {
 		A_ERROR_MSG("DL ERR: result: %d, http_code: %d", ddc->result, ddc->http_code);
 		if (dlc && pkg_info) {
-			dlc->dl_info.error = "DLE_DOWNLOAD";
+			dlc->dl_info.error = dl_info_err[0];
 			if (send_dl_report(pkg_info, dlc->dl_info, 0) != E_UA_OK) {
 				A_ERROR_MSG("Failed to send dl err report");
 			}
@@ -570,7 +571,7 @@ static int ua_dl_step_encrypt(ua_dl_context_t* dlc)
 		A_ERROR_MSG("ERR: decrypt binary failed");
 		ret = E_UA_ERR;
 
-		dlc->dl_info.error = "DLE_VERIFY";
+		dlc->dl_info.error = dl_info_err[1];
 		if (send_dl_report(dlc->pkg_info, dlc->dl_info, 0) != E_UA_OK) {
 			A_ERROR_MSG("Failed to send dl err report");
 		}
@@ -639,7 +640,7 @@ static int ua_dl_step_verify(ua_dl_context_t* dlc)
 		A_INFO_MSG("ua_dl_setp_verify f_remove_dir");
 		f_remove_dir(dlc->dl_zip_folder);
 	} else {
-		dlc->dl_info.error = "DLE_VERIFY";
+		dlc->dl_info.error = dl_info_err[1];
 		if (send_dl_report(dlc->pkg_info, dlc->dl_info, 0) != E_UA_OK) {
 			A_ERROR_MSG("Failed to send dl err report");
 		}
