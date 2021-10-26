@@ -1151,7 +1151,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (err) {
 		A_INFO_MSG("Delta reconstruction failed!");
-		ret = store_data(0, 0, 0, 0, 0, "FAILED");
+		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "FAILED");
 		if (ret)
 			A_INFO_MSG("D_FAILED");
 	} else {
