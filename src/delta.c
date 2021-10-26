@@ -222,6 +222,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
 	}
 
+	A_INFO_MSG("unsquash command: %s\n", run_cmd);
 	if(system(run_cmd)) {
 		A_ERROR_MSG("failed to unsquash: %s\n", squashFile);
 		return E_UA_SYS;
