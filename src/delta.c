@@ -256,7 +256,10 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 	}
 	
 	if(repackaging) {
-		rmdirp(squashFile);
+		if (remove(squashFile) < 0) {
+			status = E_UA_SYS;
+			A_ERROR_MSG("error removing file: %s\n", squashFile);
+		}
 		memset(cp_cmd, 0, PATH_MAX);
 		snprintf(cp_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, str);
 		A_INFO_MSG("copying file from %s to %s \n", cp_cmd, squashFile);
@@ -265,6 +268,19 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 			status = E_UA_ERR;
 		}
 	}
+	
+	if(getuid() != 0) {
+		memset(run_cmd, 0, PATH_MAX);
+		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
+		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", unsq_cmd);
+		if(system(run_cmd)) {
+			status  = E_UA_SYS;
+		}
+	}else {
+		rmdirp(unsq_cmd);
+	}
+
+	
 
 	return status;
 }
