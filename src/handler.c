@@ -1250,7 +1250,7 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 		
 		if (tmp == TRUE)
 		{
-			if ( ((!strcmp(pkgInfo.stage, "DS_DOWNLOAD")) && (!downloadedBytes) ) || (!strcmp(pkgInfo.stage, "DS_VERIFY")) )
+			if ( (!strcmp(pkgInfo.stage, "DS_DOWNLOAD"))  || (!strcmp(pkgInfo.stage, "DS_VERIFY")) )
 				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes, pkgInfo.version, 0);
 
 			if (ret == E_UA_OK)

@@ -92,7 +92,7 @@ int store_data(char* id, char* pkgname, char* status, unsigned int value, char* 
     else if (!strcmp(diag.d_status, PATCH_COMPLETE))
     {
         diag.p_stop = get_time();
-        fprintf(fp, "%s, %s, %s\n", "", diag.p_stop, diag.p_status);
+        fprintf(fp, "%s, %s, %s", "", diag.p_stop, diag.p_status);
         fclose(fp);
     }
     return ret;
