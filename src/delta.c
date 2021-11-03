@@ -295,17 +295,17 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	char* oldPath       = 0, * diffPath = 0, * newPath = 0;
 	char* diff_manifest = 0, * manifest_old = 0, * manifest_diff = 0, * manifest_new = 0;
 	char* top_delta_dir = 0, * pkg_dir = 0, * p = 0;
-       char* delta_pkg_dir = 0;
+      char* delta_pkg_dir = 0;
 
 	do {
 		pkg_dir = f_basename(diffPkgFile);
 		if ((p =strrchr(pkg_dir, '.'))) *p = 0;
-
+		
 		top_delta_dir = JOIN(delta_stg.cache_dir, "delta");
 		delta_pkg_dir = JOIN(top_delta_dir, pkg_dir);
 		A_INFO_MSG("delta_pkg_dir: %s", delta_pkg_dir);
 		if (delta_pkg_dir) {
-			if (!access(delta_pkg_dir, W_OK))
+ 			if (!access(delta_pkg_dir, W_OK))
 				rmdirp(delta_pkg_dir);
 		}
 

@@ -17,6 +17,7 @@
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>
 #include <dirent.h>
+#include <string.h>
 #include "ua_download.h"
 #endif
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
@@ -1193,8 +1194,6 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		snprintf(p_path, (PATH_MAX - 1), "%s-%s",pkgInfo.name, pkgInfo.version);
 		char* delta_dir = JOIN(ua_intl.cache_dir, "delta", p_path);
 		A_INFO_MSG("Deleting %s\n", delta_dir);
-
-
 
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
