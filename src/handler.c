@@ -1193,7 +1193,10 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		memset(p_path, 0, PATH_MAX);
 		snprintf(p_path, (PATH_MAX - 1), "%s-%s",pkgInfo.name, pkgInfo.version);
 		char* delta_dir = JOIN(ua_intl.cache_dir, "delta", p_path);
-		A_INFO_MSG("Deleting %s\n", delta_dir);
+
+		memset(p_path, 0, PATH_MAX);
+		snprintf(p_path, (PATH_MAX - 1), "%s-%s.x",pkgInfo.name, pkgInfo.version);
+		char* temp_delta_dir = JOIN(ua_intl.cache_dir, "delta", p_path);
 
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
@@ -1216,11 +1219,18 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		}else
 			A_ERROR_MSG("Could not form manifest file path.");
 
-		if (delta_dir && !access(delta_dir, F_OK )) {
+		if(delta_dir && !access(delta_dir, F_OK	)) {
+			A_INFO_MSG("Deleting %s\n", delta_dir);
 			rmdirp(delta_dir);
 		}
 
+		if (!access(temp_delta_dir, R_OK)) {
+			A_INFO_MSG("Deleting %s\n", temp_delta_dir);
+			remove(temp_delta_dir);
+		}
+
 		Z_FREE(delta_dir);
+		Z_FREE(temp_delta_dir);
 		Z_FREE(backup_manifest);
 		Z_FREE(update_manifest);
 		comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
@@ -2281,3 +2291,4 @@ int send_query_trust(void)
 	return err;
 }
 #endif
+

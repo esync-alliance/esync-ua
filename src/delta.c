@@ -169,7 +169,7 @@ void replaceAll(char * str, char oldChar, char newChar)
     }
 }
 
-int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repackaging) {
+int process_squashfs_image (const char* squashFile, diff_info_t* di, const char* pkg_dir, bool repackaging) {
 	int status = E_UA_OK;
 	char unsquash_cmd[PATH_MAX]    = { 0 };
 	char unsq_cmd[PATH_MAX]    = { 0 };
@@ -180,7 +180,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 	FILE* pf;
 	char output[64];
 
-	char* squash_dir = JOIN(delta_stg.cache_dir, "art");
+	char* squash_dir = JOIN(delta_stg.cache_dir, "art", pkg_dir);
 
 	if(!repackaging) {
 		A_INFO_MSG("squash_dir: %s\n", squash_dir);
@@ -190,7 +190,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, bool repack
 			}
 		}
 
-		int ret_dir = mkdir(squash_dir, 0777);
+		int ret_dir = mkdirp(squash_dir, 0777);
 		if (ret_dir != 0) {
 			A_INFO_MSG("tempdir: squsash up directory creation failed\n");
 		}
@@ -340,12 +340,12 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 				if(di->nesting.un_squash_fs.un_squash_fs && di->nesting.squash_fs_uncompressed.squash_fs_uncompressed && di->nesting.single_file_delta.single_file_delta) {
 
-					if(process_squashfs_image(oldFile, di, 0) != E_UA_OK) err = E_UA_ERR;
+					if(process_squashfs_image(oldFile, di, pkg_dir, 0) != E_UA_OK) err = E_UA_ERR;
 					
 					char str[PATH_MAX] = {0};
 					snprintf(str, (PATH_MAX - 1), "%s", di->old_name);
 					replaceAll(str, '/', '%');
-					oldFile = JOIN(delta_stg.cache_dir, "art", str);
+					oldFile = JOIN(delta_stg.cache_dir, "art", pkg_dir, str);
 					squashfsDone = 1;
 				}
 
@@ -374,7 +374,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 				if(squashfsDone) {
 					if(di->nesting.un_squash_fs.un_squash_fs && di->nesting.squash_fs_uncompressed.squash_fs_uncompressed && di->nesting.single_file_delta.single_file_delta) {
-						if (process_squashfs_image(newFile, di, 1) != E_UA_OK) err = E_UA_ERR;
+						if (process_squashfs_image(newFile, di, pkg_dir, 1) != E_UA_OK) err = E_UA_ERR;
 					}
 					squashfsDone = 0;		
 				}
@@ -400,6 +400,21 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 	} while (0);
 
+	char* tempDir = JOIN(delta_stg.cache_dir, "art", pkg_dir);
+	if (!access(tempDir, R_OK)) {
+		if(getuid() != 0) {
+			char run_cmd[PATH_MAX]    = { 0 };
+			memset(run_cmd, 0, PATH_MAX);
+			char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
+			snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", tempDir);
+			if(system(run_cmd)) {
+				return E_UA_SYS;
+			}
+		}else {
+			rmdirp(tempDir);
+		}
+	}
+
 #define DTR_RM(type) \
 	if ((type ## Path) ) { if (!access(type ## Path, F_OK) && rmdirp(type ## Path)) A_ERROR_MSG("error removing directory %s", type ## Path); free(type ## Path); } \
 	Z_FREE(manifest_ ## type); do { } while (0)
@@ -415,22 +430,6 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 	f_free(pkg_dir);
 	f_free(top_delta_dir);
 	Z_FREE(diff_manifest);
-
-	if (!access(JOIN(delta_stg.cache_dir, "art"), R_OK)) {
-		char* tempDir = JOIN(delta_stg.cache_dir, "art");
-		if(getuid() != 0) {
-			char run_cmd[PATH_MAX]    = { 0 };
-			memset(run_cmd, 0, PATH_MAX);
-			char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-			snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", tempDir);
-			if(system(run_cmd)) {
-				return E_UA_SYS;
-			}
-		}else {
-			rmdirp(tempDir);
-		}
-	}
-	
 
 	return err;
 }
@@ -744,5 +743,6 @@ void free_diff_info(diff_info_t* di)
 	Z_FREE(di);
 
 }
+
 
 
