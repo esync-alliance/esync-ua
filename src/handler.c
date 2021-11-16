@@ -13,6 +13,7 @@
 #include "ua_version.h"
 #include "updater.h"
 #include "component.h"
+#include <linux/limits.h>
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>

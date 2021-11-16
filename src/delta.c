@@ -8,6 +8,7 @@
 #include <zip.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <linux/limits.h>
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
@@ -16,6 +17,8 @@ static char* get_config_delta_cap(char* delta_cap);
 static char* expand_tool_args(const char* args, const char* old, const char* new, const char* diff);
 static int delta_patch(diff_info_t* diffInfo, const char* old, const char* new, const char* diff);
 static int verify_file(const char* file, const char* sha256);
+
+#define snprintf_nowarn(...) (snprintf(__VA_ARGS__) < 0 ? abort() : (void)0)
 
 delta_stg_t delta_stg = {0};
 
@@ -216,10 +219,10 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 	memset(run_cmd, 0, PATH_MAX);
 	if(getuid() != 0) {
 		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
+		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
 		
 	}else {
-		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
+		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
 	}
 
 	A_INFO_MSG("unsquash command: %s\n", run_cmd);
@@ -234,19 +237,19 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 	if(!repackaging) {
 		snprintf(str, (PATH_MAX - 1), "%s", di->old_name);
 		replaceAll(str, '/', '%');
-		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir ,str, "-noI -noId -noD -noF -noX -noappend -mkfs-time" ,output);
+		snprintf_nowarn(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir ,str, "-noI -noId -noD -noF -noX -noappend -mkfs-time" ,output);
 	}else {
 		snprintf(str, (PATH_MAX - 1), "%s", di->name);
 		replaceAll(str, '/', '%');
-		snprintf(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , str, di->nesting.un_squash_fs.mk_squash_fs_options);
+		snprintf_nowarn(squashfs_cmd, (PATH_MAX - 1), "%s %s %s/%s %s", SQUASH_BIN_PATH, unsq_cmd, squash_dir , str, di->nesting.un_squash_fs.mk_squash_fs_options);
 	}
 	
 	memset(run_cmd, 0, PATH_MAX);
 	if(getuid() != 0) {
 		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s", "echo", pwd_buf , "|", "sudo", "-S", squashfs_cmd);
+		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s", "echo", pwd_buf , "|", "sudo", "-S", squashfs_cmd);
 	}else {
-		snprintf(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
+		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
 	}
 
 	A_INFO_MSG("mksquashfs command: %s\n", run_cmd);
@@ -261,7 +264,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 			A_ERROR_MSG("error removing file: %s\n", squashFile);
 		}
 		memset(cp_cmd, 0, PATH_MAX);
-		snprintf(cp_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, str);
+		snprintf_nowarn(cp_cmd, (PATH_MAX - 1), "%s/%s", squash_dir, str);
 		A_INFO_MSG("copying file from %s to %s \n", cp_cmd, squashFile);
 		copy_file(cp_cmd,squashFile);
 		if(verify_file(squashFile, di->sha256.new) != E_UA_OK) {
@@ -272,7 +275,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 	if(getuid() != 0) {
 		memset(run_cmd, 0, PATH_MAX);
 		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-		snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", unsq_cmd);
+		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", unsq_cmd);
 		if(system(run_cmd)) {
 			status  = E_UA_SYS;
 		}
