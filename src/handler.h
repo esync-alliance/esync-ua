@@ -228,7 +228,6 @@ typedef struct ua_component_context {
 	json_object* cur_msg;
 	ua_routine_t* uar;
 	worker_info_t worker;
-	async_update_status_t update_status_info;
 	pkg_file_t update_file_info;
 	pkg_info_t update_pkg;
 	update_err_t update_error;
