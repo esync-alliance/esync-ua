@@ -22,8 +22,6 @@ static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char* version);
 #define XMLELE_ITER_NAME(p, s, c) \
 	XMLELE_ITER(p, c) if (xmlStrEqual(c->name, XMLT s))
 
-#define snprintf_nowarn(...) (snprintf(__VA_ARGS__) < 0 ? abort() : (void)0)
-
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name)
 {
 	xmlNodePtr node = NULL;
