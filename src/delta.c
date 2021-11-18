@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <linux/limits.h>
+#include <unistd.h>
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
 static void clear_delta_tool(delta_tool_hh_t* hash);
@@ -251,7 +252,8 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 	}else {
 		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
 	}
-
+	
+	sleep(1);
 	A_INFO_MSG("mksquashfs command: %s\n", run_cmd);
 	if(system(run_cmd)) {
 		A_ERROR_MSG("failed to mksquash: %s\n", squashFile);
