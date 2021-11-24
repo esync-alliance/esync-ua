@@ -35,6 +35,8 @@
 #define ESPERROR_STRINGS
 #include "esdeltadec.h"
 
+#include "common.h"
+
 #define XSTR(s) str(s)
 #define str(s) #s
 #define SRCREF  __FILE__"("XSTR(__LINE__)")"
