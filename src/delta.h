@@ -32,6 +32,7 @@ typedef struct diff_info {
 	struct diff_info* prev;
 	diff_type_t type;
 	char* name;
+	char* old_name;
 	char* format;
 	char* compression;
 	struct {

@@ -55,6 +55,14 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 				xmlFree(c);
 			}
 
+		} else if (xmlStrEqual(n->name, XMLT "oldName")) {
+			if ((c = xmlNodeGetContent(n))) {
+				if (!diffInfo->old_name) {
+					diffInfo->old_name = f_strdup((const char*)c);
+				}
+				xmlFree(c);
+			}
+
 		} else if (xmlStrEqual(n->name, XMLT "sha256")) {
 			if ((p = get_xml_child(n, XMLT "old"))) {
 				if ((c = xmlNodeGetContent(p))) {
