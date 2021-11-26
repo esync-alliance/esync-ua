@@ -174,9 +174,17 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 		DL_FOREACH_SAFE(diList, di, aux) {
 			if (!err) {
-				oldFile  = JOIN(oldPath, di->name);
+				if(di->old_name != NULL)
+					oldFile  = JOIN(oldPath, di->old_name);
+				else
+					oldFile  = JOIN(oldPath, di->name);
+
 				diffFile = JOIN(diffPath, di->name);
 				newFile  = JOIN(newPath, di->name);
+
+				A_DEBUG_MSG("oldFile: %s", oldFile);
+				A_DEBUG_MSG("diffFile: %s", diffFile);
+				A_DEBUG_MSG("newFile: %s", newFile);
 
 				if (di->type == DT_ADDED) {
 					if (verify_file(diffFile, di->sha256.new) || copy_file(diffFile, newFile)) err = E_UA_ERR;
