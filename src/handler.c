@@ -27,6 +27,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 static void process_download_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj);
 static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* update_pkg);
 static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
@@ -183,9 +184,12 @@ int ua_register(ua_handler_t* uah, int len)
 			BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
 			query_hash_tree(ri_tree, ri, ri->component.type, 0, 0, 0);
 
-			ri->component.record_file        = ua_intl.record_file;
-			ri->component.enable_fake_rb_ver = ua_intl.enable_fake_rb_ver;
-			ua_intl.state                    = UAI_STATE_HANDLER_REGISTERED;
+			BOLT_SYS(pthread_mutex_init(&ri->component.update_status_info.lock, NULL), "update status lock init");
+			BOLT_SYS(pthread_cond_init(&ri->component.update_status_info.cond, 0), "update status cond init");
+			ri->component.update_status_info.reply_id = NULL;
+			ri->component.record_file                 = ua_intl.record_file;
+			ri->component.enable_fake_rb_ver          = ua_intl.enable_fake_rb_ver;
+			ua_intl.state                             = UAI_STATE_HANDLER_REGISTERED;
 			A_INFO_MSG("Registered: %s", ri->component.type);
 		} while (0);
 
@@ -233,6 +237,7 @@ int ua_unregister(ua_handler_t* uah, int len)
 					Z_FREE(ri->component.update_manifest);
 					Z_FREE(ri->component.backup_manifest);
 					Z_FREE(ri->component.type);
+					Z_FREE(ri->component.update_status_info.reply_id);
 					Z_FREE(ri);
 					A_INFO_MSG("Unregistered: %s", type);
 				}
@@ -726,6 +731,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_log_report, jObj, 0);
 				} else if (!strcmp(type, BMT_QUERY_SEQUENCE)) {
 					process_run(uacc, process_sequence_info, jObj, 0);
+				} else if (!strcmp(type, BMT_UPDATE_STATUS)) {
+					process_run(uacc, process_update_status, jObj, 0);
 				#ifdef SUPPORT_UA_DOWNLOAD
 				} else if (!strcmp(type, BMT_START_DOWNLOAD)) {
 					process_run(uacc, process_start_download, jObj, 1);
@@ -1271,6 +1278,27 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 
 }
 
+static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj)
+{
+	char* replyTo;
+
+	if (!get_replyto_from_json(jsonObj, &replyTo) &&
+	    reply_id_matched(replyTo, uacc->update_status_info.reply_id)) {
+		free(uacc->update_status_info.reply_id);
+		uacc->update_status_info.reply_id = NULL;
+
+		if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
+			A_ERROR_MSG("lock failed");
+		}
+
+		get_update_status_response_from_json(jsonObj, &uacc->update_status_info.successful);
+
+		pthread_cond_signal(&uacc->update_status_info.cond);
+		pthread_mutex_unlock(&uacc->update_status_info.lock);
+	}
+
+}
+
 install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue)
 {
 	ua_routine_t* uar     = (uacc != NULL) ? uacc->uar : NULL;
@@ -1457,9 +1485,35 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 		state = (*uar->on_pre_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 #endif
 	}
+	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+		//Send update-status (INSTALL_IN_PROGRESS) with reply-id
+		if (send_install_status(uacc, state, pkgFile, UE_NONE) == E_UA_OK) {
+			//Wait for response of update-status.
+			if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
+				A_ERROR_MSG("lock failed");
+			}
 
-	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED)))
-		send_install_status(uacc, state, pkgFile, UE_NONE);
+			int rc = 0;
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 300;
+			rc         = pthread_cond_timedwait(&uacc->update_status_info.cond, &uacc->update_status_info.lock, &ts);
+
+			if (rc == ETIMEDOUT) {
+				A_INFO_MSG("Timed out waiting for update status response");
+				Z_FREE(uacc->update_status_info.reply_id);
+			}
+
+			//Check if update-status reponse was set to successful.
+			if (!uacc->update_status_info.successful)
+				state = INSTALL_FAILED;
+			else
+				uacc->update_status_info.successful = 0;
+
+			pthread_mutex_unlock(&uacc->update_status_info.lock);
+		}
+
+	}
 
 	return state;
 }
@@ -1546,11 +1600,13 @@ void post_update_action(ua_component_context_t* uacc)
 }
 
 
-void send_install_status(ua_component_context_t* uacc, install_state_t state, pkg_file_t* pkgFile, update_err_t ue)
+int send_install_status(ua_component_context_t* uacc, install_state_t state, pkg_file_t* pkgFile, update_err_t ue)
 {
 	json_object* pkgObject = json_object_new_object();
 	pkg_info_t* pkgInfo    = &uacc->update_pkg;
 	char* custom_msg       = NULL;
+	int err                = E_UA_OK;
+
 
 	json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
@@ -1597,9 +1653,18 @@ void send_install_status(ua_component_context_t* uacc, install_state_t state, pk
 	json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
-	ua_send_message(jObject);
+	if (state == INSTALL_IN_PROGRESS) {
+		uacc->update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
+		if (uacc->update_status_info.reply_id)
+			json_object_object_add(jObject, "reply-id", json_object_new_string(uacc->update_status_info.reply_id ));
+	}
+
+
+	err = ua_send_message(jObject);
 
 	json_object_put(jObject);
+
+	return err;
 
 }
 
