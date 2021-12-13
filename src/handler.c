@@ -1,6 +1,8 @@
 /*
  * hander.c
  */
+#include <string.h>
+#include <linux/limits.h>
 
 #include "handler.h"
 #include "utils.h"
@@ -1161,6 +1163,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 {
 	pkg_info_t pkgInfo = {0};
 	int rollback       = 0;
+	char p_path[PATH_MAX]    = { 0 };
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -1176,7 +1179,12 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 		char* update_manifest = JOIN(ua_intl.cache_dir, pkgInfo.name, MANIFEST_PKG);
 		char* backup_manifest = JOIN(ua_intl.backup_dir, "backup", pkgInfo.name, MANIFEST_PKG);
-		char* delta_dir       = JOIN(ua_intl.cache_dir, "delta");
+
+		memset(p_path, 0, PATH_MAX);
+		snprintf(p_path, (PATH_MAX - 1), "%s-%s",pkgInfo.name, pkgInfo.version);
+		char* delta_dir = JOIN(ua_intl.cache_dir, "delta", p_path);
+		A_INFO_MSG("Deleting %s\n", delta_dir);
+
 
 
 		if (backup_manifest && update_manifest) {
