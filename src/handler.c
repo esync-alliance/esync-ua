@@ -1631,6 +1631,7 @@ int send_install_status(ua_component_context_t* uacc, install_state_t state, pkg
 	if ((state == INSTALL_FAILED) && (ue != UE_NONE) && pkgFile) {
 		if (ue == UE_TERMINAL_FAILURE) {
 			json_object_object_add(pkgObject, "terminal-failure", json_object_new_boolean(1));
+			json_object_object_add(pkgObject, "update-in-progress", json_object_new_boolean(0));
 		}
 		if (ue == UE_UPDATE_INCAPABLE) {
 			json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
@@ -1661,7 +1662,13 @@ int send_install_status(ua_component_context_t* uacc, install_state_t state, pkg
 	json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 	json_object_object_add(jObject, "body", bodyObject);
 
+	if ((!pkgInfo->rollback_version && state == INSTALL_FAILED) || state == INSTALL_COMPLETED)
+		json_object_object_add(pkgObject, "update-in-progress", json_object_new_boolean(0));
+
 	if (state == INSTALL_IN_PROGRESS) {
+
+		json_object_object_add(pkgObject, "update-in-progress", json_object_new_boolean(1));
+
 		uacc->update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
 		if (uacc->update_status_info.reply_id)
 			json_object_object_add(jObject, "reply-id", json_object_new_string(uacc->update_status_info.reply_id ));
