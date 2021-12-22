@@ -35,6 +35,7 @@ endif()
 # Checking dmclient
 if (SUPPORT_UA_DOWNLOAD)
     include_directories(SYSTEM ${DMCLIENT_DIR}/include)
+    include_directories(SYSTEM ${DMCLIENT_DIR}/include/dmclient)
     get_filename_component(DMCLIENT_LIB ${DMCLIENT_DIR}/build/libdmclient.so REALPATH)
     if (NOT EXISTS ${DMCLIENT_LIB})
         message(WARNING "Not found libdmclient.so in build folder , You should build libdmclient sources first!")
