@@ -105,6 +105,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.ua_dl_connect_timout_ms   = 3*60*1000; // 3 minutes
 		ua_intl.ua_dl_download_timeout_ms = 3*60*1000; // 3 minutes
 		if (S(uaConfig->sigca_dir)) {
+			A_INFO_MSG("sigca_dir: %s", uaConfig->sigca_dir);
 			ua_verify_ca_file_init(uaConfig->sigca_dir);
 		}
 		#endif
@@ -2214,6 +2215,8 @@ static void process_query_trust(ua_component_context_t* uacc, json_object* jsonO
 		}
 
 		ua_dl_set_trust_info(&dlt);
+		//verifying ca file received for query trust response
+		ua_verify_ca_file_init(ua_intl.ua_dl_dir);
 	}
 }
 

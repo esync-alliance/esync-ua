@@ -7,6 +7,8 @@ set(DEBUG true)
 # library build directory
 set(XL4BUS_DIR /path/to/libxl4bus/build)
 
+set(DMCLIENT_DIR /path/to/dmclient/dir)
+
 # If true, -R (-rpath) will be set to XL4BUS library location
 set(XL4BUS_RPATH true)
 
@@ -14,8 +16,8 @@ set(XL4BUS_RPATH true)
 set(BUILD_PY_LIBUA true)
 
 # set to true to support ua download
-# set(SUPPORT_UA_DOWNLOAD true)
-# add_definitions(-DSUPPORT_UA_DOWNLOAD)
+set(SUPPORT_UA_DOWNLOAD true)
+add_definitions(-DSUPPORT_UA_DOWNLOAD)
 
 # set this to 1 to disable shell commands for delta tools
 #set(SHELL_COMMAND_DISABLE 1)

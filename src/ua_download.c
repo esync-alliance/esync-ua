@@ -131,6 +131,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 	A_INFO_MSG("====ua_dl_init====");
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo->name);
+	rmdirp(tmp_filename);
 	if (0 != access(tmp_filename, F_OK)) {
 		if (0 != mkdir(tmp_filename, DATA_FOLDER_MODE)) {
 			A_ERROR_MSG("mkdir %s error \n", tmp_filename);
@@ -502,13 +503,16 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 
 	dd.connect_timeout_ms  = ua_intl.ua_dl_connect_timout_ms;
 	dd.download_timeout_ms = ua_intl.ua_dl_download_timeout_ms;
-	dd.ca_file             = ua_intl.ua_dl_ca_file;
+	dd.ca_file             = JOIN(ua_intl.ua_dl_dir, "ca.pem");
 	dd.f_receive           = dmc_recv_cb;
 	dd.e_tag               = dlc->dl_rec.e_tag;
 	dd.f_pre_download      = dmc_pre_download_cb;
 	dd.content_byte_offset = dlc->dl_rec.bytes_written;
 
 	A_INFO_MSG("===ua_dl_step_download=offset[%d]==", dd.content_byte_offset);
+	A_INFO_MSG("ca_file[%s]==", dd.ca_file);
+	A_INFO_MSG("e_tag[%s]==", dd.e_tag);
+	A_INFO_MSG("URL[%s]==", dd.url);
 
 	if (dmclient_download(&dd, &ddc) == XL4_DME_OK && ddc->result == XL4_DME_OK
 	    && (200 == ddc->http_code || 206 == ddc->http_code)) {
@@ -521,6 +525,8 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 			rc = E_UA_ERR;
 		}
 	} else {
+		A_INFO_MSG("ddc->http_code[%d]==", ddc->http_code);
+		A_INFO_MSG("ddc->result[%d]==", ddc->result);
 		A_ERROR_MSG("ERR: UA download failed truncate last data[%d]->[%d]http_code[%d]",
 		            dlc->dl_rec.bytes_written, dlc->dl_rec.last_bytes_written, ddc->http_code);
 		dlc->dl_info.downloaded_bytes = dlc->dl_rec.last_bytes_written;
@@ -538,6 +544,23 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 
 	dmclient_download_release(ddc);
 	return rc;
+}
+
+void writeTrustToFile (ua_dl_context_t* ua_dlc) {
+	char cert_file[PATH_MAX];
+	snprintf(cert_file, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, "ca.pem");
+       FILE *fPtr = fopen(cert_file, "w");
+       if(fPtr == NULL)
+       {
+  	      A_ERROR_MSG("Unable to create file.\n");
+  	      return;
+	}
+
+       /* Write data to file */
+	fputs(ua_dlc->dl_trust.pkg_trust, fPtr);
+
+	/* Close file to save file data */
+	fclose(fPtr);
 }
 
 static int ua_dl_step_encrypt(ua_dl_context_t* dlc)
@@ -777,6 +800,7 @@ int ua_dl_set_trust_info(ua_dl_trust_t* trust)
 		ua_dlc->dl_trust.sync_crl   = trust->sync_crl;
 		ua_dlc->dl_trust.pkg_trust  = trust->pkg_trust;
 		ua_dlc->dl_trust.pkg_crl    = trust->pkg_crl;
+		writeTrustToFile(ua_dlc);
 		return E_UA_OK;
 	}
 

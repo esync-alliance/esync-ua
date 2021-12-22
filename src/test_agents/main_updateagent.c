@@ -149,6 +149,11 @@ int main(int argc, char** argv)
 	scp_init(&scpi);
 #endif
 
+	//UA support download configuration
+	cfg.ua_dl_dir  =  cfg.cache_dir;
+	cfg.ua_download_required = 1;
+	cfg.sigca_dir = cfg.ua_dl_dir;
+
 	signal(SIGINT, sig_handler);
 
 	ua_debug_lvl = cfg.debug;
