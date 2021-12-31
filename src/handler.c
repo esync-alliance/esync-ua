@@ -58,6 +58,8 @@ int ua_debug          = 0;
 ua_internal_t ua_intl = {0};
 runner_info_hash_tree_t* ri_tree = NULL;
 
+int old_campaign_id = 0;
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 ua_log_handler_f ua_log_handler = 0;
 
@@ -1231,6 +1233,15 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 			remove(temp_delta_dir);
 		}
 
+#ifdef SUPPORT_UA_DOWNLOAD
+		char tmp_filename[PATH_MAX] = { 0 };
+		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, pkgInfo.name, pkgInfo.version);
+		if(!access(tmp_filename, F_OK)) {
+			A_INFO_MSG("Deleting %s\n", tmp_filename);
+			rmdirp(tmp_filename);
+		}
+#endif
+
 		Z_FREE(delta_dir);
 		Z_FREE(temp_delta_dir);
 		Z_FREE(backup_manifest);
@@ -2190,11 +2201,30 @@ void ua_verify_ca_file_init(const char* path)
 static void process_start_download(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	pkg_info_t pkgInfo = {0};
+	char tmp_filename[PATH_MAX];
+	char tmp_filename_encrypted[PATH_MAX];
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-	    !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi)) {
+	    !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi) &&
+	    !get_pkg_id_from_json(jsonObj, &pkgInfo.id)) {
+
+		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x",
+	        pkgInfo.name, pkgInfo.version,
+	        pkgInfo.version);
+
+		snprintf(tmp_filename_encrypted, PATH_MAX, "%s/%s/%s.e",
+	        pkgInfo.name, pkgInfo.version,
+	        pkgInfo.version);
+
+		if(atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
+			A_INFO_MSG("Not processing start download, already processed it");
+			return ;
+		}
+
+		old_campaign_id = atoi(pkgInfo.id);
+		A_INFO_MSG("checking old_campaign_id: %d\n ", old_campaign_id);
 		ua_dl_start_download(&pkgInfo);
 	}
 }
@@ -2266,7 +2296,7 @@ int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done)
 		json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 		json_object_object_add(jObject, "body", bodyObject);
 
-		A_DEBUG_MSG("Sending : %s", json_object_to_json_string(jObject));
+		A_INFO_MSG("Sending : %s", json_object_to_json_string(jObject));
 
 		if ((err = xl4bus_client_send_msg(json_object_to_json_string(jObject))) != E_UA_OK)
 			A_ERROR_MSG("Failed to send download-report to dmc");

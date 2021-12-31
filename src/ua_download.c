@@ -131,7 +131,6 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 	A_INFO_MSG("====ua_dl_init====");
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo->name);
-	rmdirp(tmp_filename);
 	if (0 != access(tmp_filename, F_OK)) {
 		if (0 != mkdir(tmp_filename, DATA_FOLDER_MODE)) {
 			A_ERROR_MSG("mkdir %s error \n", tmp_filename);
@@ -747,6 +746,7 @@ int ua_dl_start_download(pkg_info_t* pkgInfo)
 	int ret = E_UA_OK;
 
 	if (ua_dlc) {
+
 		if (0 != strcmp(ua_dlc->version, pkgInfo->version)
 		    || 0 != strcmp(ua_dlc->name, pkgInfo->name)) {
 			ua_dl_release(ua_dlc);
@@ -818,5 +818,6 @@ static void trigger_session_request()
 	ua_send_message(jObject);
 	json_object_put(jObject);
 }
+
 
 
