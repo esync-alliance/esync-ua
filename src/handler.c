@@ -2187,7 +2187,7 @@ void ua_verify_ca_file_init(const char* path)
 			continue;
 		} else {
 			ua_intl.verify_ca_file[count] = f_asprintf("%s/%s", path, ent->d_name);
-			A_INFO_MSG("ua_verify_ca_file_init ca file: %s", ua_intl.verify_ca_file[count]);
+			A_INFO_MSG("file init: %s", ua_intl.verify_ca_file[count]);
 			++count;
 			if (count >= MAX_VERIFY_CA_COUNT) {
 				break;
@@ -2224,7 +2224,6 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 		}
 
 		old_campaign_id = atoi(pkgInfo.id);
-		A_INFO_MSG("checking old_campaign_id: %d\n ", old_campaign_id);
 		ua_dl_start_download(&pkgInfo);
 	}
 }
@@ -2246,7 +2245,7 @@ static void process_query_trust(ua_component_context_t* uacc, json_object* jsonO
 
 		ua_dl_set_trust_info(&dlt);
 		//verifying ca file received for query trust response
-		ua_verify_ca_file_init(ua_intl.ua_dl_dir);
+		ua_verify_ca_file_init(JOIN(ua_intl.ua_dl_dir, "ca"));
 	}
 }
 
@@ -2325,4 +2324,3 @@ int send_query_trust(void)
 	return err;
 }
 #endif
-
