@@ -15,6 +15,8 @@
 #endif
 #include "debug.h"
 
+#define snprintf_nowarn(...) (snprintf(__VA_ARGS__) < 0 ? abort() : (void)0)
+
 size_t strcpy_s(char *dst, const char *src, size_t size)
 {
     if (size == 0)
@@ -30,9 +32,9 @@ size_t strcpy_s(char *dst, const char *src, size_t size)
     return strlen(dst);
 }
 
-#define snprintf_nowarn(...) (snprintf(__VA_ARGS__) < 0 ? abort() : (void)0)
 
-char* f_asprintf(char* fmt, ...)
+
+char* f_asprintf(const char* fmt, ...)
 {
 	char* ret;
 	va_list ap;

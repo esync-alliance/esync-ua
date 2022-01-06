@@ -502,7 +502,7 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 
 	dd.connect_timeout_ms  = ua_intl.ua_dl_connect_timout_ms;
 	dd.download_timeout_ms = ua_intl.ua_dl_download_timeout_ms;
-	dd.ca_file             = JOIN(ua_intl.ua_dl_dir, "ca","ca.pem");
+	dd.ca_file             = ua_intl.ua_dl_ca_file;
 	dd.f_receive           = dmc_recv_cb;
 	dd.e_tag               = dlc->dl_rec.e_tag;
 	dd.f_pre_download      = dmc_pre_download_cb;
@@ -545,7 +545,7 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 	return rc;
 }
 
-void writeTrustToFile (ua_dl_context_t* ua_dlc) {
+void store_trust_key (ua_dl_context_t* ua_dlc) {
 	char cert_file[PATH_MAX];
 	snprintf(cert_file, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, "ca");
 	if (0 != access(cert_file, F_OK)) {
@@ -808,7 +808,7 @@ int ua_dl_set_trust_info(ua_dl_trust_t* trust)
 		ua_dlc->dl_trust.sync_crl   = trust->sync_crl;
 		ua_dlc->dl_trust.pkg_trust  = trust->pkg_trust;
 		ua_dlc->dl_trust.pkg_crl    = trust->pkg_crl;
-		writeTrustToFile(ua_dlc);
+		store_trust_key(ua_dlc);
 		return E_UA_OK;
 	}
 

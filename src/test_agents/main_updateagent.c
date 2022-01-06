@@ -150,10 +150,11 @@ int main(int argc, char** argv)
 #endif
 
 	//UA support download configuration
+#ifdef SUPPORT_UA_DOWNLOAD
 	cfg.ua_dl_dir  =  cfg.cache_dir;
 	cfg.ua_download_required = 1;
 	cfg.sigca_dir = cfg.ua_dl_dir;
-
+#endif
 	signal(SIGINT, sig_handler);
 
 	ua_debug_lvl = cfg.debug;

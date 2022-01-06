@@ -10,7 +10,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
-extern ua_internal_t ua_intl;
+ua_internal_t ua_intl;
 static diag_t diag;
 
 char* get_time(void) 
