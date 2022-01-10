@@ -35,21 +35,6 @@ static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name)
 	return 0;
 }
 
-int is_leaf(xmlNode* node)
-{
-	xmlNode* child = node->children;
-
-	while (child)
-	{
-		if (child->type == XML_ELEMENT_NODE) return 0;
-
-		child = child->next;
-	}
-
-	return 1;
-}
-
-
 static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 {
 	xmlChar* c;

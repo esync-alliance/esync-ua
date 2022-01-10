@@ -141,18 +141,6 @@ int delta_use_external_algo(void)
 	return delta_stg.use_external_algo;
 }
 
-char* read_pwd(char* path) {
-	char pwd_buf[64];
-	FILE *fp = fopen(path, "r");
-	if(fp != NULL) {
-		if (fgets(pwd_buf, sizeof(pwd_buf), fp) != NULL){
-			fclose(fp);
-			return f_strdup(pwd_buf);
-		}	
-	}
-	return NULL;
-}
-
 /**
  * Replace all occurrence of a character in given string.
  */
@@ -218,14 +206,8 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 	}
 
 	memset(run_cmd, 0, PATH_MAX);
-	if(getuid() != 0) {
-		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
-		
-	}else {
-		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
-	}
-
+	snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s", UNSQUASH_BIN_PATH, "-d", unsq_cmd, (char*)squashFile);
+	
 	A_INFO_MSG("unsquash command: %s\n", run_cmd);
 	if(system(run_cmd)) {
 		A_ERROR_MSG("failed to unsquash: %s\n", squashFile);
@@ -246,12 +228,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 	}
 	
 	memset(run_cmd, 0, PATH_MAX);
-	if(getuid() != 0) {
-		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s", "echo", pwd_buf , "|", "sudo", "-S", squashfs_cmd);
-	}else {
-		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
-	}
+	snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s", squashfs_cmd);
 	
 	sleep(1);
 	A_INFO_MSG("mksquashfs command: %s\n", run_cmd);
@@ -274,19 +251,7 @@ int process_squashfs_image (const char* squashFile, diff_info_t* di, const char*
 		}
 	}
 	
-	if(getuid() != 0) {
-		memset(run_cmd, 0, PATH_MAX);
-		char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-		snprintf_nowarn(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", unsq_cmd);
-		if(system(run_cmd)) {
-			status  = E_UA_SYS;
-		}
-	}else {
-		rmdirp(unsq_cmd);
-	}
-
-	
-
+	rmdirp(unsq_cmd);
 	return status;
 }
 
@@ -407,17 +372,8 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 
 	char* tempDir = JOIN(delta_stg.cache_dir, "art", pkg_dir);
 	if (!access(tempDir, R_OK)) {
-		if(getuid() != 0) {
-			char run_cmd[PATH_MAX]    = { 0 };
-			memset(run_cmd, 0, PATH_MAX);
-			char* pwd_buf = read_pwd(JOIN(delta_stg.cache_dir, "config.cfg"));
-			snprintf(run_cmd, (PATH_MAX - 1), "%s %s %s %s %s %s %s %s", "echo", pwd_buf, "|", "sudo", "-S", "rm", "-rf", tempDir);
-			if(system(run_cmd)) {
-				return E_UA_SYS;
-			}
-		}else {
-			rmdirp(tempDir);
-		}
+		rmdirp(tempDir);
+		
 	}
 
 #define DTR_RM(type) \
