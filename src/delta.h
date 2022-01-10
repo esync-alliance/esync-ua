@@ -25,7 +25,6 @@
 
 #define UNSQUASH_BIN_PATH "unsquashfs"
 #define SQUASH_BIN_PATH "mksquashfs"
-#define SUDO_PATH "/usr/bin/sudo"
 
 typedef enum diff_type {
 	DT_ADDED = 1,
