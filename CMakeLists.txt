@@ -231,7 +231,6 @@ if (BUILD_BINS)
         src/common.h
         src/delta.c
         src/delta.h
-        src/delta.h
         src/handler.h
         src/debug.h 
         src/diagnostic.c 

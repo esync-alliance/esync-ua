@@ -300,7 +300,6 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 			if ((c = xmlNodeGetContent(n))) {
 				char *end = NULL;
 				pkgFile->downloaded = strtol((const char*)c, &end, BASE_TEN_CONVERSION);
-				pkgFile->downloaded = atoi((const char*)c);
 				xmlFree(c);
 			}
 
@@ -308,7 +307,6 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 			if ((c = xmlNodeGetContent(n))) {
 				char *end = NULL;
 				pkgFile->rollback_order = strtol((const char*)c, &end, BASE_TEN_CONVERSION);
-				pkgFile->rollback_order = atoi((const char*)c);
 				xmlFree(c);
 			}
 
