@@ -93,13 +93,16 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.cache_dir                     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
 		ua_intl.backup_dir                    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
-		ua_intl.diag_dir					  = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
-		ua_intl.diag_file 					  = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
 		ua_intl.backup_source                 = uaConfig->backup_source;
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
 
 		srand(time(0));
+
+                #ifdef SUPPORT_LOGGING_INFO
+                ua_intl.diag_dir                                          = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
+                ua_intl.diag_file                                         = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
+                #endif
 
 		#ifdef SUPPORT_UA_DOWNLOAD
 		ua_intl.ua_download_required      = uaConfig->ua_download_required;
@@ -1144,7 +1147,11 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
 	int err             = E_UA_ERR;
+
+	#ifdef SUPPORT_LOGGING_INFO
 	int ret		    = E_UA_OK;
+	#endif
+
 	pkg_file_t* pkgFile = f_malloc(sizeof(pkg_file_t));
 
 	if (pkgManifest && diffFile && newFile && pkgFile &&
@@ -1155,14 +1162,20 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (err) {
 		A_INFO_MSG("Delta reconstruction failed!");
+	
+		#ifdef SUPPORT_LOGGING_INFO
 		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "FAILED");
 		if (ret)
 			A_INFO_MSG("D_FAILED");
+		#endif
 	} else {
 		A_INFO_MSG("Delta reconstruction success!");
+
+		#ifdef SUPPORT_LOGGING_INFO
 		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "SUCCESS");
 		if (ret)
 			A_INFO_MSG("D_COMPLETE");
+		#endif
 	}
 
 	if (pkgFile != NULL)
@@ -1256,6 +1269,8 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 {
 	pkg_info_t pkgInfo = {0};
 	int64_t downloadedBytes, totalBytes;
+	
+	#ifdef SUPPORT_LOGGING_INFO
 	int ret;
 	static bool tmp = TRUE;
 
@@ -1270,7 +1285,7 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 			tmp = TRUE;
 		
 		if (tmp == TRUE)
-		{
+		{	
 			if ( (!strcmp(pkgInfo.stage, "DS_DOWNLOAD"))  || (!strcmp(pkgInfo.stage, "DS_VERIFY")) )
 				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes, pkgInfo.version, 0);
 
@@ -1280,6 +1295,12 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 			if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
 				tmp = TRUE;
 		}
+	#else
+	if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
+	    	!get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
+	    	!get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
+	    	!get_total_bytes_from_json(jsonObj, &totalBytes)) {
+	#endif
 		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
 	}
 	XL4_UNUSED(uacc);

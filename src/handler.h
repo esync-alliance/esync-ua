@@ -16,7 +16,9 @@
 #include "uthash.h"
 #include "utlist.h"
 #include "utarray.h"
+#ifdef SUPPORT_LOGGING_INFO
 #include "diagnostic.h"
+#endif
 #ifdef SUPPORT_UA_DOWNLOAD
 #include "eua_json.h"
 #endif
@@ -59,8 +61,10 @@ typedef struct pkg_info {
 	char* name;
 	char* version;
 	char* rollback_version;
+	#ifdef SUPPORT_LOGGING_INFO
 	char* id;
 	char* stage;
+	#endif
 	json_object* rollback_versions;
 	#ifdef SUPPORT_UA_DOWNLOAD
 	version_item_t vi;
@@ -175,8 +179,10 @@ typedef struct ua_internal {
 	char* cache_dir;
 	char* backup_dir;
 	char* record_file;
+	#ifdef SUPPORT_LOGGING_INFO
 	const char *diag_file;
 	char *diag_dir;
+	#endif
 	int esync_bus_conn_status;
 	ua_internal_state_t state;
 	int reboot_support;

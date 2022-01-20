@@ -12,7 +12,10 @@
 #include "esyncua.h"
 #else
 #include "xl4ua.h"
+#ifdef SUPPORT_LOGGING_INFO
 #include "diagnostic.h"
+#endif
+
 #endif //LIBUA_VER_2_0
 
 #define MANIFEST_DIFF        "manifest_diff.xml"
