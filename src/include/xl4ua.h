@@ -171,7 +171,9 @@ typedef struct ua_cfg {
 	char* backup_dir;
 
 	// specifies the diagnostic file directory
+	#ifdef SUPPORT_LOGGING_INFO
 	char* diag_dir;
+	#endif	
 
 	// enables delta support
 	int delta;

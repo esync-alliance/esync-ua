@@ -16,7 +16,9 @@
 #include <openssl/buffer.h>
 #include "utlist.h"
 #include "debug.h"
+#ifdef SUPPORT_LOGGING_INFO
 #include "diagnostic.h"
+#endif
 
 static int libzip_archive_add_file(struct zip* za, const char* path, const char* base);
 static int libzip_archive_add_dir(struct zip* za, const char* path, const char* base);
@@ -475,10 +477,12 @@ int libzip_find_file(const char* archive, const char* path)
 			err = E_UA_ERR;
 		} else {
 			A_ERROR_MSG("file: %s found in zip: %s", path, archive);
+			#ifdef SUPPORT_LOGGING_INFO
 			int ret;
 			ret = store_data(0, 0, "D_START", 0, 0, 0);
 			if (ret)
 				A_INFO_MSG("D_START");
+			#endif
 			err = E_UA_OK;
 		}
 
