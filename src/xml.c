@@ -12,16 +12,15 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr);
 static pkg_file_t* get_xml_version_pkg_file(xmlNodePtr root, char* version);
 
 #define XMLELE_ITER(p, c) \
-        for (c = xmlFirstElementChild(p); c; c = xmlNextElementSibling(c)) \
+	for (c = xmlFirstElementChild(p); c; c = xmlNextElementSibling(c)) \
 		if (c->type != XML_ELEMENT_NODE) continue; else
 
 #define XMLELE_ITER_SAFE(p, c, tmp) \
-        for (c = xmlFirstElementChild(p); c && (tmp = xmlNextElementSibling(c), 1); c = tmp) \
+	for (c = xmlFirstElementChild(p); c && (tmp = xmlNextElementSibling(c), 1); c = tmp) \
 		if (c->type != XML_ELEMENT_NODE) continue; else
 
 #define XMLELE_ITER_NAME(p, s, c) \
-        XMLELE_ITER(p, c) if (xmlStrEqual(c->name, XMLT s))
-
+	XMLELE_ITER(p, c) if (xmlStrEqual(c->name, XMLT s))
 
 static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name)
 {
@@ -36,15 +35,16 @@ static xmlNodePtr get_xml_child(xmlNodePtr parent, xmlChar* name)
 	return 0;
 }
 
-
 static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 {
 	xmlChar* c;
-	xmlNodePtr n, p;
+	xmlNodePtr n, p, b, node, g;
+	char* mksqaush_opt;
 
 	if (!ptr) { return 0; }
 
-	diff_info_t* diffInfo = f_malloc(sizeof(diff_info_t));
+	diff_info_t* diffInfo     = f_malloc(sizeof(diff_info_t));
+	char* mksqaush_opt_append = f_malloc(sizeof(diffInfo->nesting.un_squash_fs));
 
 	XMLELE_ITER(ptr, n) {
 		if (xmlStrEqual(n->name, XMLT "name")) {
@@ -79,6 +79,86 @@ static diff_info_t* get_xml_diff_info(xmlNodePtr ptr)
 						strcpy_s(diffInfo->sha256.new, (const char*)c, sizeof(diffInfo->sha256.new));
 					}
 					xmlFree(c);
+				}
+			}
+
+		} else if (xmlStrEqual(n->name, XMLT "nesting")) {
+			if ((p = get_xml_child(n, XMLT "un-squash-fs"))) {
+				diffInfo->nesting.un_squash_fs.un_squash_fs = true;
+				if ((b = get_xml_child(p, XMLT "mk-squash-fs-options"))) {
+					while (b)
+					{
+						if (b->type == XML_ELEMENT_NODE)
+						{
+							if ((strcmp("mk-squash-fs-options", (const char*) b->name)) == 0) {
+								mksqaush_opt = (char*) xmlNodeGetContent(b);
+								if (mksqaush_opt != NULL) {
+									strncat(mksqaush_opt_append, mksqaush_opt,sizeof(mksqaush_opt) - strlen(mksqaush_opt) - 1);
+									strcat(mksqaush_opt_append, " ");
+								}
+							}
+						}
+						b = b->next;
+					}
+					diffInfo->nesting.un_squash_fs.mk_squash_fs_options = f_strdup((const char*)mksqaush_opt_append);
+					if(mksqaush_opt_append != NULL) {
+						Z_FREE(mksqaush_opt_append);
+						mksqaush_opt_append = NULL;
+					}
+				}
+
+
+				if ((b = get_xml_child(p, XMLT "directory"))) {
+					if ((node = get_xml_child(b, XMLT "name"))) {
+						if ((c = xmlNodeGetContent(node))) {
+							if (!diffInfo->nesting.un_squash_fs.directory.name) {
+								diffInfo->nesting.un_squash_fs.directory.name = f_strdup((const char*)c);
+							}
+							xmlFree(c);
+						}
+					}
+					if ((node = get_xml_child(b, XMLT "sha256"))) {
+						if ((g = get_xml_child(node, XMLT "new"))) {
+							if ((c = xmlNodeGetContent(g))) {
+								if (!*diffInfo->nesting.un_squash_fs.directory.sha256.new && (strlen((const char*)c) == (SHA256_HEX_LENGTH - 1))) {
+									strcpy_s(diffInfo->nesting.un_squash_fs.directory.sha256.new, (const char*)c, sizeof(diffInfo->nesting.un_squash_fs.directory.sha256.new));
+								}
+								xmlFree(c);
+							}
+						}
+					}
+					if ((node = get_xml_child(b, XMLT "compression"))) {
+						if ((c = xmlNodeGetContent(node))) {
+							if (!diffInfo->nesting.un_squash_fs.directory.compression) {
+								diffInfo->nesting.un_squash_fs.directory.compression = f_strdup((const char*)c);
+							}
+							xmlFree(c);
+						}
+					}
+				}
+			} else if ((p = get_xml_child(n, XMLT "squash-fs-uncompressed"))) {
+				diffInfo->nesting.squash_fs_uncompressed.squash_fs_uncompressed = true;
+				if ((c = xmlNodeGetContent(p))) {
+					xmlFree(c);
+				}
+			} else if ((p = get_xml_child(n, XMLT "single-file-delta"))) {
+				diffInfo->nesting.single_file_delta.single_file_delta = true;
+				if ((node = get_xml_child(p, XMLT "format"))) {
+					if ((c = xmlNodeGetContent(node))) {
+						if (!diffInfo->format) {
+							diffInfo->format = f_strdup((const char*)c);
+						}
+						xmlFree(c);
+					}
+				}
+
+				if ((node = get_xml_child(p, XMLT "compression"))) {
+					if ((c = xmlNodeGetContent(node))) {
+						if (!diffInfo->compression) {
+							diffInfo->compression = f_strdup((const char*)c);
+						}
+						xmlFree(c);
+					}
 				}
 			}
 
@@ -230,6 +310,8 @@ static pkg_file_t* get_xml_pkg_file(xmlNodePtr ptr)
 				xmlFree(c);
 			}
 
+
+
 		}
 	}
 
@@ -285,7 +367,7 @@ int parse_pkg_manifest(char* xmlFile, pkg_file_t** pkgFile)
 
 int remove_old_backup(char* xmlFile, char* version)
 {
-	int err       = E_UA_OK;
+	int err = E_UA_OK;
 	xmlDocPtr doc = NULL;
 	xmlNodePtr root, node, n, aux;
 	xmlChar* c, * backpath;
@@ -350,7 +432,7 @@ int remove_old_backup(char* xmlFile, char* version)
 
 int add_pkg_file_manifest(char* xmlFile, pkg_file_t* pkgFile)
 {
-	int err       = E_UA_OK;
+	int err = E_UA_OK;
 	xmlDocPtr doc = NULL;
 	xmlNodePtr root, node, n, aux;
 	xmlChar* c;
@@ -480,3 +562,4 @@ void free_pkg_file(pkg_file_t* pkgFile)
 	Z_FREE(pkgFile);
 
 }
+

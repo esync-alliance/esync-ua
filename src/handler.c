@@ -13,10 +13,12 @@
 #include "ua_version.h"
 #include "updater.h"
 #include "component.h"
+#include <linux/limits.h>
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>
 #include <dirent.h>
+#include <string.h>
 #include "ua_download.h"
 #endif
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
@@ -56,6 +58,8 @@ int ua_debug          = 0;
 ua_internal_t ua_intl = {0};
 runner_info_hash_tree_t* ri_tree = NULL;
 
+int old_campaign_id = 0;
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 ua_log_handler_f ua_log_handler = 0;
 
@@ -89,6 +93,8 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.cache_dir                     = S(uaConfig->cache_dir) ? f_strdup(uaConfig->cache_dir) : NULL;
 		ua_intl.backup_dir                    = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
+		ua_intl.diag_dir					  = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
+		ua_intl.diag_file 					  = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
 		ua_intl.backup_source                 = uaConfig->backup_source;
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
@@ -1138,6 +1144,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
 	int err             = E_UA_ERR;
+	int ret		    = E_UA_OK;
 	pkg_file_t* pkgFile = f_malloc(sizeof(pkg_file_t));
 
 	if (pkgManifest && diffFile && newFile && pkgFile &&
@@ -1148,8 +1155,14 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (err) {
 		A_INFO_MSG("Delta reconstruction failed!");
+		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "FAILED");
+		if (ret)
+			A_INFO_MSG("D_FAILED");
 	} else {
 		A_INFO_MSG("Delta reconstruction success!");
+		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "SUCCESS");
+		if (ret)
+			A_INFO_MSG("D_COMPLETE");
 	}
 
 	if (pkgFile != NULL)
@@ -1183,9 +1196,10 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		memset(p_path, 0, PATH_MAX);
 		snprintf(p_path, (PATH_MAX - 1), "%s-%s",pkgInfo.name, pkgInfo.version);
 		char* delta_dir = JOIN(ua_intl.cache_dir, "delta", p_path);
-		A_INFO_MSG("Deleting %s\n", delta_dir);
 
-
+		memset(p_path, 0, PATH_MAX);
+		snprintf(p_path, (PATH_MAX - 1), "%s-%s.x",pkgInfo.name, pkgInfo.version);
+		char* temp_delta_dir = JOIN(ua_intl.cache_dir, "delta", p_path);
 
 		if (backup_manifest && update_manifest) {
 			if (!access(update_manifest, F_OK)) {
@@ -1208,11 +1222,27 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		}else
 			A_ERROR_MSG("Could not form manifest file path.");
 
-		if (delta_dir && !access(delta_dir, F_OK )) {
+		if(delta_dir && !access(delta_dir, F_OK	)) {
+			A_INFO_MSG("Deleting %s\n", delta_dir);
 			rmdirp(delta_dir);
 		}
 
+		if (!access(temp_delta_dir, R_OK)) {
+			A_INFO_MSG("Deleting %s\n", temp_delta_dir);
+			remove(temp_delta_dir);
+		}
+
+#ifdef SUPPORT_UA_DOWNLOAD
+		char tmp_filename[PATH_MAX] = { 0 };
+		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, pkgInfo.name, pkgInfo.version);
+		if(!access(tmp_filename, F_OK)) {
+			A_INFO_MSG("Deleting %s\n", tmp_filename);
+			rmdirp(tmp_filename);
+		}
+#endif
+
 		Z_FREE(delta_dir);
+		Z_FREE(temp_delta_dir);
 		Z_FREE(backup_manifest);
 		Z_FREE(update_manifest);
 		comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
@@ -1226,13 +1256,31 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 {
 	pkg_info_t pkgInfo = {0};
 	int64_t downloadedBytes, totalBytes;
+	int ret;
+	static bool tmp = TRUE;
 
 	if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-	    !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
-	    !get_total_bytes_from_json(jsonObj, &totalBytes)) {
-		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
+		!get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
+		!get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
+		!get_total_bytes_from_json(jsonObj, &totalBytes) &&
+		!get_pkg_id_from_json(jsonObj, &pkgInfo.id) &&
+		!get_pkg_stage_from_json(jsonObj, &pkgInfo.stage))
+	{
+		if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
+			tmp = TRUE;
+		
+		if (tmp == TRUE)
+		{
+			if ( (!strcmp(pkgInfo.stage, "DS_DOWNLOAD"))  || (!strcmp(pkgInfo.stage, "DS_VERIFY")) )
+				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes, pkgInfo.version, 0);
 
+			if (ret == E_UA_OK)
+				tmp = FALSE;
+			
+			if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
+				tmp = TRUE;
+		}
+		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
 	}
 	XL4_UNUSED(uacc);
 }
@@ -2138,7 +2186,7 @@ void ua_verify_ca_file_init(const char* path)
 			continue;
 		} else {
 			ua_intl.verify_ca_file[count] = f_asprintf("%s/%s", path, ent->d_name);
-			A_INFO_MSG("ua_verify_ca_file_init ca file: %s", ua_intl.verify_ca_file[count]);
+			A_INFO_MSG("file init: %s", ua_intl.verify_ca_file[count]);
 			++count;
 			if (count >= MAX_VERIFY_CA_COUNT) {
 				break;
@@ -2152,11 +2200,29 @@ void ua_verify_ca_file_init(const char* path)
 static void process_start_download(ua_component_context_t* uacc, json_object* jsonObj)
 {
 	pkg_info_t pkgInfo = {0};
+	char tmp_filename[PATH_MAX];
+	char tmp_filename_encrypted[PATH_MAX];
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-	    !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi)) {
+	    !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi) &&
+	    !get_pkg_id_from_json(jsonObj, &pkgInfo.id)) {
+
+		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x",
+	        pkgInfo.name, pkgInfo.version,
+	        pkgInfo.version);
+
+		snprintf(tmp_filename_encrypted, PATH_MAX, "%s/%s/%s.e",
+	        pkgInfo.name, pkgInfo.version,
+	        pkgInfo.version);
+
+		if(atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
+			A_INFO_MSG("Not processing start download, already processed it");
+			return ;
+		}
+
+		old_campaign_id = atoi(pkgInfo.id);
 		ua_dl_start_download(&pkgInfo);
 	}
 }
@@ -2177,6 +2243,8 @@ static void process_query_trust(ua_component_context_t* uacc, json_object* jsonO
 		}
 
 		ua_dl_set_trust_info(&dlt);
+		//verifying ca file received for query trust response
+		ua_verify_ca_file_init(JOIN(ua_intl.ua_dl_dir, "ca"));
 	}
 }
 
@@ -2226,7 +2294,7 @@ int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done)
 		json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
 		json_object_object_add(jObject, "body", bodyObject);
 
-		A_DEBUG_MSG("Sending : %s", json_object_to_json_string(jObject));
+		A_INFO_MSG("Sending : %s", json_object_to_json_string(jObject));
 
 		if ((err = xl4bus_client_send_msg(json_object_to_json_string(jObject))) != E_UA_OK)
 			A_ERROR_MSG("Failed to send download-report to dmc");

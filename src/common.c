@@ -15,6 +15,8 @@
 #endif
 #include "debug.h"
 
+#define snprintf_nowarn(...) (snprintf(__VA_ARGS__) < 0 ? abort() : (void)0)
+
 size_t strcpy_s(char *dst, const char *src, size_t size)
 {
     if (size == 0)
@@ -29,6 +31,8 @@ size_t strcpy_s(char *dst, const char *src, size_t size)
     dst[size-1] = 0;
     return strlen(dst);
 }
+
+
 
 char* f_asprintf(const char* fmt, ...)
 {
@@ -162,7 +166,7 @@ int f_remove_dir(const char* dirname)
 			continue;
 		}
 
-		snprintf(chBuf, 256, "%s/%s", dirname, ptr->d_name);
+		snprintf_nowarn(chBuf, 256, "%s/%s", dirname, ptr->d_name);
 		ret = f_is_dir(chBuf);
 		if (0 == ret) {
 			ret = f_remove_dir(chBuf);

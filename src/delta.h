@@ -4,12 +4,15 @@
 #ifndef UA_DELTA_H_
 #define UA_DELTA_H_
 
+#include <stdbool.h>
+
 #include "misc.h"
 #include "uthash.h"
 #ifdef LIBUA_VER_2_0
 #include "esyncua.h"
 #else
 #include "xl4ua.h"
+#include "diagnostic.h"
 #endif //LIBUA_VER_2_0
 
 #define MANIFEST_DIFF        "manifest_diff.xml"
@@ -18,7 +21,10 @@
 #define UPDATE_REC_FILE      "update.rec"
 #define XL4_X_PREFIX         "xl4-x-"
 #define XL4_SIGNATURE_PREFIX "xl4-signature"
+#define DIAGNOSTIC_DATA_FILE "data.csv"
 
+#define UNSQUASH_BIN_PATH "unsquashfs"
+#define SQUASH_BIN_PATH "mksquashfs"
 
 typedef enum diff_type {
 	DT_ADDED = 1,
@@ -28,17 +34,38 @@ typedef enum diff_type {
 } diff_type_t;
 
 typedef struct diff_info {
-	struct diff_info* next;
-	struct diff_info* prev;
 	diff_type_t type;
 	char* name;
 	char* old_name;
-	char* format;
-	char* compression;
 	struct {
 		char old[SHA256_HEX_LENGTH];
 		char new[SHA256_HEX_LENGTH];
 	} sha256;
+	char* format;
+	char* compression;
+	struct {
+		struct {
+			bool un_squash_fs;
+			char* mk_squash_fs_options;
+			struct {
+				char* name;
+				struct {
+					char new[SHA256_HEX_LENGTH];
+				} sha256;
+				char* compression;
+			} directory;
+		} un_squash_fs;
+		struct {
+			bool squash_fs_uncompressed;
+		} squash_fs_uncompressed;
+		struct {
+			bool single_file_delta;
+		} single_file_delta;
+	} nesting;
+
+
+	struct diff_info* next;
+	struct diff_info* prev;
 } diff_info_t;
 
 
@@ -70,5 +97,7 @@ int delta_reconstruct(const char* oldPkgFile, const char* diffPkgFile, const cha
 int delta_use_external_algo(void);
 void free_diff_info(diff_info_t* di);
 void free_delta_tool_hh (delta_tool_hh_t* dth);
+int process_squashfs_image (const char* squashFile, diff_info_t* di, const char* pkg_dir, bool repackaging);
 
 #endif /* UA_DELTA_H_ */
+

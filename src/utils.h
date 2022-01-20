@@ -29,6 +29,10 @@ int get_pkg_name_from_json(json_object* jsonObj, char** value);
 
 int get_pkg_status_from_json(json_object* jsonObj, char** value);
 
+int get_pkg_id_from_json(json_object *jsonObj, char **value);
+
+int get_pkg_stage_from_json(json_object *jsonObj, char **value);
+
 int get_pkg_file_from_json(json_object* jsonObj, char* version, char** value);
 
 int get_pkg_downloaded_from_json(json_object* jsonObj, char* version, int* value);

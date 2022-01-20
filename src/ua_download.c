@@ -509,6 +509,9 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 	dd.content_byte_offset = dlc->dl_rec.bytes_written;
 
 	A_INFO_MSG("===ua_dl_step_download=offset[%d]==", dd.content_byte_offset);
+	A_INFO_MSG("ca_file[%s]==", dd.ca_file);
+	A_INFO_MSG("e_tag[%s]==", dd.e_tag);
+	A_INFO_MSG("URL[%s]==", dd.url);
 
 	if (dmclient_download(&dd, &ddc) == XL4_DME_OK && ddc->result == XL4_DME_OK
 	    && (200 == ddc->http_code || 206 == ddc->http_code)) {
@@ -521,6 +524,8 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 			rc = E_UA_ERR;
 		}
 	} else {
+		A_INFO_MSG("ddc->http_code[%d]==", ddc->http_code);
+		A_INFO_MSG("ddc->result[%d]==", ddc->result);
 		A_ERROR_MSG("ERR: UA download failed truncate last data[%d]->[%d]http_code[%d]",
 		            dlc->dl_rec.bytes_written, dlc->dl_rec.last_bytes_written, ddc->http_code);
 		dlc->dl_info.downloaded_bytes = dlc->dl_rec.last_bytes_written;
@@ -538,6 +543,31 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 
 	dmclient_download_release(ddc);
 	return rc;
+}
+
+void store_trust_key (ua_dl_context_t* ua_dlc) {
+	char cert_file[PATH_MAX];
+	snprintf(cert_file, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, "ca");
+	if (0 != access(cert_file, F_OK)) {
+		if (0 != mkdir(cert_file, DATA_FOLDER_MODE)) {
+			A_ERROR_MSG("mkdir %s error \n", cert_file);
+			return ;
+		}
+	}
+
+       snprintf(cert_file, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, "ca", "ca.pem");
+       FILE *fPtr = fopen(cert_file, "w");
+       if(fPtr == NULL)
+       {
+  	      A_ERROR_MSG("Unable to create file.\n");
+  	      return;
+	}
+
+       /* Write data to file */
+	fputs(ua_dlc->dl_trust.pkg_trust, fPtr);
+
+	/* Close file to save file data */
+	fclose(fPtr);
 }
 
 static int ua_dl_step_encrypt(ua_dl_context_t* dlc)
@@ -724,6 +754,7 @@ int ua_dl_start_download(pkg_info_t* pkgInfo)
 	int ret = E_UA_OK;
 
 	if (ua_dlc) {
+
 		if (0 != strcmp(ua_dlc->version, pkgInfo->version)
 		    || 0 != strcmp(ua_dlc->name, pkgInfo->name)) {
 			ua_dl_release(ua_dlc);
@@ -777,6 +808,7 @@ int ua_dl_set_trust_info(ua_dl_trust_t* trust)
 		ua_dlc->dl_trust.sync_crl   = trust->sync_crl;
 		ua_dlc->dl_trust.pkg_trust  = trust->pkg_trust;
 		ua_dlc->dl_trust.pkg_crl    = trust->pkg_crl;
+		store_trust_key(ua_dlc);
 		return E_UA_OK;
 	}
 
@@ -794,5 +826,7 @@ static void trigger_session_request()
 	ua_send_message(jObject);
 	json_object_put(jObject);
 }
+
+
 
 
