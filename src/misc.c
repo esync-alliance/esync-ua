@@ -363,9 +363,6 @@ static int zip_zip(const char* archive, const char* path)
 			A_ERROR_MSG("failed to get current directory\n");
 		} 
 		
-		//char* wd = (char*)get_current_dir_name();
-		//char wd[1024];
-    		//getcwd(wd, 1024);
 		do {
 			BOLT_SYS(chdir(path), "failed to chdir to %s", path);
 			BOLT_SYS(chkdirp(archive), "failed to prepare directory for %s", archive);
