@@ -67,6 +67,7 @@ typedef struct pkg_info {
 	#endif
 	json_object* rollback_versions;
 	#ifdef SUPPORT_UA_DOWNLOAD
+	char* id;
 	version_item_t vi;
 	#endif
 } pkg_info_t;
