@@ -1263,6 +1263,15 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 			A_INFO_MSG("Deleting %s\n", tmp_filename);
 			rmdirp(tmp_filename);
 		}
+
+		memset(tmp_filename, 0, PATH_MAX);
+		snprintf(tmp_filename, (PATH_MAX - 1), "%s.e",pkgInfo.version);
+		char* tmp_delta_dir = JOIN(ua_intl.ua_dl_dir, "delta", tmp_filename);
+		if(!access(tmp_delta_dir, F_OK)) {
+			A_INFO_MSG("Deleting %s\n", tmp_delta_dir);
+			rmdirp(tmp_delta_dir);
+		}
+
 #endif
 
 		Z_FREE(delta_dir);
