@@ -678,6 +678,7 @@ static int ua_dl_step_verify(ua_dl_context_t* dlc)
 		if (send_dl_report(dlc->pkg_info, dlc->dl_info, 0) != E_UA_OK) {
 			A_ERROR_MSG("Failed to send dl err report");
 		}
+		remove(dlc->dl_encrytion_filename);
 	}
 	remove(dlc->dl_pkg_filename);
 
