@@ -136,7 +136,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo->name);
 	if (0 != access(tmp_filename, F_OK)) {
-		if (0 != mkdir(tmp_filename, DATA_FOLDER_MODE)) {
+		if (0 != mkdirp(tmp_filename, DATA_FOLDER_MODE)) {
 			A_ERROR_MSG("mkdir %s error \n", tmp_filename);
 			return E_UA_ERR;
 		}
@@ -144,7 +144,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 
 	snprintf(tmp_filename, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, pkgInfo->name, pkgInfo->version);
 	if (0 != access(tmp_filename, F_OK)) {
-		if (0 != mkdir(tmp_filename, DATA_FOLDER_MODE)) {
+		if (0 != mkdirp(tmp_filename, DATA_FOLDER_MODE)) {
 			A_ERROR_MSG("mkdir %s error \n", tmp_filename);
 			return E_UA_ERR;
 		}
