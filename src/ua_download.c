@@ -367,7 +367,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 		return XL4_DME_SYS;
 	}
 
-	A_INFO_MSG("dmc_recv_cb len[%d] http_code[%d]bytes_downloaded[%llu]e_tag[%s]content_byte_offset[%llu/%llu]content_length[%llu]result[%d]",
+	A_DEBUG_MSG("dmc_recv_cb len[%d] http_code[%d]bytes_downloaded[%llu]e_tag[%s]content_byte_offset[%llu/%llu]content_length[%llu]result[%d]",
 	           len,
 	           ddc->http_code, ddc->bytes_downloaded, ddc->e_tag, ddc->content_byte_offset,
 	           ddc->download->content_byte_offset,
@@ -377,7 +377,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 	pkg_info_t* pkg_info = dlc->pkg_info;
 
 	if (ddc->download->content_byte_offset != ddc->content_byte_offset) {
-		A_INFO_MSG("content_byte_offset changed [%llu]->[%llu]etag[%s]->[%s]", ddc->download->content_byte_offset, ddc->content_byte_offset,
+		A_DEBUG_MSG("content_byte_offset changed [%llu]->[%llu]etag[%s]->[%s]", ddc->download->content_byte_offset, ddc->content_byte_offset,
 		           ddc->download->e_tag, ddc->e_tag);
 		FILE* data_fd = 0;
 		dlc->dl_info.downloaded_bytes     -= (ddc->download->content_byte_offset - ddc->content_byte_offset);
