@@ -83,6 +83,14 @@ typedef struct ua_callback_ctl {
 	char* new_file_path;
 
 	/**
+	 * indicate whether the current installation is for rollback,
+	 * this is ony valid for callback on_install.
+	 * 0 = normal installation, 1 = rollback installation.
+	 *
+	 */
+	int is_rollback;
+
+	/**
 	 * self reference pointer set by UA when calling ua_regitster,
 	 * library does not alter the contents referenced by the pointer.
 	 *

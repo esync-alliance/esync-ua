@@ -250,6 +250,7 @@ typedef struct ua_component_context {
 	comp_sequence_t* seq_in;
 	comp_state_info_t* st_info;
 	int enable_fake_rb_ver;
+	int is_rollback_installation;
 
 	void* usr_ref;
 

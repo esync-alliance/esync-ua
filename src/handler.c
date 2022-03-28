@@ -99,10 +99,10 @@ int ua_init(ua_cfg_t* uaConfig)
 
 		srand(time(0));
 
-                #ifdef SUPPORT_LOGGING_INFO
-                ua_intl.diag_dir                                          = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
-                ua_intl.diag_file                                         = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
-                #endif
+		#ifdef SUPPORT_LOGGING_INFO
+		ua_intl.diag_dir  = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
+		ua_intl.diag_file = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
+		#endif
 
 		#ifdef SUPPORT_UA_DOWNLOAD
 		ua_intl.ua_download_required      = uaConfig->ua_download_required;
@@ -1146,10 +1146,10 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile)
 {
-	int err             = E_UA_ERR;
+	int err = E_UA_ERR;
 
 	#ifdef SUPPORT_LOGGING_INFO
-	int ret		    = E_UA_OK;
+	int ret = E_UA_OK;
 	#endif
 
 	pkg_file_t* pkgFile = f_malloc(sizeof(pkg_file_t));
@@ -1162,7 +1162,7 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 	if (err) {
 		A_INFO_MSG("Delta reconstruction failed!");
-	
+
 		#ifdef SUPPORT_LOGGING_INFO
 		ret = store_data(0, 0, "D_COMPLETE", 0, 0, "FAILED");
 		if (ret)
@@ -1187,9 +1187,9 @@ static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* n
 
 static void process_confirm_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
-	pkg_info_t pkgInfo = {0};
-	int rollback       = 0;
-	char p_path[PATH_MAX]    = { 0 };
+	pkg_info_t pkgInfo    = {0};
+	int rollback          = 0;
+	char p_path[PATH_MAX] = { 0 };
 
 	if (!get_pkg_type_from_json(jsonObj, &pkgInfo.type) &&
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
@@ -1235,7 +1235,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		}else
 			A_ERROR_MSG("Could not form manifest file path.");
 
-		if(delta_dir && !access(delta_dir, F_OK	)) {
+		if (delta_dir && !access(delta_dir, F_OK )) {
 			A_INFO_MSG("Deleting %s\n", delta_dir);
 			rmdirp(delta_dir);
 		}
@@ -1248,7 +1248,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 #ifdef SUPPORT_UA_DOWNLOAD
 		char tmp_filename[PATH_MAX] = { 0 };
 		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, pkgInfo.name, pkgInfo.version);
-		if(!access(tmp_filename, F_OK)) {
+		if (!access(tmp_filename, F_OK)) {
 			A_INFO_MSG("Deleting %s\n", tmp_filename);
 			rmdirp(tmp_filename);
 		}
@@ -1269,37 +1269,37 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 {
 	pkg_info_t pkgInfo = {0};
 	int64_t downloadedBytes, totalBytes;
-	
+
 	#ifdef SUPPORT_LOGGING_INFO
 	int ret;
 	static bool tmp = TRUE;
 
 	if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-		!get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-		!get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
-		!get_total_bytes_from_json(jsonObj, &totalBytes) &&
-		!get_pkg_id_from_json(jsonObj, &pkgInfo.id) &&
-		!get_pkg_stage_from_json(jsonObj, &pkgInfo.stage))
+	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
+	    !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
+	    !get_total_bytes_from_json(jsonObj, &totalBytes) &&
+	    !get_pkg_id_from_json(jsonObj, &pkgInfo.id) &&
+	    !get_pkg_stage_from_json(jsonObj, &pkgInfo.stage))
 	{
 		if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
 			tmp = TRUE;
-		
+
 		if (tmp == TRUE)
-		{	
+		{
 			if ( (!strcmp(pkgInfo.stage, "DS_DOWNLOAD"))  || (!strcmp(pkgInfo.stage, "DS_VERIFY")) )
 				ret = store_data(pkgInfo.id, pkgInfo.name, pkgInfo.stage, totalBytes, pkgInfo.version, 0);
 
 			if (ret == E_UA_OK)
 				tmp = FALSE;
-			
+
 			if (!strcmp(pkgInfo.stage, "DS_VERIFY"))
 				tmp = TRUE;
 		}
 	#else
 	if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-	    	!get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
-	    	!get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
-	    	!get_total_bytes_from_json(jsonObj, &totalBytes)) {
+	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
+	    !get_downloaded_bytes_from_json(jsonObj, &downloadedBytes) &&
+	    !get_total_bytes_from_json(jsonObj, &totalBytes)) {
 	#endif
 		A_DEBUG_MSG("Download in Progress %s : %s [%" PRId64 " / %" PRId64 "]", pkgInfo.name, pkgInfo.version, downloadedBytes, totalBytes);
 	}
@@ -1612,12 +1612,13 @@ install_state_t update_action(ua_component_context_t* uacc)
 		A_INFO_MSG("Asking UA to install version %s with file %s.", pkgFile->version, pkgFile->file);
 #ifdef LIBUA_VER_2_0
 		ua_callback_ctl_t uactl = {0};
-		uactl.type     = pkgInfo->type;
-		uactl.pkg_name = pkgInfo->name;
-		uactl.version  = pkgFile->version;
-		uactl.pkg_path = pkgFile->file;
-		uactl.ref      = uacc->usr_ref;
-		state          = (*uar->on_install)(&uactl);
+		uactl.type        = pkgInfo->type;
+		uactl.pkg_name    = pkgInfo->name;
+		uactl.version     = pkgFile->version;
+		uactl.pkg_path    = pkgFile->file;
+		uactl.ref         = uacc->usr_ref;
+		uactl.is_rollback = uacc->is_rollback_installation;
+		state             = (*uar->on_install)(&uactl);
 
 #else
 		state = (*uar->on_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
@@ -1735,7 +1736,6 @@ int send_install_status(ua_component_context_t* uacc, install_state_t state, pkg
 		json_object_object_add(pkgObject, "update-in-progress", json_object_new_boolean(0));
 
 	if (state == INSTALL_IN_PROGRESS) {
-
 		json_object_object_add(pkgObject, "update-in-progress", json_object_new_boolean(1));
 
 		uacc->update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
@@ -2229,18 +2229,17 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
 	    !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi) &&
 	    !get_pkg_id_from_json(jsonObj, &pkgInfo.id)) {
-
 		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x",
-	        pkgInfo.name, pkgInfo.version,
-	        pkgInfo.version);
+		         pkgInfo.name, pkgInfo.version,
+		         pkgInfo.version);
 
 		snprintf(tmp_filename_encrypted, PATH_MAX, "%s/%s/%s.e",
-	        pkgInfo.name, pkgInfo.version,
-	        pkgInfo.version);
+		         pkgInfo.name, pkgInfo.version,
+		         pkgInfo.version);
 
-		if(atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
+		if (atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
 			A_INFO_MSG("Not processing start download, already processed it");
-			return ;
+			return;
 		}
 
 		old_campaign_id = atoi(pkgInfo.id);

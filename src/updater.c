@@ -72,9 +72,9 @@ json_object* update_get_update_file_info_jo(pkg_file_t* update_inf)
 
 int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_inf)
 {
-	int err                = E_UA_OK;
+	int err                      = E_UA_OK;
 	const char* update_file_prop = "update-file-info";
-	char* tmp_str          = 0;
+	char* tmp_str                = 0;
 
 	if (jo_update_inf && update_inf) {
 		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "file", NULL)) == E_UA_OK)
@@ -385,7 +385,9 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				} else {
 					if (update_sts == INSTALL_READY) {
 						uacc->update_pkg.rollback_version = uacc->update_file_info.version;
+						uacc->is_rollback_installation    = 1;
 						update_sts                        = update_start_install_operations(uacc, reboot_support);
+						uacc->is_rollback_installation    = 0;
 					}
 
 					if (update_sts != INSTALL_COMPLETED) {
@@ -457,8 +459,8 @@ void* update_resume_from_reboot(void* arg)
 
 	if (uacc) {
 		uacc->worker.worker_running = 1;
-		uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
-		uacc->backup_manifest = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
+		uacc->update_manifest       = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
+		uacc->backup_manifest       = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			A_INFO_MSG("Resume: update installation was successful.");
 			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
@@ -471,7 +473,6 @@ void* update_resume_from_reboot(void* arg)
 				A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL) {
-
 					update_start_rollback_operations(uacc, rb_version, 1);
 
 				}else {
