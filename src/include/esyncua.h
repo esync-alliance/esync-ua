@@ -518,6 +518,18 @@ void ua_rollback_control(const char* pkgName, int disable);
 
 XL4_PUB
 /**
+ * Set rollback type for pkgNmae.
+ * When rollback-versions available, default is set to URB_DMC_INITIATED_WITH_UA_INTENT.
+ * The caller shall set the desired rollback type in on_install callback.
+ * Note if rb_type is set to URB_NONE, this function has no effect.
+ * @param pkgName package name of update component.
+ * @param rb_type rollback type.
+ * @return E_UA_OK, or E_UA_ERR
+ */
+int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type);
+
+XL4_PUB
+/**
  * unzip utility.
  * @param zipfile   pathname of zip archive.
  * @param destpath  pathname of destination folder.
