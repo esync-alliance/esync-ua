@@ -1125,7 +1125,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		     !is_prepared_delta_package(uacc->update_file_info.file) ) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
-
+		ua_clear_custom_message(uacc->update_pkg.name);
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_DONE);
 		uacc->cur_msg = NULL;
 		json_object_put(jo);
@@ -1642,6 +1642,12 @@ install_state_t update_action(ua_component_context_t* uacc)
 
 		}
 		if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+			if(uacc->is_rollback_installation){
+				char* tmp_msg = f_asprintf("Rollback to version %s has succeeded", uacc->update_file_info.version);
+				A_INFO_MSG("%s", tmp_msg);
+				ua_set_custom_message(uacc->update_pkg.name, tmp_msg);
+				f_free(tmp_msg);
+			}
 			send_install_status(uacc, state, &uacc->update_file_info, UE_NONE);
 		}
 	}
@@ -2129,7 +2135,7 @@ char* get_component_custom_message(char* pkgName)
 	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, cs);
 	if (cs && cs->custom_msg) {
 		message = cs->custom_msg;
-		A_INFO_MSG("custom message of %s is %s", pkgName, message ? message : "NIL");
+		//A_INFO_MSG("custom message of %s is %s", pkgName, message ? message : "NIL");
 	}
 	return message;
 }
@@ -2148,14 +2154,14 @@ int ua_set_custom_message(const char* pkgName, char* message)
 	if (cs) {
 		Z_FREE(cs->custom_msg);
 		if (message) {
-			A_INFO_MSG("Update custom message of %s to %s", pkgName, message);
+			//A_INFO_MSG("Update custom message of %s to %s", pkgName, message);
 			cs->custom_msg = f_strdup(message);
 		} else {
 			A_INFO_MSG("Reset custom message of %s", pkgName);
 		}
 	} else {
 		if (message) {
-			A_INFO_MSG("Init  custom message of %s to %s", pkgName, message);
+			//A_INFO_MSG("Init  custom message of %s to %s", pkgName, message);
 			cs = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
 			memset(cs, 0, sizeof(comp_ctrl_t));
 			cs->pkg_name   = f_strdup(pkgName);

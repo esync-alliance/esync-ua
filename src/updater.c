@@ -363,10 +363,13 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			uacc->update_file_info.version = f_strdup(next_rb_version);
 			uacc->update_file_info.file    = NULL;
 			send_install_status(uacc, INSTALL_ROLLBACK, &uacc->update_file_info, UE_NONE);
-			A_INFO_MSG("Found installed version is same as requested rollback version.");
+			char* tmp_msg = f_asprintf("Found installed version is same as requested rollback version (%s)", uacc->update_file_info.version);
+			A_INFO_MSG("%s", tmp_msg);
+			ua_set_custom_message(uacc->update_pkg.name, tmp_msg);
 			update_sts = INSTALL_COMPLETED;
 			send_install_status(uacc, INSTALL_COMPLETED, &tmp_rb_file_info, UE_NONE);
 			post_update_action(uacc);
+			f_free(tmp_msg);
 
 		}else {
 			int bck = 0;
@@ -391,17 +394,20 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 					}
 
 					if (update_sts != INSTALL_COMPLETED) {
-						A_INFO_MSG("Rollback to version(%s) was not successful", next_rb_version);
+						char* tmp_msg = f_asprintf("Rollback to version(%s) was not successful", next_rb_version);
+						A_INFO_MSG("%s", tmp_msg);
 						tmp_cur_version = next_rb_version;
 						next_rb_version = update_get_next_rollback_version(uacc, tmp_cur_version);
 						if (next_rb_version) {
 							A_INFO_MSG("Rollback will try the next version(%s).", next_rb_version);
 							update_sts = INSTALL_ROLLBACK;
+							ua_set_custom_message(uacc->update_pkg.name, tmp_msg);
 							update_send_rollback_intent(uacc, next_rb_version);
 
 						}
 						else
 							A_INFO_MSG("No more rollback version.");
+						free(tmp_msg);
 					}
 				}
 
@@ -443,8 +449,11 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			send_install_status(uacc, INSTALL_FAILED, NULL, UE_NONE);
 		}else{
 			A_INFO_MSG("Signal rollback terminal-failure.");
+			char* tmp_msg = f_asprintf("Rollback to version(%s) was not successful, no more available versions, signal terminal-failure.", uacc->update_file_info.version);
+			ua_set_custom_message(uacc->update_pkg.name, tmp_msg);
 			uacc->update_error = UE_TERMINAL_FAILURE;
 			send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
+			f_free(tmp_msg);
 		}
 
 	}
