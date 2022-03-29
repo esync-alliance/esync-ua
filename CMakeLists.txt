@@ -237,7 +237,15 @@ if (BUILD_BINS)
         src/delta.c
         src/delta.h
         src/handler.h
-        src/debug.h)
+        src/debug.h
+    )
+
+if (SUPPORT_LOGGING_INFO)
+    set(MAKE_BACKUP_SOURCE ${MAKE_BACKUP_SOURCE}
+    src/diagnostic.c
+    src/diagnostic.h
+    )
+endif()
 
     add_executable(make_backup ${MAKE_BACKUP_SOURCE} ${CMAKE_BINARY_DIR}/ua_version.h)
     target_link_libraries(make_backup ${APP_DEPS})

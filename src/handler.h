@@ -67,7 +67,7 @@ typedef struct pkg_info {
 	#endif
 	json_object* rollback_versions;
 	#ifdef SUPPORT_UA_DOWNLOAD
-	char* id;
+	char* id_dl;
 	version_item_t vi;
 	#endif
 } pkg_info_t;
@@ -251,6 +251,7 @@ typedef struct ua_component_context {
 	comp_state_info_t* st_info;
 	int enable_fake_rb_ver;
 	int is_rollback_installation;
+	int cleanup_ok_after_update;
 
 	void* usr_ref;
 

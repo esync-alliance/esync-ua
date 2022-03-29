@@ -1127,6 +1127,13 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 		}
 		ua_clear_custom_message(uacc->update_pkg.name);
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_DONE);
+
+		//ESYNC-6095: clean backup in case all future confirm-update messages are skipped.
+		if(uacc->cleanup_ok_after_update) {
+			A_INFO_MSG("processing confirm-update cleanup in ready-update");
+			process_confirm_update(uacc, jo);
+			uacc->cleanup_ok_after_update = 0;
+		}
 		uacc->cur_msg = NULL;
 		json_object_put(jo);
 		Z_FREE(uacc->backup_manifest);
@@ -1198,6 +1205,8 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 		if (!(st == UA_STATE_READY_UPDATE_DONE ||  st == UA_STATE_UNKNOWN)) {
 			A_INFO_MSG("skipping confirm-update for version %s of %s", pkgInfo.version, pkgInfo.name);
+			if(st == UA_STATE_READY_UPDATE_STARTED)
+				uacc->cleanup_ok_after_update = 1;
 			return;
 		}
 
@@ -2234,7 +2243,7 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 	    !get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
 	    !get_pkg_version_from_json(jsonObj, &pkgInfo.version) &&
 	    !get_pkg_version_item_from_json(jsonObj, pkgInfo.version, &pkgInfo.vi) &&
-	    !get_pkg_id_from_json(jsonObj, &pkgInfo.id)) {
+	    !get_pkg_id_from_json(jsonObj, &pkgInfo.id_dl)) {
 		snprintf(tmp_filename, PATH_MAX, "%s/%s/%s.x",
 		         pkgInfo.name, pkgInfo.version,
 		         pkgInfo.version);
@@ -2243,12 +2252,12 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 		         pkgInfo.name, pkgInfo.version,
 		         pkgInfo.version);
 
-		if (atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
+		if (atoi(pkgInfo.id_dl) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
 			A_INFO_MSG("Not processing start download, already processed it");
 			return;
 		}
 
-		old_campaign_id = atoi(pkgInfo.id);
+		old_campaign_id = atoi(pkgInfo.id_dl);
 		ua_dl_start_download(&pkgInfo);
 	}
 }
