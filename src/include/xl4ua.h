@@ -267,6 +267,8 @@ XL4_PUB int ua_send_message_string(char* message);
 
 XL4_PUB int ua_send_message_string_with_address(char* message,  xl4bus_address_t* xl4_address);
 
+XL4_PUB int ua_send_current_report(const char * pkgName, const char * version);
+
 #ifdef _json_h_
 
 XL4_PUB int ua_send_message(json_object* message);

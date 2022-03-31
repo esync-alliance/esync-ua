@@ -1821,6 +1821,35 @@ static int send_update_report(const char* pkgName, const char* version, int inde
 	return err;
 }
 
+
+int ua_send_current_report(const char * pkgName, const char * version)
+{
+
+    int err = E_UA_OK;
+ 
+    if(pkgName!=NULL && *pkgName!=0 && version!=NULL && *version!=0) {
+        json_object * pkgObject = json_object_new_object();
+        json_object_object_add(pkgObject, "name", json_object_new_string(pkgName));
+        json_object_object_add(pkgObject, "version", json_object_new_string(version));
+		json_object_object_add(pkgObject, "status", json_object_new_string("CURRENT_REPORT"));
+
+        json_object * bodyObject = json_object_new_object();
+        json_object_object_add(bodyObject, "package", pkgObject);
+
+        json_object * jObject = json_object_new_object();
+        json_object_object_add(jObject, "type", json_object_new_string(BMT_UPDATE_STATUS));
+        json_object_object_add(jObject, "body", bodyObject);
+
+        err = ua_send_message(jObject);
+
+        json_object_put(jObject);
+	} else {
+		err = E_UA_ERR;		
+	}	
+   
+    return err;
+}
+
 static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile)
 {
 	int err                = E_UA_OK;

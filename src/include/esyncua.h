@@ -446,6 +446,17 @@ XL4_PUB /**
          */
 int ua_send_message_string_with_address(char* message,  xl4bus_address_t* address);
 
+
+XL4_PUB
+/**
+ * Send update-status with CURRENT_REPORT.
+ * @param pkgName package name of update component
+ * @param version current installed version
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_current_report(const char * pkgName, const char * version);
+
+
 #ifdef _json_h_
 
 XL4_PUB
