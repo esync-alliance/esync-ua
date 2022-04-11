@@ -2,8 +2,11 @@
  * hander.c
  */
 #include <string.h>
+#if defined __QNX__
+#include <limits.h>
+#else
 #include <linux/limits.h>
-
+#endif
 #include "handler.h"
 #include "utils.h"
 #include "delta.h"
@@ -13,7 +16,6 @@
 #include "ua_version.h"
 #include "updater.h"
 #include "component.h"
-#include <linux/limits.h>
 
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>
@@ -2241,13 +2243,29 @@ void ua_verify_ca_file_init(const char* path)
 	if (!dir) {
 		return;
 	}
-
+#ifdef __QNX__
+        dircntl(dir, D_SETFLAG, D_FLAG_STAT);
+#endif
 	while ((ent = readdir(dir))) {
 		if (strcmp(ent->d_name,".") == 0 || strcmp(ent->d_name,"..") == 0) {
 			continue;
 		}
-
+#ifdef __QNX__
+            struct stat* stat_buf = NULL;
+            struct dirent_extra* exp;
+            for(exp = _DEXTRA_FIRST(ent); _DEXTRA_VALID(exp, ent); exp = _DEXTRA_NEXT(exp)) {
+                switch(exp->d_type) {
+                    case _DTYPE_LSTAT:
+                    case _DTYPE_STAT:
+                        stat_buf = &((struct dirent_extra_stat*)exp)->d_stat;
+                    default:
+                        break;
+                }
+            }
+        if(stat_buf && S_ISDIR(stat_buf->st_mode)) {
+#else
 		if (ent->d_type == DT_DIR) {
+#endif
 			continue;
 		} else {
 			ua_intl.verify_ca_file[count] = f_asprintf("%s/%s", path, ent->d_name);

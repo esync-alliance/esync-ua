@@ -226,7 +226,7 @@ if (BUILD_BINS)
         message(FATAL_ERROR "Binaries require threading support that is not enabled. You probably want to disable binaries being built as well.")
     endif()
 
-    set(MAKE_BACKUP_SOURCE
+    set(MAKE_BACKUP_SOURCE ${LIB_SOURCE_P}
         src/tools/make_backup.c
         src/xml.c
         src/xml.h

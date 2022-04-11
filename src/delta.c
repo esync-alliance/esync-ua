@@ -8,7 +8,11 @@
 #include <zip.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#ifdef __QNX__
+#include <limits.h>
+#else
 #include <linux/limits.h>
+#endif
 #include <unistd.h>
 
 static int add_delta_tool(delta_tool_hh_t** hash, const delta_tool_t* tool, int count, int isPatchTool);
@@ -498,7 +502,8 @@ static char* get_config_delta_cap(char* delta_cap)
 	char espatch_ver[7];
 	char* ret_cap       = NULL;
 
-	bzero(espatch_ver, sizeof(espatch_ver));
+//	bzero(espatch_ver, sizeof(espatch_ver));
+	memset(espatch_ver, 0, sizeof(espatch_ver));
 
 	if (delta_cap) {
 		char* tmp_cap = f_strdup(delta_cap);
@@ -537,9 +542,12 @@ static char* get_deflt_delta_cap(delta_tool_hh_t* patchTool, delta_tool_hh_t* de
 	char format[16];
 	char compression[16];
 	char espatch_ver[7];
-	bzero(format, sizeof(format));
-	bzero(compression, sizeof(compression));
-	bzero(espatch_ver, sizeof(espatch_ver));
+//	bzero(format, sizeof(format));
+//	bzero(compression, sizeof(compression));
+//	bzero(espatch_ver, sizeof(espatch_ver));
+	memset(format, 0, sizeof(format));
+	memset(compression, 0, sizeof(compression));
+	memset(espatch_ver, 0, sizeof(espatch_ver));
 	strcpy_s(format, "A:", sizeof(format));
 	strcpy_s(compression, "B:", sizeof(compression));
 

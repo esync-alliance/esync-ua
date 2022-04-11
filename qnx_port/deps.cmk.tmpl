@@ -43,7 +43,12 @@ set(DMCLIENT_LIB ${DMCLIENT_DIR}/build/libdmclient.so)
         message(WARNING "Not found libdmclient.so in build folder , You should build libdmclient sources first!")
         set(DMCLIENT_LIB -ldmclient)
     endif()
-set(CURL_LIB -lcurl)
+set(CURL ${DMCLIENT_DIR}/curl-build)
+    set(CURL_LIB ${CURL}/build/lib/libcurl.so)
+    if (NOT EXISTS ${CURL_LIB})
+        message(FATAL_ERROR "You must build curl sources first!")
+    endif()
+#set(CURL_LIB -lcurl)
 endif()
 
 # Set include path

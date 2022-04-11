@@ -22,12 +22,18 @@ set(UNIT_TEST false)
 set(LIB_SOURCE
     qnx_port/source/utility.c)
 
+# Porting code for some required APIs
+set(LIB_SOURCE_P
+    qnx_port/source/utility.c)
+
 # Allow to use custom log handler
 add_definitions(-DHAVE_INSTALL_LOG_HANDLER)
 
 # set to true to support ua download
-# set(SUPPORT_UA_DOWNLOAD true)
-# add_definitions(-DSUPPORT_UA_DOWNLOAD)
+set(SUPPORT_UA_DOWNLOAD true)
+add_definitions(-DSUPPORT_UA_DOWNLOAD)
 
 #set to true to support scp file transfer in template ua.
 #set(TMPL_UA_SUPPORT_SCP_TRANSFER true)
+set(ESYNC_ALLIANCE true)
+set(binName agent)

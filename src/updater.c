@@ -214,7 +214,7 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 #endif
 	if (err != E_UA_OK)
 		A_ERROR_MSG("Error get version for %s.", uacc->update_pkg.name);
-	A_INFO_MSG("target_version = %s, install_version = %s", target_version, install_version);
+	A_INFO_MSG("target_version = %s, install_version = %s", NULL_STR(target_version), NULL_STR(install_version));
 	return (S(install_version) && !strcmp(target_version, install_version));
 
 }
@@ -631,9 +631,9 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 							if (ua_intl.ua_download_required) {
 								char tmp_filename[PATH_MAX] = {0};
 								snprintf(tmp_filename, PATH_MAX, "%s/%s/%s/%s.e",
-								         ua_intl.ua_dl_dir,
-								         uacc->update_pkg.name, uacc->update_file_info.version,
-								         uacc->update_file_info.version);
+								         NULL_STR(ua_intl.ua_dl_dir),
+								         NULL_STR(uacc->update_pkg.name), NULL_STR(uacc->update_file_info.version),
+								         NULL_STR(uacc->update_file_info.version));
 								f_free(uacc->update_file_info.file);
 								uacc->update_file_info.file = f_strdup(tmp_filename);
 							} else {
