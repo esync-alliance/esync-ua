@@ -8,8 +8,11 @@
 
 #include <stdio.h>
 #include <string.h>
+#if defined __QNX__
+#include <limits.h>
+#else
 #include <linux/limits.h>
-
+#endif
 const char* base64char  = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const char padding_char = '=';
 

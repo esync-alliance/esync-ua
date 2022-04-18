@@ -76,7 +76,7 @@ fi
 # Build lib and program
 #
 cd ${projdir} && mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release \
+cmake -DCMAKE_C_FLAGS="-fcommon" -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_TOOLCHAIN_FILE=${portdir}/cmake/${toolchain} ..
       
 make -j

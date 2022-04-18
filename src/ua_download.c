@@ -15,7 +15,11 @@
 #include "utils.h"
 #include <unistd.h>
 #include <sys/types.h>
+#if defined __QNX__
+#include <limits.h>
+#else
 #include <linux/limits.h>
+#endif
 #include <sys/stat.h>
 
 #ifndef CRC32_H_
@@ -509,8 +513,8 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 	dd.content_byte_offset = dlc->dl_rec.bytes_written;
 
 	A_INFO_MSG("===ua_dl_step_download=offset[%d]==", dd.content_byte_offset);
-	A_INFO_MSG("ca_file[%s]==", dd.ca_file);
-	A_INFO_MSG("e_tag[%s]==", dd.e_tag);
+	A_INFO_MSG("ca_file[%s]==", NULL_STR(dd.ca_file));
+	A_INFO_MSG("e_tag[%s]==", NULL_STR(dd.e_tag));
 	A_INFO_MSG("URL[%s]==", dd.url);
 
 	if (dmclient_download(&dd, &ddc) == XL4_DME_OK && ddc->result == XL4_DME_OK

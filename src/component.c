@@ -201,7 +201,7 @@ int comp_set_prepared_version(comp_state_info_t** cs_head, char* pkg_name, char*
 
 	HASH_FIND_STR(*cs_head, pkg_name, cs);
 	if (cs) {
-		A_INFO_MSG("change prepared_ver version of %s to %s", pkg_name, prepared_ver);
+		A_INFO_MSG("change prepared_ver version of %s to %s", pkg_name, NULL_STR(prepared_ver));
 		Z_FREE(cs->prepared_ver);
 		cs->prepared_ver = f_strdup(prepared_ver);
 	} else {

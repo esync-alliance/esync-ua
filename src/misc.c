@@ -16,6 +16,9 @@
 #include <openssl/buffer.h>
 #include "utlist.h"
 #include "debug.h"
+#if defined __QNX__
+#include <inttypes.h>
+#endif
 #ifdef SUPPORT_LOGGING_INFO
 #include "diagnostic.h"
 #endif
@@ -358,7 +361,7 @@ static int zip_zip(const char* archive, const char* path)
 	int err = E_UA_OK;
 
 	if (archive && path) {
-#ifdef ANDROID_BUILD
+#if defined ANDROID_BUILD || defined __QNX__
 		char* wd;
 		if( (wd=getcwd(NULL, 0)) == NULL) {
 			A_ERROR_MSG("failed to get current directory\n");
@@ -439,11 +442,28 @@ static int libzip_archive_add_dir(struct zip* za, const char* path, const char* 
 	do {
 		BOLT_IF (!(dir = opendir(path)), E_UA_ERR, "failed to open directory %s", path);
 
+#ifdef __QNX__
+        dircntl(dir, D_SETFLAG, D_FLAG_STAT);
+#endif
 		while ((entry = readdir(dir)) != NULL) {
 			filepath = JOIN(path, entry->d_name);
 			basepath = JOIN(SAFE_STR(base), entry->d_name);
-
+#ifdef __QNX__
+            struct stat* stat_buf = NULL;
+            struct dirent_extra* exp;
+            for(exp = _DEXTRA_FIRST(entry); _DEXTRA_VALID(exp, entry); exp = _DEXTRA_NEXT(exp)) {
+                switch(exp->d_type) {
+                    case _DTYPE_LSTAT:
+                    case _DTYPE_STAT:
+                        stat_buf = &((struct dirent_extra_stat*)exp)->d_stat;
+                    default:
+                        break;
+                }
+            }
+            if(stat_buf && !S_ISDIR(stat_buf->st_mode)) {
+#else
 			if (entry->d_type != DT_DIR) {
+#endif
 				err = libzip_archive_add_file(za, filepath, base);
 
 			} else if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {

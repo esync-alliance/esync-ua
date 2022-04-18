@@ -12,7 +12,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#if defined __QNX__
+#include<limits.h>
+#else
 #include <linux/limits.h>
+#endif
 #include "misc.h"
 #include "xml.h"
 #include "debug.h"
@@ -61,7 +65,8 @@ int main(int argc, char** argv)
 	pkg_file_t pf             = {0};
 
 	char backup_dir[PATH_MAX];
-	bzero(backup_dir, sizeof(backup_dir));
+	// bzero(backup_dir, sizeof(backup_dir));
+    memset(backup_dir, 0, sizeof(backup_dir));
 	strcpy_s(backup_dir, "/data/sota/esync", sizeof(backup_dir));
 
 	printf("make_backup version: %s build on %s\n", BUILD_VERSION, BUILD_DATETIME);
