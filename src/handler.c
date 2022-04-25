@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include <string.h>
 #include "ua_download.h"
+#include <stdbool.h>
 #endif
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
 static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
@@ -54,13 +55,16 @@ void* runner_loop(void* arg);
 static void ua_verify_ca_file_init(const char* path);
 static void process_start_download(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_query_trust(ua_component_context_t* uacc, json_object* jsonObj);
+
+int old_campaign_id = 0;
+extern bool session_restart;
 #endif
 
 int ua_debug          = 0;
 ua_internal_t ua_intl = {0};
 runner_info_hash_tree_t* ri_tree = NULL;
 
-int old_campaign_id = 0;
+
 
 #ifdef HAVE_INSTALL_LOG_HANDLER
 ua_log_handler_f ua_log_handler = 0;
@@ -2308,7 +2312,7 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 		         pkgInfo.name, pkgInfo.version,
 		         pkgInfo.version);
 
-		if (atoi(pkgInfo.id_dl) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK))) {
+		if(atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK)) && !session_restart) {
 			A_INFO_MSG("Not processing start download, already processed it");
 			return;
 		}

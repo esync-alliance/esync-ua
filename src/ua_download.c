@@ -21,6 +21,7 @@
 #include <linux/limits.h>
 #endif
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #ifndef CRC32_H_
 #   include "Crc32.h"
@@ -31,6 +32,7 @@ static ua_dl_context_t* ua_dlc = 0;
 static char ua_dl_filename_buffer[PATH_MAX];
 extern ua_internal_t ua_intl;
 char* dl_info_err[]  = {"DLE_DOWNLOAD", "DLE_VERIFY", NULL};
+bool session_restart;
 
 static void ua_dl_release(ua_dl_context_t* dlc);
 static void ua_dl_init_dl_rec(ua_dl_record_t* dl_rec);
@@ -527,6 +529,7 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 			A_ERROR_MSG("ua_dl_save_dl_rc error");
 			rc = E_UA_ERR;
 		}
+    session_restart = 0;
 	} else {
 		A_INFO_MSG("ddc->http_code[%d]==", ddc->http_code);
 		A_INFO_MSG("ddc->result[%d]==", ddc->result);
@@ -541,6 +544,7 @@ static int ua_dl_step_download(ua_dl_context_t* dlc)
 		}
 		truncate(dlc->dl_encrytion_filename, dlc->dl_rec.bytes_written);
 		rc = E_UA_ERR;
+    session_restart = 1;
 
 		trigger_session_request();
 	}
@@ -609,8 +613,9 @@ static int ua_dl_step_encrypt(ua_dl_context_t* dlc)
 		if (send_dl_report(dlc->pkg_info, dlc->dl_info, 0) != E_UA_OK) {
 			A_ERROR_MSG("Failed to send dl err report");
 		}
+		remove(dlc->dl_encrytion_filename);
 	} else {
-		A_ERROR_MSG("dmclient_decrypt_binary completed");
+		A_INFO_MSG("dmclient_decrypt_binary completed");
 		dlc->dl_rec.step = UA_DL_STEP_ENCRYPTED;
 		if (E_UA_OK != ua_dl_save_dl_rc(dlc)) {
 			A_ERROR_MSG("ua_dl_save_dl_rc error");
