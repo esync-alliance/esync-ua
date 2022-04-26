@@ -75,6 +75,7 @@ int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_i
 	int err                      = E_UA_OK;
 	const char* update_file_prop = "update-file-info";
 	char* tmp_str                = 0;
+	int64_t tmp = 0;
 
 	if (jo_update_inf && update_inf) {
 		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "file", NULL)) == E_UA_OK)
@@ -86,9 +87,11 @@ int update_set_update_file_info(json_object* jo_update_inf, pkg_file_t* update_i
 		if ((err = json_get_property(jo_update_inf, json_type_string, &tmp_str, update_file_prop, "sha256", NULL)) == E_UA_OK)
 			strcpy_s(update_inf->sha256b64, tmp_str, sizeof(update_inf->sha256b64));
 
-		err = json_get_property(jo_update_inf, json_type_int, &update_inf->downloaded, update_file_prop, "downloaded", NULL);
+		if ((err = json_get_property(jo_update_inf, json_type_int, &tmp, update_file_prop, "downloaded", NULL)) == E_UA_OK)
+			update_inf->downloaded = (int)tmp;
 
-		err = json_get_property(jo_update_inf, json_type_int, &update_inf->rollback_order, update_file_prop, "rollback-order", NULL);
+		if ((err = json_get_property(jo_update_inf, json_type_int, &tmp, update_file_prop, "rollback-order", NULL)) == E_UA_OK)
+			update_inf->rollback_order = (int)tmp;
 
 	}
 
@@ -121,19 +124,27 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc)
 {
 	int err = E_UA_OK;
+	int64_t tmp = 0;
 
 	err = update_set_update_file_info(update_cc, &uacc->update_file_info);
 	err = update_set_pkg_info(update_cc, &uacc->update_pkg);
 
 	update_rollback_t rb_type = URB_NONE;
-	if ((err = json_get_property(update_cc, json_type_int, &rb_type, "rb-type", NULL)) == E_UA_OK)
+	if ((err = json_get_property(update_cc, json_type_int, &tmp, "rb-type", NULL)) == E_UA_OK) {
+		rb_type = (update_rollback_t)tmp;
 		comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, rb_type);
+	}
 
 	ua_stage_t state = UA_STATE_UNKNOWN;
-	if ((err = json_get_property(update_cc, json_type_int, &state, "update-state", NULL)) == E_UA_OK)
+	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-state", NULL)) == E_UA_OK) {
+		state = (ua_stage_t)tmp;
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, state);
 
-	err = json_get_property(update_cc, json_type_int, &uacc->update_error, "update-error", NULL);
+	}
+
+	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-error", NULL)) == E_UA_OK) {
+		uacc->update_error = (update_err_t)tmp;
+	}
 
 	return err;
 
@@ -215,7 +226,7 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 	if (err != E_UA_OK)
 		A_ERROR_MSG("Error get version for %s.", uacc->update_pkg.name);
 	A_INFO_MSG("target_version = %s, install_version = %s", NULL_STR(target_version), NULL_STR(install_version));
-	return (S(install_version) && !strcmp(target_version, install_version));
+	return (S(target_version) && S(install_version) && !strcmp(target_version, install_version));
 
 }
 
