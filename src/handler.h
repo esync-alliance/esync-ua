@@ -173,7 +173,7 @@ typedef struct comp_sequence {
 }comp_sequence_t;
 
 #ifdef SUPPORT_UA_DOWNLOAD
-#define MAX_VERIFY_CA_COUNT 5
+#define MAX_VERIFY_CA_COUNT 1
 #endif
 typedef struct ua_internal {
 	int delta;
