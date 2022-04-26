@@ -2312,7 +2312,7 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 		         pkgInfo.name, pkgInfo.version,
 		         pkgInfo.version);
 
-		if(atoi(pkgInfo.id) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK)) && !session_restart) {
+		if(atoi(pkgInfo.id_dl) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK)) && !session_restart) {
 			A_INFO_MSG("Not processing start download, already processed it");
 			return;
 		}
