@@ -493,7 +493,7 @@ void* update_resume_from_reboot(void* arg)
 				A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
 				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
 				if (rb_version != NULL) {
-					update_start_rollback_operations(uacc, rb_version, 1);
+					update_send_rollback_intent(uacc, rb_version);
 
 				}else {
 					post_update_action(uacc);
@@ -509,6 +509,7 @@ void* update_resume_from_reboot(void* arg)
 			}
 		}
 
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_DONE);
 		remove(uacc->record_file);
 		update_release_comp_context(uacc);
 		Z_FREE(uacc->update_manifest);
@@ -572,22 +573,22 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 						Z_FREE(thread_arg);
 						err = E_UA_ERR;
 					}
-				} else
-				{
+				} else {
 					A_ERROR_MSG("Error setting component context for resume.");
+					err = E_UA_ERR;
 				}
 
 
 			}else {
 				A_ERROR_MSG("Error: Could not find registered type of %s", type);
 				err = E_UA_ERR;
-
 			}
 			utarray_done(&ri_list);
 			free(type);
 
 		}else {
 			A_ERROR_MSG("Error getting type from resume record.");
+			err = E_UA_ERR;
 
 		}
 		free(rec_string);
@@ -596,9 +597,11 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 
 	}else {
 		err = E_UA_ERR;
+		A_ERROR_MSG("Failed to get resume record string from %s", rec_file);
 	}
 
 	if (err == E_UA_ERR) {
+		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_UNKNOWN);
 		if (rec_file)
 			remove(rec_file);
 		handler_set_internal_state(UAI_STATE_RESUME_DONE);
