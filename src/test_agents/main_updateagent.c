@@ -71,6 +71,7 @@ int main(int argc, char** argv)
 	cfg.url        = "tcp://localhost:9133";
 	cfg.cache_dir  = "/tmp/esync/";
 	cfg.backup_dir = "/data/sota/esync/";
+	cfg.reboot_support = 1;
 
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	scp_info_t scpi;

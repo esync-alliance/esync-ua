@@ -568,6 +568,7 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 					thread_arg->jo_update_rec = jo_update_rec;
 					thread_arg->uacc          = uacc;
 					if (pthread_create(&thread_resume, 0, update_resume_from_reboot, thread_arg)) {
+						comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_UNKNOWN);
 						A_ERROR_MSG("Failed to spawn a resume thread.");
 						json_object_put(jo_update_rec);
 						Z_FREE(thread_arg);
@@ -601,7 +602,6 @@ void update_handle_resume_from_reboot(char* rec_file, runner_info_hash_tree_t* r
 	}
 
 	if (err == E_UA_ERR) {
-		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_UNKNOWN);
 		if (rec_file)
 			remove(rec_file);
 		handler_set_internal_state(UAI_STATE_RESUME_DONE);
