@@ -143,7 +143,7 @@ typedef install_state_t (*ua_on_prepare_install)(ua_callback_ctl_t* ctl);
  * Callback invoked when handling xl4.ready-update,
  * This is first callback to allow ECU to setup for update installaion.
  * @param clt UA control data struct
- * @return INSTALL_READY on success, INSTALL_FAILED on failure
+ * @return INSTALL_IN_PROGRESS on success, INSTALL_FAILED on failure
  */
 typedef install_state_t (*ua_on_pre_install)(ua_callback_ctl_t* ctl);
 

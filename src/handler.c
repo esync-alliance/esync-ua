@@ -1586,8 +1586,9 @@ install_state_t pre_update_action(ua_component_context_t* uacc)
 		state = (*uar->on_pre_install)(pkgInfo->type, pkgInfo->name, pkgFile->version, pkgFile->file);
 #endif
 	}
-	if (!(pkgInfo->rollback_versions && (state == INSTALL_FAILED))) {
+	if (state == INSTALL_IN_PROGRESS) {
 		//Send update-status (INSTALL_IN_PROGRESS) with reply-id
+		A_INFO_MSG("Sending update status to request installation start");
 		if (send_install_status(uacc, state, pkgFile, UE_NONE) == E_UA_OK) {
 			//Wait for response of update-status.
 			if (pthread_mutex_lock(&uacc->update_status_info.lock)) {
