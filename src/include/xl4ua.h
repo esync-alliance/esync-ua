@@ -346,6 +346,13 @@ XL4_PUB
  */
 void ua_clear_custom_message(const char* pkgName);
 
+XL4_PUB
+/**
+ * Callback invoked whenever eSync bus connection status change.
+ * @return to give eSync bus connection status.
+ */
+int ua_get_bus_status();
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,
