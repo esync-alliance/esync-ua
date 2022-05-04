@@ -402,6 +402,10 @@ void handle_status(int status)
 	ua_intl.esync_bus_conn_status = status;
 }
 
+int ua_get_bus_status()
+{
+	return ua_intl.esync_bus_conn_status;
+}
 
 void handle_delivered(const char* msg, int ok)
 {
