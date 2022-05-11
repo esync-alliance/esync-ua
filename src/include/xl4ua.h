@@ -351,7 +351,7 @@ XL4_PUB
  * Callback invoked whenever eSync bus connection status change.
  * @return to give eSync bus connection status.
  */
-int ua_get_bus_status();
+int ua_get_bus_status(void);
 
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
