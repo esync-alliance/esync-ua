@@ -483,7 +483,7 @@ void* update_resume_from_reboot(void* arg)
 		uacc->backup_manifest       = JOIN(ua_intl.backup_dir, "backup", uacc->update_pkg.name, MANIFEST_PKG);
 		if (update_installed_version_same(uacc, uacc->update_file_info.version)) {
 			A_INFO_MSG("Resume: update installation was successful.");
-			send_install_status(uacc, INSTALL_COMPLETED, 0, UE_NONE);
+			send_install_status(uacc, INSTALL_COMPLETED, &uacc->update_file_info, UE_NONE);
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 			post_update_action(uacc);
 
