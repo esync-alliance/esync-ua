@@ -156,7 +156,7 @@ int update_record_save(ua_component_context_t* uacc)
 	FILE* fd = NULL;
 
 	A_INFO_MSG("Save record file %s", NULL_STR(uacc->record_file));
-	if (uacc && uacc->record_file && (fd = fopen(uacc->record_file, "w"))) {
+	if (uacc && uacc->record_file && !chkdirp(uacc->record_file) && (fd = fopen(uacc->record_file, "w"))) {
 		json_object* jo_rec = update_get_comp_context_jo(uacc);
 		char* str_rec       = (char*)json_object_to_json_string(jo_rec);
 		if (str_rec != NULL) {
