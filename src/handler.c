@@ -668,7 +668,7 @@ static int handler_update_outgoing_seq_num(comp_sequence_t** seq, char* name, in
 	return num;
 }
 
-static int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, int num)
+int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, int num)
 {
 	int outdated       = 0;
 	comp_sequence_t* s = NULL;
@@ -678,18 +678,18 @@ static int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, 
 		if (s->num >= num) {
 			A_WARN_MSG("Got outdated command sequence number for %s (%d >= %d)", name, s->num, num);
 			outdated = 1;
+		}else {
+			A_WARN_MSG("Update incoming command sequence number for %s from %d to %d)", name, s->num, num);
+			s->num = num;	
 		}
-		HASH_DEL(*seq, s);
-		f_free(s->name);
-		free(s);
+
 	} else {
 		A_INFO_MSG("Init incoming command sequence num for %s to %d", name, num);
+		s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
+		s->name = f_strdup(name);
+		s->num  = num;
+		HASH_ADD_KEYPTR( hh, *seq, s->name, strlen(s->name), s );
 	}
-
-	s       = (comp_sequence_t*)malloc(sizeof(comp_sequence_t));
-	s->name = f_strdup(name);
-	s->num  = num;
-	HASH_ADD_KEYPTR( hh, *seq, s->name, strlen(s->name), s );
 
 	return outdated;
 }

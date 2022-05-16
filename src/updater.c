@@ -113,6 +113,12 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 		json_object_object_add(update_cc, "update-state", json_object_new_int(state));
 		json_object_object_add(update_cc, "update-error", json_object_new_int(uacc->update_error));
 
+		comp_sequence_t* s = NULL;
+		HASH_FIND_STR(uacc->seq_in, uacc->update_pkg.name, s);
+		if (s) {
+			json_object_object_add(update_cc, "update-command-sequence", json_object_new_int(s->num ));
+		}
+
 	} else {
 		json_object_put(update_cc);
 
@@ -144,6 +150,10 @@ int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc
 
 	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-error", NULL)) == E_UA_OK) {
 		uacc->update_error = (update_err_t)tmp;
+	}
+
+	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-command-sequence", NULL)) == E_UA_OK) {
+		handler_chk_incoming_seq_outdated(&uacc->seq_in, uacc->update_pkg.name, tmp);
 	}
 
 	return err;

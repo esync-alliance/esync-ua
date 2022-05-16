@@ -281,6 +281,7 @@ int send_install_status(ua_component_context_t* uacc, install_state_t state, pkg
 int handler_backup_actions(ua_component_context_t* uacc, char* pkgName, char* version);
 int get_local_next_rollback_version(char* manifest, char* currentVer, char** nextVer);
 void query_hash_tree(runner_info_hash_tree_t* current, runner_info_t* ri, const char* ua_type, int is_delete, UT_array* gather, int tip);
+int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, int num);
 
 #ifdef SUPPORT_UA_DOWNLOAD
 int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done);
