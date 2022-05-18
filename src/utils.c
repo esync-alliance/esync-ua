@@ -188,7 +188,7 @@ int get_pkg_version_item_from_json(json_object* jsonObj, char* version, version_
 		A_INFO_MSG("vi->sha256: %s", vi->sha256);
 		A_INFO_MSG("vi->downloaded: %d", vi->downloaded);
 		A_INFO_MSG("vi->downloadable.sha256: %s", vi->downloadable.sha256);
-		A_INFO_MSG("vi->downloadable.length: %d", vi->downloadable.length);
+		A_INFO_MSG("vi->downloadable.length: %llu", vi->downloadable.length);
 		A_INFO_MSG("vi->downloadable.url: %s", vi->downloadable.url);
 		A_INFO_MSG("vi->encryption.method: %s", vi->encryption.method);
 		A_INFO_MSG("vi->encryption.key: %s", vi->encryption.key);

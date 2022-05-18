@@ -432,7 +432,7 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 				dlc->dl_rec.e_tag_valid = 0;
 			}
 
-			A_INFO_MSG("====dmc_recv_cb=len[%d]bytes_written[%d]downloaded[%llu]content_length[%llu]http_code[%d]===",
+			A_INFO_MSG("====dmc_recv_cb=len[%d]bytes_written[%llu]downloaded[%llu]content_length[%llu]http_code[%d]===",
 			           len, dlc->dl_rec.bytes_written, ddc->bytes_downloaded, ddc->content_length, ddc->http_code);
 			// do_memcmp(dlc->dl_info.downloaded_bytes - len, len, data, dlc->dl_pkg_filename);
 
