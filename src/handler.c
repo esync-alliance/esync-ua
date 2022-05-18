@@ -2372,9 +2372,9 @@ int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done)
 		   Failed, and should no longer be attempted: "error" property must be set, "no-download" property must be set to true,
 		     "completed-download" must be set to false or missing
 		 */
-		json_object_object_add(dlInfoObject, "total-bytes", json_object_new_int(dl_info.total_bytes));
-		json_object_object_add(dlInfoObject, "downloaded-bytes", json_object_new_int(dl_info.downloaded_bytes));
-		json_object_object_add(dlInfoObject, "expected-bytes", json_object_new_int(dl_info.expected_bytes));
+		json_object_object_add(dlInfoObject, "total-bytes", json_object_new_double(dl_info.total_bytes));
+		json_object_object_add(dlInfoObject, "downloaded-bytes", json_object_new_double(dl_info.downloaded_bytes));
+		json_object_object_add(dlInfoObject, "expected-bytes", json_object_new_double(dl_info.expected_bytes));
 		json_object_object_add(dlInfoObject, "no-download", json_object_new_boolean(dl_info.no_download));
 		json_object_object_add(dlInfoObject, "completed-download",
 		                       json_object_new_boolean(dl_info.completed_download && is_done));

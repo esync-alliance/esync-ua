@@ -11,6 +11,8 @@
 #ifndef _EUA_JSON_H
 #define _EUA_JSON_H
 
+#include <stdint.h>
+
 typedef enum ua_dl_error {
 	DLE_PREPARE,
 	DLE_CONNECT,
