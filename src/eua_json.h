@@ -25,11 +25,11 @@ typedef enum ua_dl_error {
 }ua_dl_error_t;
 
 typedef struct ua_dl_info {
-	int total_bytes;
-	int downloaded_bytes;
-	int expected_bytes;
-	int no_download;
-	int completed_download;
+	uint64_t total_bytes;
+	uint64_t downloaded_bytes;
+	uint64_t expected_bytes;
+	uint64_t no_download;
+	uint64_t completed_download;
 	char* error;
 
 } ua_dl_info_t;
@@ -41,7 +41,7 @@ typedef struct vi_encryption {
 
 typedef struct vi_downloadable {
 	char* sha256;
-	int length;
+	uint64_t length;
 	char* url;
 	char* against_sha256;
 
