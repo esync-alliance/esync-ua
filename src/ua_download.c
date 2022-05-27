@@ -33,6 +33,8 @@ static char ua_dl_filename_buffer[PATH_MAX];
 extern ua_internal_t ua_intl;
 char* dl_info_err[]  = {"DLE_DOWNLOAD", "DLE_VERIFY", NULL};
 bool session_restart;
+extern bool download_postponed;
+
 
 static void ua_dl_release(ua_dl_context_t* dlc);
 static void ua_dl_init_dl_rec(ua_dl_record_t* dl_rec);
@@ -469,6 +471,11 @@ static int dmc_recv_cb(struct dmclient_download_context const* ddc, void const* 
 		}
 
 		rc = ddc->result;
+	}
+
+	if(download_postponed) {
+		A_INFO_MSG("download_postponed , setting error as XL4_DME_STOP");
+		rc = XL4_DME_STOP;
 	}
 
 	return rc;
