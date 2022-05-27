@@ -71,6 +71,7 @@ typedef struct pkg_info {
 	#ifdef SUPPORT_UA_DOWNLOAD
 	char* id_dl;
 	version_item_t vi;
+	char* error;
 	#endif
 } pkg_info_t;
 

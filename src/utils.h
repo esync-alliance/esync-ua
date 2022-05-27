@@ -23,6 +23,12 @@ int get_replyto_from_json(json_object* jsonObj, char** value);
 
 int get_pkg_version_from_json(json_object* jsonObj, char** value);
 
+int get_pkg_error_from_json(json_object* jsonObj, char** value);
+
+int get_duration_from_json(json_object* jsonObj, int64_t* value);
+
+int get_force_status_from_json(json_object* jsonObj, int* value);
+
 int get_pkg_type_from_json(json_object* jsonObj, char** value);
 
 int get_pkg_name_from_json(json_object* jsonObj, char** value);
