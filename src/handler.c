@@ -1343,12 +1343,10 @@ static void process_sota_report(ua_component_context_t* uacc, json_object* jsonO
 
 #ifdef SUPPORT_UA_DOWNLOAD
 	pkg_info_t pkgInfo = {0};
-
-	if (!get_pkg_name_from_json(jsonObj, &pkgInfo.name) &&
-		!get_pkg_error_from_json(jsonObj, &pkgInfo.error) {
+	if ((!get_pkg_name_from_json(jsonObj, &pkgInfo.name)) && 
+			(!get_pkg_error_from_json(jsonObj, &pkgInfo.error)) ) {
 		A_INFO_MSG("Error is %s\n", pkgInfo.error);
-
-		if((!strcmp(pkgInfo.error, "DCE_ABORTED")) {
+		if(!strcmp(pkgInfo.error, "DCE_ABORTED")) {
 			char tmp_filename[PATH_MAX] = { 0 };
 			snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo.name);
 			A_INFO_MSG("tmp_filename %s\n", tmp_filename);
