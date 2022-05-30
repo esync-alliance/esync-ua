@@ -55,6 +55,8 @@ void* runner_loop(void* arg);
 static void ua_verify_ca_file_init(const char* path);
 static void process_start_download(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_query_trust(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_download_postpone(ua_component_context_t* uacc, json_object* jsonObj);
+
 
 int old_campaign_id = 0;
 extern bool session_restart;
@@ -2373,7 +2375,7 @@ static void process_query_trust(ua_component_context_t* uacc, json_object* jsonO
 
 static void process_download_postpone(ua_component_context_t* uacc, json_object* jsonObj) {
 	int64_t duration;
-	bool force;
+	int force;
 
 
 	if (!get_duration_from_json(jsonObj, &duration) &&
