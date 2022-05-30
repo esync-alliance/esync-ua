@@ -1344,7 +1344,7 @@ static void process_sota_report(ua_component_context_t* uacc, json_object* jsonO
 {
 
 #ifdef SUPPORT_UA_DOWNLOAD
-	pkg_info_t pkgInfo = {0};
+	/*pkg_info_t pkgInfo = {0};
 	if ((!get_pkg_name_from_json(jsonObj, &pkgInfo.name)) && 
 			(!get_pkg_error_from_json(jsonObj, &pkgInfo.error)) ) {
 		A_INFO_MSG("Error is %s\n", pkgInfo.error);
@@ -1358,7 +1358,7 @@ static void process_sota_report(ua_component_context_t* uacc, json_object* jsonO
 				rmdirp(tmp_filename);
 			}
 		}
-	}
+	}*/
 #else
 	XL4_UNUSED(uacc);
 	XL4_UNUSED(jsonObj);
