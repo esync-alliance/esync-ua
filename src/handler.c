@@ -1344,21 +1344,23 @@ static void process_sota_report(ua_component_context_t* uacc, json_object* jsonO
 {
 
 #ifdef SUPPORT_UA_DOWNLOAD
-	/*pkg_info_t pkgInfo = {0};
+	pkg_info_t pkgInfo = {0};
 	if ((!get_pkg_name_from_json(jsonObj, &pkgInfo.name)) && 
 			(!get_pkg_error_from_json(jsonObj, &pkgInfo.error)) ) {
 		A_INFO_MSG("Error is %s\n", pkgInfo.error);
-		if(!strcmp(pkgInfo.error, "DCE_ABORTED")) {
-			char tmp_filename[PATH_MAX] = { 0 };
-			snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo.name);
-			A_INFO_MSG("tmp_filename %s\n", tmp_filename);
+		if(pkgInfo.error != NULL) {
+			if(!strcmp("DCE_ABORTED", pkgInfo.error)) {
+				char tmp_filename[PATH_MAX] = { 0 };
+				snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo.name);
+				A_INFO_MSG("tmp_filename %s\n", tmp_filename);
 
-			if (!access(tmp_filename, F_OK)) {
-				A_INFO_MSG("Deleting %s\n", tmp_filename);
-				rmdirp(tmp_filename);
+				if (!access(tmp_filename, F_OK)) {
+					A_INFO_MSG("Deleting %s\n", tmp_filename);
+					rmdirp(tmp_filename);
+				}
 			}
 		}
-	}*/
+	}
 #else
 	XL4_UNUSED(uacc);
 	XL4_UNUSED(jsonObj);
