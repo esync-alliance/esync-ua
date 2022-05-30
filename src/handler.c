@@ -2349,6 +2349,7 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 			return;
 		}
 
+		download_postponed = 0;
 		old_campaign_id = atoi(pkgInfo.id_dl);
 		ua_dl_start_download(&pkgInfo);
 	}
