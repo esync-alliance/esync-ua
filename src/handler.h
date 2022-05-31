@@ -44,6 +44,8 @@
 #define BMT_UPDATE_STATUS   BMT_PREFIX "update-status"
 #define BMT_QUERY_SEQUENCE  BMT_PREFIX "sequence-info"
 #define BMT_SESSION_REQUEST BMT_PREFIX "session-request"
+#define BMT_DOWNLOAD_POSTPONED BMT_PREFIX "download-postponed"
+
 
 #ifdef USE_XL4BUS_TRUST
 	#define UACONF (uaConfig->ua_type)
@@ -69,6 +71,7 @@ typedef struct pkg_info {
 	#ifdef SUPPORT_UA_DOWNLOAD
 	char* id_dl;
 	version_item_t vi;
+	char* error;
 	#endif
 } pkg_info_t;
 

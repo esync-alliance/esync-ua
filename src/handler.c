@@ -55,9 +55,12 @@ void* runner_loop(void* arg);
 static void ua_verify_ca_file_init(const char* path);
 static void process_start_download(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_query_trust(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_download_postpone(ua_component_context_t* uacc, json_object* jsonObj);
+
 
 int old_campaign_id = 0;
 extern bool session_restart;
+bool download_postponed;
 #endif
 
 int ua_debug          = 0;
@@ -759,6 +762,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_start_download, jObj, 1);
 				} else if (!strcmp(type, BMT_QUERY_TRUST)) {
 					process_run(uacc, process_query_trust, jObj, 0);
+				} else if (!strcmp(type, BMT_DOWNLOAD_POSTPONED)) {
+					process_run(uacc, process_download_postpone, jObj, 0);
 				#endif
 				} else {
 					A_ERROR_MSG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
@@ -1337,8 +1342,30 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj)
 {
+
+#ifdef SUPPORT_UA_DOWNLOAD
+	pkg_info_t pkgInfo = {0};
+	if ((!get_pkg_name_from_json(jsonObj, &pkgInfo.name)) && 
+			(!get_pkg_error_from_json(jsonObj, &pkgInfo.error)) ) {
+		A_INFO_MSG("Error is %s\n", pkgInfo.error);
+		if(pkgInfo.error != NULL) {
+			if(!strcmp("DCE_ABORTED", pkgInfo.error)) {
+				char tmp_filename[PATH_MAX] = { 0 };
+				snprintf(tmp_filename, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, pkgInfo.name);
+				A_INFO_MSG("tmp_filename %s\n", tmp_filename);
+
+				if (!access(tmp_filename, F_OK)) {
+					A_INFO_MSG("Deleting %s\n", tmp_filename);
+					rmdirp(tmp_filename);
+				}
+			}
+		}
+	}
+#else
 	XL4_UNUSED(uacc);
 	XL4_UNUSED(jsonObj);
+#endif
+
 }
 
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj)
@@ -2317,11 +2344,12 @@ static void process_start_download(ua_component_context_t* uacc, json_object* js
 		         pkgInfo.name, pkgInfo.version,
 		         pkgInfo.version);
 
-		if(atoi(pkgInfo.id_dl) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK)) && !session_restart) {
+		if(atoi(pkgInfo.id_dl) == old_campaign_id && (!access(JOIN(ua_intl.ua_dl_dir, tmp_filename),F_OK) || !access(JOIN(ua_intl.ua_dl_dir, tmp_filename_encrypted),F_OK)) && !session_restart && !download_postponed) {
 			A_INFO_MSG("Not processing start download, already processed it");
 			return;
 		}
 
+		download_postponed = 0;
 		old_campaign_id = atoi(pkgInfo.id_dl);
 		ua_dl_start_download(&pkgInfo);
 	}
@@ -2346,6 +2374,18 @@ static void process_query_trust(ua_component_context_t* uacc, json_object* jsonO
 		//verifying ca file received for query trust response
 		ua_verify_ca_file_init(JOIN(ua_intl.ua_dl_dir, "ca"));
 	}
+}
+
+static void process_download_postpone(ua_component_context_t* uacc, json_object* jsonObj) {
+	int64_t duration;
+	int force;
+
+
+	if (!get_duration_from_json(jsonObj, &duration) &&
+			!get_force_status_from_json(jsonObj, &force)) {
+		download_postponed = 1;
+	}
+
 }
 
 int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done)
