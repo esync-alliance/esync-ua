@@ -389,6 +389,23 @@ int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata)
 	return err;
 }
 
+typedef struct bus_status_handler {
+	ua_routine_t* uar;
+	int status;
+} bus_status_handler_t;
+
+void* ua_handle_esync_staus(void* arg)
+{
+	if(arg) {
+		bus_status_handler_t* bh = (bus_status_handler_t*)arg;
+		(bh->uar->on_esyncbus_status)(bh->status);
+		Z_FREE(bh);
+
+	}
+
+	return NULL;
+}
+
 void handle_status(int status)
 {
 	char* sts_str[] = {
@@ -403,6 +420,33 @@ void handle_status(int status)
 
 	A_INFO_MSG("eSync Bus Status (%d): %s", status, status < sizeof(sts_str)/sizeof(sts_str[0]) ? sts_str[status] : "NULL");
 	ua_intl.esync_bus_conn_status = status;
+
+
+	if (ua_intl.uah) {
+		for (int i = 0; i < ua_intl.n_uah; i++) {
+			ua_routine_t* uar = (*(ua_intl.uah + i)->get_routine)();
+
+			if (uar && uar->on_esyncbus_status) {
+				//(*uar->on_esyncbus_status)(status);
+
+				pthread_t thread_bus_status;
+				pthread_attr_t attr;
+				pthread_attr_init(&attr);
+				pthread_attr_setdetachstate(&attr, 1);
+				bus_status_handler_t* bh = f_malloc(sizeof(bh));
+				bh->uar = uar;
+				bh->status = status;
+
+				if (pthread_create(&thread_bus_status, &attr, ua_handle_esync_staus, bh)) {
+					A_ERROR_MSG("Failed to spawn thread_bus_status.");
+					Z_FREE(bh);
+				}
+				pthread_attr_destroy(&attr);
+
+			}
+		}
+	}
+
 }
 
 int ua_get_bus_status(void)

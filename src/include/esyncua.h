@@ -172,6 +172,13 @@ typedef void (*ua_on_post_install)(ua_callback_ctl_t* ctl);
 typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
 
 /**
+ * Callback invoked when eSync bus status has changed.
+ * @param status, status value defined by eSync Bus.
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+typedef void (*ua_on_esyncbus_status)(int status);
+
+/**
  * Callback invoked for every eSync bus message received by libua
  * Returning !0 in this function signals this message has been processed,
  * libua will not invoke the default handler function for this messsage type.
@@ -208,11 +215,14 @@ typedef struct ua_routine {
 	// (optional) to prepare for download
 	ua_on_prepare_download on_prepare_download;
 
-	// (optional) called on xl4bus messages
+	// (optional) called on esyncbus messages
 	ua_on_message on_message;
 
-	// (optional) called when dmc is connnected to xl4bus.
+	// (optional) called when dmc is connnected to esyncbus.
 	ua_on_dmc_presence on_dmc_presence;
+
+	// (optional) called when esyncbus status has changed.
+	ua_on_esyncbus_status on_esyncbus_status;
 
 } ua_routine_t;
 

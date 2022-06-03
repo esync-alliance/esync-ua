@@ -113,8 +113,13 @@ static install_state_t do_prepare_install(const char* type, const char* pkgName,
 static int tmpl_on_dmc_presence(dmc_presence_t* dp)
 {
 	XL4_UNUSED(dp);
-	return 0;
+	return 0; 
 
+}
+
+static void tmpl_on_esyncbus_status(int status)
+{
+	XL4_UNUSED(status);
 }
 
 ua_routine_t tmpl_rtns = {
@@ -125,6 +130,7 @@ ua_routine_t tmpl_rtns = {
 	.on_post_install    = do_tmpl_post_install,
 	.on_prepare_install = do_prepare_install,
 	.on_dmc_presence    = tmpl_on_dmc_presence,
+	.on_esyncbus_status  = tmpl_on_esyncbus_status,
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	.on_transfer_file = do_transfer_file
 #endif
