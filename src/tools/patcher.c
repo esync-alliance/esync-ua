@@ -4,7 +4,7 @@
 #include "ua_version.h"
 #include "debug.h"
 
-int ua_debug;
+extern int ua_debug;
 
 static void _help(const char* app)
 {
