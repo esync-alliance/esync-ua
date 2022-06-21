@@ -21,6 +21,12 @@ int get_replyid_from_json(json_object* jsonObj, char** value);
 
 int get_replyto_from_json(json_object* jsonObj, char** value);
 
+int get_key_info_from_json(json_object *jsonObj, char** value);
+
+int get_error_code_from_json(json_object* jsonObj, int* value);
+
+int get_key_size_from_json(json_object* jsonObj, int* value);
+
 int get_pkg_version_from_json(json_object* jsonObj, char** value);
 
 int get_pkg_error_from_json(json_object* jsonObj, char** value);

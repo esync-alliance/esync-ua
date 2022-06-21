@@ -38,6 +38,24 @@ int get_replyto_from_json(json_object* jsonObj, char** value)
 
 }
 
+int get_key_info_from_json(json_object* jsonObj, char** value)
+{
+	return json_get_property(jsonObj, json_type_string, value, "body", "key", NULL);
+
+}
+
+int get_error_code_from_json(json_object* jsonObj, int* value)
+{
+	return json_get_property(jsonObj, json_type_int, value, "body", "error_code", NULL);
+
+}
+
+int get_key_size_from_json(json_object* jsonObj, int* value)
+{
+	return json_get_property(jsonObj, json_type_int, value, "body", "key_size", NULL);
+
+}
+
 
 int get_pkg_version_from_json(json_object* jsonObj, char** value)
 {
