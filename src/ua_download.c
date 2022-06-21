@@ -588,7 +588,7 @@ void store_trust_key (ua_dl_context_t* ua_dlc) {
 #ifdef SUPPORT_SIGNATURE_VERIFICATION
 void store_public_key(char* key) {
 	char cert_file[PATH_MAX];
-	snprintf(cert_file, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, "ca");
+	snprintf(cert_file, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, "pubkey");
 	if (0 != access(cert_file, F_OK)) {
 		if (0 != mkdir(cert_file, DATA_FOLDER_MODE)) {
 			A_ERROR_MSG("mkdir %s error \n", cert_file);
@@ -596,7 +596,7 @@ void store_public_key(char* key) {
 		}
 	}
 
-	snprintf(cert_file, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, "ca", "pubkey.pem");
+	snprintf(cert_file, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, "pubkey", "pubkey.pem");
 	FILE *fPtr = fopen(cert_file, "w");
 	if(fPtr == NULL)
 	{
