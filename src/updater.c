@@ -396,6 +396,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 			int bck = 0;
 			if (update_get_rollback_package(uacc, &tmp_rb_file_info, next_rb_version, &bck) == E_UA_OK) {
 				A_INFO_MSG("Rollback package found, rollback installation starts now.");
+				uacc->is_rollback_installation    = 1;
 
 				update_sts = prepare_install_action(uacc, &tmp_rb_file_info, bck,
 				                                    &uacc->update_file_info, &uacc->update_error);
@@ -409,9 +410,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 				} else {
 					if (update_sts == INSTALL_READY) {
 						uacc->update_pkg.rollback_version = uacc->update_file_info.version;
-						uacc->is_rollback_installation    = 1;
 						update_sts                        = update_start_install_operations(uacc, reboot_support);
-						uacc->is_rollback_installation    = 0;
 					}
 
 					if (update_sts != INSTALL_COMPLETED) {
@@ -432,6 +431,7 @@ install_state_t update_start_rollback_operations(ua_component_context_t* uacc, c
 					}
 				}
 
+				uacc->is_rollback_installation    = 0;
 				Z_FREE(tmp_rb_file_info.version);
 				Z_FREE(tmp_rb_file_info.file);
 
