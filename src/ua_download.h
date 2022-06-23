@@ -57,5 +57,9 @@ typedef struct ua_dl_context {
 int ua_dl_start_download(pkg_info_t* pkgInfo );
 int ua_dl_set_trust_info(ua_dl_trust_t* trust);
 
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+int ua_dl_set_key(char* key);
+#endif
+
 
 #endif //_UA_DOWNLOAD_H

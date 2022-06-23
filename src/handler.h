@@ -58,6 +58,10 @@
 #define BMT_QUERY_TRUST    BMT_PREFIX "query-trust"
 #endif
 
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+#define BMT_QUERY_KEY      BMT_PREFIX "query-pubkey"
+#endif
+
 typedef struct pkg_info {
 	char* type;
 	char* name;
@@ -290,5 +294,11 @@ int handler_chk_incoming_seq_outdated(comp_sequence_t** seq, char* name, int num
 int send_dl_report(pkg_info_t* pkgInfo, ua_dl_info_t dl_info, int is_done);
 int send_query_trust(void);
 #endif
+
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+int send_query_publickey(void);
+#endif
+
+
 
 #endif /* UA_HANDLER_H_ */

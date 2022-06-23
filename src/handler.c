@@ -23,6 +23,7 @@
 #include <string.h>
 #include "ua_download.h"
 #include <stdbool.h>
+#include <libxl4bus/low_level.h>
 #endif
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
 static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
@@ -61,6 +62,10 @@ static void process_download_postpone(ua_component_context_t* uacc, json_object*
 int old_campaign_id = 0;
 extern bool session_restart;
 bool download_postponed;
+#endif
+
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+	static void process_query_key(ua_component_context_t* uacc, json_object* jsonObj);
 #endif
 
 int ua_debug          = 0;
@@ -319,7 +324,7 @@ int ua_send_message_string(char* message)
 	return xl4bus_client_send_msg(message);
 }
 
-XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address)
+int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address)
 {
 	char* msg = (char*)json_object_to_json_string(jsonObj);
 
@@ -808,6 +813,11 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_query_trust, jObj, 0);
 				} else if (!strcmp(type, BMT_DOWNLOAD_POSTPONED)) {
 					process_run(uacc, process_download_postpone, jObj, 0);
+				}
+				#endif
+				#ifdef SUPPORT_SIGNATURE_VERIFICATION
+				else if (!strcmp(type, BMT_QUERY_KEY)) {
+					process_run(uacc, process_query_key, jObj, 0);
 				#endif
 				} else {
 					A_ERROR_MSG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
@@ -1540,6 +1550,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 			ua_callback_ctl_t uactl = {0};
 			uactl.type     = pkgInfo->type;
 			uactl.pkg_name = pkgInfo->name;
+			uactl.version  = pkgInfo->version;
 			uactl.pkg_path = updateFile->file;
 			uactl.ref      = uacc->usr_ref;
 			if ((state = (*uar->on_prepare_install)(&uactl)) == INSTALL_READY)
@@ -2311,6 +2322,36 @@ int ua_unzip(const char* archive, const char* destpath)
 	return unzip(archive, destpath);
 }
 
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+static void process_query_key(ua_component_context_t* uacc, json_object* jsonObj)
+{
+	char* replyTo = NULL;
+	char* pubkey = NULL;
+	int error_code = -1;
+	int key_size = -1;
+
+	if (!get_replyto_from_json(jsonObj, &replyTo) &&
+	    ua_intl.update_status_info.reply_id &&
+	    !strcmp(replyTo, ua_intl.update_status_info.reply_id) &&
+	    !get_error_code_from_json(jsonObj, &error_code)) {
+		free(ua_intl.update_status_info.reply_id);
+		ua_intl.update_status_info.reply_id = NULL;
+
+		get_key_size_from_json(jsonObj, &key_size);
+		if(key_size > 0) {
+			if (E_UA_OK != get_key_info_from_json(jsonObj, &pubkey)) {
+				A_ERROR_MSG("Error parsing query key.");
+			}
+
+			A_DEBUG_MSG("public key is: %s\n", pubkey);
+
+			ua_dl_set_key(pubkey);
+		}else {
+			A_ERROR_MSG("public key size is %d is invalid\n", key_size);
+		}
+	}
+}
+#endif
 
 #ifdef SUPPORT_UA_DOWNLOAD
 void ua_verify_ca_file_init(const char* path)
@@ -2506,3 +2547,33 @@ int send_query_trust(void)
 	return err;
 }
 #endif
+
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+int send_query_publickey(void)
+{
+	int err                 = E_UA_OK;
+	json_object* jObject    = json_object_new_object();
+	json_object* bodyObject = json_object_new_object();
+
+	ua_intl.update_status_info.reply_id = randstring(REPLY_ID_STR_LEN);
+	if (ua_intl.update_status_info.reply_id) {
+		json_object_object_add(jObject, "type", json_object_new_string(BMT_QUERY_KEY));
+		json_object_object_add(jObject, "body", bodyObject);
+		json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.update_status_info.reply_id ));
+
+		xl4bus_address_t* addr = 0;
+		if (xl4bus_chain_address(&addr, XL4BAT_GROUP, "update-listener", 1) == E_XL4BUS_OK &&
+			xl4bus_chain_address(&addr, XL4BAT_UPDATE_AGENT, "/SIG/AGENT", 1) == E_XL4BUS_OK
+			) {
+			if (ua_send_message_with_address(jObject, addr) != E_XL4BUS_OK) {
+				printf("Error sending public key query\n");
+			};
+
+		}
+	}
+	json_object_put(jObject);
+
+	return err;
+}
+#endif
+

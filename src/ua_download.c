@@ -585,6 +585,33 @@ void store_trust_key (ua_dl_context_t* ua_dlc) {
 	fclose(fPtr);
 }
 
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+void store_public_key(char* key) {
+	char cert_file[PATH_MAX];
+	snprintf(cert_file, PATH_MAX, "%s/%s", ua_intl.ua_dl_dir, "pubkey");
+	if (0 != access(cert_file, F_OK)) {
+		if (0 != mkdir(cert_file, DATA_FOLDER_MODE)) {
+			A_ERROR_MSG("mkdir %s error \n", cert_file);
+			return ;
+		}
+	}
+
+	snprintf(cert_file, PATH_MAX, "%s/%s/%s", ua_intl.ua_dl_dir, "pubkey", "pubkey.pem");
+	FILE *fPtr = fopen(cert_file, "w");
+	if(fPtr == NULL)
+	{
+		A_ERROR_MSG("Unable to create file.\n");
+		return;
+	}
+
+    /* Write data to file */
+	fputs(key, fPtr);
+
+	/* Close file to save file data */
+	fclose(fPtr);
+}
+#endif
+
 static int ua_dl_step_encrypt(ua_dl_context_t* dlc)
 {
 	int ret = E_UA_OK;
@@ -732,6 +759,10 @@ static int ua_dl_step_action(ua_dl_context_t* dlc)
 
 		case UA_DL_STEP_DOWNLOADED:
 		{
+			#ifdef SUPPORT_SIGNATURE_VERIFICATION
+				send_query_publickey();
+			#endif
+
 			if (E_UA_OK != ua_dl_step_encrypt(dlc)) {
 				return E_UA_ERR;
 			}
@@ -831,6 +862,18 @@ int ua_dl_set_trust_info(ua_dl_trust_t* trust)
 
 	return E_UA_ERR;
 }
+
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+int ua_dl_set_key(char* key)
+{
+	if (key) {
+		store_public_key(key);
+		return E_UA_OK;
+	}
+
+	return E_UA_ERR;
+}
+#endif
 
 static void trigger_session_request()
 {
