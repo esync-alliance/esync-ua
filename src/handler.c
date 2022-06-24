@@ -537,8 +537,14 @@ void handle_message(const char* type, const char* msg, size_t len)
 	int l = utarray_len(&ri_list);
 	if (!l)
 		A_DEBUG_MSG("Ignoring message for non-registered handler <%s> : %s", type, msg);
-	else
-		A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
+	else {
+		if (!strcmp(type, BMT_SOTA_REPORT)) {
+
+		}else {
+			A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
+		}
+
+	}
 
 	for (int j = 0; j < l; j++) {
 		runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
