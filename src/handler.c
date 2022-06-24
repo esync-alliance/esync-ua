@@ -1550,9 +1550,10 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 			ua_callback_ctl_t uactl = {0};
 			uactl.type     = pkgInfo->type;
 			uactl.pkg_name = pkgInfo->name;
-			uactl.version  = pkgInfo->version;
 			uactl.pkg_path = updateFile->file;
 			uactl.ref      = uacc->usr_ref;
+			uactl.version  = updateFile->version;
+			uactl.is_rollback = uacc->is_rollback_installation;
 			if ((state = (*uar->on_prepare_install)(&uactl)) == INSTALL_READY)
 				newFile = uactl.new_file_path;
 
