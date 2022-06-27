@@ -528,6 +528,8 @@ void handle_message(const char* type, const char* msg, size_t len)
 {
 	int err = E_UA_OK;
 	UT_array ri_list;
+	char* jsonType     = NULL;
+	enum json_tokener_error jErr;
 
 	if (!type || !msg) return;
 
@@ -537,8 +539,22 @@ void handle_message(const char* type, const char* msg, size_t len)
 	int l = utarray_len(&ri_list);
 	if (!l)
 		A_DEBUG_MSG("Ignoring message for non-registered handler <%s> : %s", type, msg);
-	else
-		A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
+	else {
+		json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
+		if (jErr == json_tokener_success) {
+			if (get_type_from_json(jObj, &jsonType) == E_UA_OK) {
+				if (!strcmp(jsonType, BMT_SOTA_REPORT)) {
+
+				}else {
+					A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
+				}
+			}
+
+		}
+		if (jObj)
+			json_object_put(jObj);
+
+	}
 
 	for (int j = 0; j < l; j++) {
 		runner_info_t* ri = *(runner_info_t**) utarray_eltptr(&ri_list, j);
