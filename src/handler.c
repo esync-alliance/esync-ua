@@ -528,6 +528,8 @@ void handle_message(const char* type, const char* msg, size_t len)
 {
 	int err = E_UA_OK;
 	UT_array ri_list;
+	char* jsonType     = NULL;
+	enum json_tokener_error jErr;
 
 	if (!type || !msg) return;
 
@@ -538,10 +540,16 @@ void handle_message(const char* type, const char* msg, size_t len)
 	if (!l)
 		A_DEBUG_MSG("Ignoring message for non-registered handler <%s> : %s", type, msg);
 	else {
-		if (!strcmp(type, BMT_SOTA_REPORT)) {
+		json_object* jObj = json_tokener_parse_verbose(msg, &jErr);
+		if (jErr == json_tokener_success) {
+			if (get_type_from_json(jObj, &jsonType) == E_UA_OK) {
+				A_INFO_MSG("Type is %s", jsonType);
+				if (!strcmp(jsonType, BMT_SOTA_REPORT)) {
 
-		}else {
-			A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
+				}else {
+					A_INFO_MSG("Incoming message for <%s> : %s", type, msg);
+				}
+			}
 		}
 
 	}
