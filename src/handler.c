@@ -36,12 +36,14 @@ static void process_download_report(ua_component_context_t* uacc, json_object* j
 static void process_sota_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_log_report(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_update_status(ua_component_context_t* uacc, json_object* jsonObj);
+static void process_query_updates(ua_component_context_t* uacc, json_object* jsonObj);
 static void process_sequence_info(ua_component_context_t* uacc, json_object* jsonObj);
 static download_state_t prepare_download_action(ua_component_context_t* uacc, pkg_info_t* update_pkg);
 static int transfer_file_action(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 static void send_download_status(ua_component_context_t* uacc, pkg_info_t* pkgInfo, download_state_t state);
 static int send_update_report(const char* pkgName, const char* version, int indeterminate, int percent, update_stage_t us);
-static int send_sequence_query(void);
+ int send_sequence_query(void);
+static int send_query_updates(void);
 static int backup_package(ua_component_context_t* uacc, pkg_info_t* pkgInfo, pkg_file_t* pkgFile);
 static int patch_delta(char* pkgManifest, char* version, char* diffFile, char* newFile);
 static char* install_state_string(install_state_t state);
@@ -110,6 +112,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.backup_source                 = uaConfig->backup_source;
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
+		ua_intl.cur_campaign_id               = NULL;
 
 		srand(time(0));
 
@@ -822,6 +825,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_sequence_info, jObj, 0);
 				} else if (!strcmp(type, BMT_UPDATE_STATUS)) {
 					process_run(uacc, process_update_status, jObj, 0);
+				} else if (!strcmp(type, BMT_QUERY_UPDATES)) {
+					process_run(uacc, process_query_updates, jObj, 0);
 				#ifdef SUPPORT_UA_DOWNLOAD
 				} else if (!strcmp(type, BMT_START_DOWNLOAD)) {
 					process_run(uacc, process_start_download, jObj, 1);
@@ -1139,6 +1144,10 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			uacc->update_manifest = JOIN(ua_intl.cache_dir, uacc->update_pkg.name, MANIFEST_PKG);
 
 			state = prepare_install_action(uacc, &pkgFile, bck, &updateFile, &updateErr);
+
+			if(state == INSTALL_READY)
+				send_query_updates();
+
 			send_install_status(uacc, state, &pkgFile, updateErr);
 
 			Z_FREE(updateFile.version);
@@ -1499,6 +1508,26 @@ static void process_update_status(ua_component_context_t* uacc, json_object* jso
 	}
 
 }
+
+static void process_query_updates(ua_component_context_t* uacc, json_object* jsonObj)
+{
+	char* replyTo;
+
+	A_INFO_MSG("query-updates:");
+
+	if (!get_replyto_from_json(jsonObj, &replyTo) &&
+	    reply_id_matched(replyTo, ua_intl.query_reply_id)) {
+
+			ua_intl.query_updates = json_object_get(jsonObj);
+			ua_intl.cur_campaign_id = "8152";
+			ua_get_package_path("SDK-TYPE2", "4.0");
+		
+	}
+
+	Z_FREE(ua_intl.query_reply_id);
+
+}
+
 
 install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t* pkgFile, int bck, pkg_file_t* updateFile, update_err_t* ue)
 {
@@ -2213,7 +2242,32 @@ int ua_rollback_disabled(const char* pkgName)
 	return 0;
 }
 
-static int send_sequence_query(void)
+static int send_query_updates(void)
+{
+	int err = E_UA_ERR;
+
+	if (ua_intl.query_reply_id == NULL) {
+		json_object* jObject    = json_object_new_object();
+		json_object* bodyObject = json_object_new_object();
+
+		ua_intl.query_reply_id = randstring(REPLY_ID_STR_LEN);
+
+		if (ua_intl.query_reply_id) {
+			json_object_object_add(jObject, "type", json_object_new_string(BMT_QUERY_UPDATES));
+			json_object_object_add(jObject, "body", bodyObject);
+			json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.query_reply_id ));
+			err = ua_send_message(jObject);
+			err = E_UA_OK;
+		}
+
+		json_object_put(jObject);
+
+	}
+
+	return err;
+}
+
+ int send_sequence_query(void)
 {
 	int err = E_UA_ERR;
 
@@ -2337,6 +2391,66 @@ void ua_clear_custom_message(const char* pkgName)
 int ua_unzip(const char* archive, const char* destpath)
 {
 	return unzip(archive, destpath);
+}
+
+char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
+{
+	json_object* campaigns;
+	json_object* campaign_i;
+	int i, n_campaigns = 0;
+	char *campaigns_id;
+	char* ret_path = NULL;
+
+	json_get_property(ua_intl.query_updates, json_type_array, &campaigns, "body", "campaigns", NULL);
+	if (json_object_is_type(campaigns, json_type_array) && ((n_campaigns = json_object_array_length(campaigns)) > 0)) {
+		for (i = 0; i < n_campaigns; i++) {
+			campaign_i = json_object_array_get_idx(campaigns, i);
+			json_get_property(campaign_i, json_type_string, &campaigns_id, "id", NULL);
+			if(campaigns_id && ua_intl.cur_campaign_id && !strcmp(campaigns_id, ua_intl.cur_campaign_id)) {
+				A_INFO_MSG("found campaign id: %s", campaigns_id);
+				json_object* targets = NULL;
+				json_object* target_i = NULL;
+				char* target_pkg_name = NULL;
+				char* target_pkg_version = (char*)pkgVersion;
+				char* target_pkg_file = NULL;
+				int n_targets = 0;
+				int j = 0;
+
+				json_get_property(campaign_i, json_type_array, &targets, "targets", NULL);
+				n_targets = json_object_array_length(targets);
+				for (j = 0; j < n_targets; j++) {
+					target_i = json_object_array_get_idx(targets, j);
+					json_get_property(target_i, json_type_string, &target_pkg_name, "package", "name", NULL);
+					if(target_pkg_name && pkgName && !strcmp(pkgName, target_pkg_name)){
+						A_INFO_MSG("found pkg name %s", target_pkg_name);
+
+						json_get_property(target_i, json_type_string, &target_pkg_file, "package", "version-list", target_pkg_version, "file", NULL);
+						if(target_pkg_file) {
+							A_INFO_MSG("found path for %s, version %s: %s", pkgName, pkgVersion, target_pkg_file);
+							ret_path = target_pkg_file;
+							break;
+						}
+
+					}
+				}
+
+				if(j >= n_targets)
+					A_INFO_MSG("Error locating %s, version %s, in campaigns object", pkgName, pkgVersion);
+
+				break; //found matched campaign id;
+			}
+
+
+		}
+
+		if(i >= n_campaigns)
+			A_INFO_MSG("Error locating campaign id %s query-updates", ua_intl.cur_campaign_id);
+	}
+
+	if(!ret_path)
+		A_INFO_MSG("Could not find update file for %s, version %s", pkgName, pkgVersion);
+
+	return ret_path;
 }
 
 #ifdef SUPPORT_SIGNATURE_VERIFICATION

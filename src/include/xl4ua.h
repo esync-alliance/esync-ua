@@ -363,6 +363,15 @@ XL4_PUB
  */
 int ua_get_bus_status(void);
 
+XL4_PUB
+/**
+ * Return the path name of component package archive.
+ * @param pkgName package name of update component.
+ * @param pkgVersion package version of update component.
+ * @return full path name of component package archive, return NULL if none is found.
+ */
+char* ua_get_package_path(const char* pkgName, const char* pkgVersion);
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,

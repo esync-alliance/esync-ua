@@ -45,6 +45,8 @@
 #define BMT_QUERY_SEQUENCE  BMT_PREFIX "sequence-info"
 #define BMT_SESSION_REQUEST BMT_PREFIX "session-request"
 #define BMT_DOWNLOAD_POSTPONED BMT_PREFIX "download-postponed"
+#define BMT_QUERY_UPDATES  BMT_PREFIX "query-updates"
+
 
 
 #ifdef USE_XL4BUS_TRUST
@@ -206,6 +208,8 @@ typedef struct ua_internal {
 	int seq_info_valid;
 	int enable_fake_rb_ver;
 	comp_sequence_t* seq_out;
+	json_object* query_updates;
+	char* cur_campaign_id;
 
 #ifdef SUPPORT_UA_DOWNLOAD
 	async_update_status_t update_status_info;
