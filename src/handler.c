@@ -113,6 +113,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
 		ua_intl.cur_campaign_id               = NULL;
+		ua_intl.max_retry                     = uaConfig->max_retry;
 
 		srand(time(0));
 
@@ -217,6 +218,8 @@ int ua_register(ua_handler_t* uah, int len)
 			ri->component.update_status_info.reply_id = NULL;
 			ri->component.record_file                 = ua_intl.record_file;
 			ri->component.enable_fake_rb_ver          = ua_intl.enable_fake_rb_ver;
+			ri->component.max_retry                   = ua_intl.max_retry;
+			ri->component.retry_cnt                   = 0;
 			ua_intl.state                             = UAI_STATE_HANDLER_REGISTERED;
 			A_INFO_MSG("Registered: %s", ri->component.type);
 		} while (0);
@@ -1166,6 +1169,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			free(pkgFile.file);
 		}
 		if (state == INSTALL_READY) {
+			uacc->retry_cnt = 0;
 			comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, uacc->update_pkg.version);
 			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
 		}
@@ -1195,17 +1199,28 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 			update_sts = update_start_rollback_operations(uacc, uacc->update_pkg.rollback_version, ua_intl.reboot_support);
 
 		}else {
-			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED &&
-			    uacc->update_pkg.rollback_versions) {
-				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				if (rb_version) {
-					update_sts = INSTALL_ROLLBACK;
-					update_send_rollback_intent(uacc, rb_version);
+			uacc->retry_cnt++;
+
+			if ((update_sts = update_start_install_operations(uacc, ua_intl.reboot_support)) == INSTALL_FAILED) {
+
+				if(uacc->retry_cnt <= uacc->max_retry) {
+					A_INFO_MSG("sending INSTALL_FAILED without rollback-versions, retry count is %d", uacc->retry_cnt);
+					send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
+
 				} else {
-					A_INFO_MSG("Failed to locate rollback info, informing terminal-failure.");
-					uacc->update_error = UE_TERMINAL_FAILURE;
-					send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
-				}
+					if(uacc->update_pkg.rollback_versions) {
+						char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
+						if (rb_version) {
+							update_sts = INSTALL_ROLLBACK;
+							update_send_rollback_intent(uacc, rb_version);
+						} else {
+							A_INFO_MSG("Failed to locate rollback info, informing terminal-failure.");
+							uacc->update_error = UE_TERMINAL_FAILURE;
+							send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
+						}
+					}
+				}			
+
 			}
 
 			if (update_sts == INSTALL_ROLLBACK && !access(uacc->update_manifest, F_OK)) {
@@ -1370,6 +1385,7 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 		Z_FREE(temp_delta_dir);
 		Z_FREE(backup_manifest);
 		Z_FREE(update_manifest);
+		uacc->retry_cnt = 0;
 		comp_set_update_stage(&uacc->st_info, pkgInfo.name, UA_STATE_CONFIRM_UPDATE_DONE);
 
 	} else

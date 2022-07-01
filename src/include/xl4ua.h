@@ -223,6 +223,12 @@ typedef struct ua_cfg {
 	//It's only used when private_key_password is not NULL.
 	char* private_key_password;
 
+	//After install failure, UA will send INSTALL_FAILED "max_retry"
+	//times without rollback-versions property. 
+	//As a result eSync client will retry the current target installation,
+	//instead of initiating a rollback.
+	int max_retry;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 	// specifies whether UA is to handle package download.
 	int ua_download_required;

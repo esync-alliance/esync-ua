@@ -210,6 +210,7 @@ typedef struct ua_internal {
 	comp_sequence_t* seq_out;
 	json_object* query_updates;
 	char* cur_campaign_id;
+	int max_retry;
 
 #ifdef SUPPORT_UA_DOWNLOAD
 	async_update_status_t update_status_info;
@@ -263,6 +264,8 @@ typedef struct ua_component_context {
 	int enable_fake_rb_ver;
 	int is_rollback_installation;
 	int cleanup_ok_after_update;
+	int max_retry;
+	int retry_cnt;
 
 	void* usr_ref;
 

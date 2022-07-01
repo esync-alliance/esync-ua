@@ -112,6 +112,7 @@ json_object* update_get_comp_context_jo(ua_component_context_t* uacc)
 		ua_stage_t state= comp_get_update_stage(uacc->st_info, uacc->update_pkg.name);
 		json_object_object_add(update_cc, "update-state", json_object_new_int(state));
 		json_object_object_add(update_cc, "update-error", json_object_new_int(uacc->update_error));
+		json_object_object_add(update_cc, "update-retry-cnt", json_object_new_int(uacc->retry_cnt));
 
 		comp_sequence_t* s = NULL;
 		HASH_FIND_STR(uacc->seq_in, uacc->update_pkg.name, s);
@@ -150,6 +151,10 @@ int update_set_comp_context(ua_component_context_t* uacc, json_object* update_cc
 
 	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-error", NULL)) == E_UA_OK) {
 		uacc->update_error = (update_err_t)tmp;
+	}
+
+	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-retry-cnt", NULL)) == E_UA_OK) {
+		uacc->retry_cnt = tmp;
 	}
 
 	if ((err = json_get_property(update_cc, json_type_int, &tmp, "update-command-sequence", NULL)) == E_UA_OK) {
@@ -499,23 +504,30 @@ void* update_resume_from_reboot(void* arg)
 
 		}else {
 			update_rollback_t rb_type = comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name);
-			if (rb_type == URB_DMC_INITIATED_WITH_UA_INTENT || rb_type == URB_UA_INITIATED) {
-				A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
-				char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
-				if (rb_version != NULL) {
-					update_send_rollback_intent(uacc, rb_version);
+			if(uacc->retry_cnt <= uacc->max_retry) {
+				post_update_action(uacc);
+				A_ERROR_MSG("Resume: update installation had failed, informing eSync client, retry count is %d, < max retry %d", uacc->retry_cnt, uacc->max_retry);
+				send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
+
+			} else {
+				if (rb_type == URB_DMC_INITIATED_WITH_UA_INTENT || rb_type == URB_UA_INITIATED) {
+					A_INFO_MSG("Resume: update installation had failed, continue next rollback action.");
+					char* rb_version = update_get_next_rollback_version(uacc, uacc->update_file_info.version);
+					if (rb_version != NULL) {
+						update_send_rollback_intent(uacc, rb_version);
+
+					}else {
+						post_update_action(uacc);
+						A_ERROR_MSG("Resume: no more rollback version, signaling terminal-failure.");
+						send_install_status(uacc, INSTALL_FAILED,
+											&uacc->update_file_info, UE_TERMINAL_FAILURE);
+					}
 
 				}else {
 					post_update_action(uacc);
-					A_ERROR_MSG("Resume: no more rollback version, signaling terminal-failure.");
-					send_install_status(uacc, INSTALL_FAILED,
-					                    &uacc->update_file_info, UE_TERMINAL_FAILURE);
+					A_ERROR_MSG("Resume: update installation had failed, informing eSync client.");
+					send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 				}
-
-			}else {
-				post_update_action(uacc);
-				A_ERROR_MSG("Resume: update installation had failed, informing eSync client.");
-				send_install_status(uacc, INSTALL_FAILED, 0, UE_NONE);
 			}
 		}
 
