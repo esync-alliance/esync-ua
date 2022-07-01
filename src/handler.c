@@ -2411,7 +2411,7 @@ char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
 				json_object* targets = NULL;
 				json_object* target_i = NULL;
 				char* target_pkg_name = NULL;
-				char* target_pkg_version = (char*)pkgVersion;
+				char* target_pkg_version = NULL;
 				char* target_pkg_file = NULL;
 				int n_targets = 0;
 				int j = 0;
@@ -2424,9 +2424,13 @@ char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
 					if(target_pkg_name && pkgName && !strcmp(pkgName, target_pkg_name)){
 						A_INFO_MSG("found pkg name %s", target_pkg_name);
 
-						json_get_property(target_i, json_type_string, &target_pkg_file, "package", "version-list", target_pkg_version, "file", NULL);
+						json_get_property(target_i, json_type_string, &target_pkg_version, "package", "version", NULL);
+						
+						if(target_pkg_version)
+							json_get_property(target_i, json_type_string, &target_pkg_file, "package", "version-list", target_pkg_version, "file", NULL);
+
 						if(target_pkg_file) {
-							A_INFO_MSG("found path for %s, version %s: %s", pkgName, pkgVersion, target_pkg_file);
+							A_INFO_MSG("found path for %s, version %s: %s", pkgName, target_pkg_version, target_pkg_file);
 							ret_path = target_pkg_file;
 							break;
 						}
@@ -2435,7 +2439,7 @@ char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
 				}
 
 				if(j >= n_targets)
-					A_INFO_MSG("Error locating %s, version %s, in campaigns object", pkgName, pkgVersion);
+					A_INFO_MSG("Error locating %s in campaigns object", pkgName);
 
 				break; //found matched campaign id;
 			}
@@ -2448,7 +2452,7 @@ char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
 	}
 
 	if(!ret_path)
-		A_INFO_MSG("Could not find update file for %s, version %s", pkgName, pkgVersion);
+		A_INFO_MSG("Could not find update file for %s", pkgName);
 
 	return ret_path;
 }
