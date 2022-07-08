@@ -29,7 +29,7 @@ enum ua_dl_step {
 #define E_TAG_MAX_SIZE        128
 #define MAX_SIGCA_LIST        3
 typedef struct ua_dl_record {
-	int bytes_written;
+	uint64_t bytes_written;
 	int step;
 	unsigned int crc32;
 	int last_bytes_written;
