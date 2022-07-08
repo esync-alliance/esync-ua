@@ -2264,13 +2264,10 @@ static int send_query_updates(void)
 
 	if (ua_intl.query_reply_id == NULL) {
 		json_object* jObject    = json_object_new_object();
-		json_object* bodyObject = json_object_new_object();
-
 		ua_intl.query_reply_id = randstring(REPLY_ID_STR_LEN);
 
 		if (ua_intl.query_reply_id) {
 			json_object_object_add(jObject, "type", json_object_new_string(BMT_QUERY_UPDATES));
-			json_object_object_add(jObject, "body", bodyObject);
 			json_object_object_add(jObject, "reply-id", json_object_new_string(ua_intl.query_reply_id ));
 			err = ua_send_message(jObject);
 			err = E_UA_OK;
