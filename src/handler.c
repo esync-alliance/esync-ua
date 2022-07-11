@@ -1533,10 +1533,7 @@ static void process_query_updates(ua_component_context_t* uacc, json_object* jso
 
 	if (!get_replyto_from_json(jsonObj, &replyTo) &&
 	    reply_id_matched(replyTo, ua_intl.query_reply_id)) {
-
 			ua_intl.query_updates = json_object_get(jsonObj);
-			ua_intl.cur_campaign_id = "8152";
-			ua_get_package_path("SDK-TYPE2", "4.0");
 		
 	}
 
