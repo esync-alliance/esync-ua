@@ -842,8 +842,9 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 				#ifdef SUPPORT_SIGNATURE_VERIFICATION
 				else if (!strcmp(type, BMT_QUERY_KEY)) {
 					process_run(uacc, process_query_key, jObj, 0);
+				}
 				#endif
-				} else {
+				else {
 					A_ERROR_MSG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
 				}
 			} else {
