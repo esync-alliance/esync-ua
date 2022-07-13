@@ -269,6 +269,7 @@ static int ua_dl_init(pkg_info_t* pkgInfo, ua_dl_context_t** dlc)
 	tmp_dlc->dl_info.expected_bytes     = pkgInfo->vi.downloadable.length;
 	tmp_dlc->dl_info.no_download        = 0;
 	tmp_dlc->dl_info.completed_download = 0;
+	tmp_dlc->stop_completed_status      = 0;
 
 	*dlc = tmp_dlc;
 	return E_UA_OK;
@@ -784,7 +785,13 @@ static int ua_dl_step_action(ua_dl_context_t* dlc)
 		case UA_DL_STEP_VERIFIED:
 		case UA_DL_STEP_DONE:
 		{
-			return ua_dl_step_done(dlc);
+			if(dlc->stop_completed_status)
+				return E_UA_OK;
+			else {
+				ua_dl_step_done(dlc);
+				sleep(1);
+				return ua_dl_step_action(dlc);
+			}
 		}
 		break;
 		default:
@@ -861,6 +868,14 @@ int ua_dl_set_trust_info(ua_dl_trust_t* trust)
 	}
 
 	return E_UA_ERR;
+}
+
+int ua_dl_stop_sending_completed_status(void)
+{
+	if (ua_dlc) {
+		ua_dlc->stop_completed_status = 1;
+	}
+	return E_UA_OK;
 }
 
 #ifdef SUPPORT_SIGNATURE_VERIFICATION

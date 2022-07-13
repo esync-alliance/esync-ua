@@ -52,10 +52,12 @@ typedef struct ua_dl_context {
 	char* ca_file;
 	dmclient_cert_ck_f cert_auth;
 	ua_dl_trust_t dl_trust;
+	int stop_completed_status;
 }ua_dl_context_t;
 
 int ua_dl_start_download(pkg_info_t* pkgInfo );
 int ua_dl_set_trust_info(ua_dl_trust_t* trust);
+int ua_dl_stop_sending_completed_status(void);
 
 #ifdef SUPPORT_SIGNATURE_VERIFICATION
 int ua_dl_set_key(char* key);
