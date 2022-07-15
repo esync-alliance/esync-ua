@@ -837,8 +837,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_query_trust, jObj, 0);
 				} else if (!strcmp(type, BMT_DOWNLOAD_POSTPONED)) {
 					process_run(uacc, process_download_postpone, jObj, 0);
-				}
 				#endif
+				}
 				#ifdef SUPPORT_SIGNATURE_VERIFICATION
 				else if (!strcmp(type, BMT_QUERY_KEY)) {
 					process_run(uacc, process_query_key, jObj, 0);
