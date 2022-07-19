@@ -1232,7 +1232,8 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 		if ( update_sts == INSTALL_COMPLETED &&
 		     !ua_rollback_disabled(uacc->update_pkg.name) &&
-		     !is_prepared_delta_package(uacc->update_file_info.file) ) {
+		     !is_prepared_delta_package(uacc->update_file_info.file) &&
+			 comp_get_fake_rb_version(uacc->st_info,uacc->update_pkg.name) == NULL) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 		ua_clear_custom_message(uacc->update_pkg.name);
