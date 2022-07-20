@@ -815,6 +815,9 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 				} else if (!strcmp(type, BMT_READY_UPDATE)) {
 					process_run(uacc, process_ready_update, jObj, 1);
 				} else if (!strcmp(type, BMT_PREPARE_UPDATE)) {
+				#ifdef SUPPORT_UA_DOWNLOAD
+					ua_dl_stop_sending_completed_status();
+				#endif
 					process_run(uacc, process_prepare_update, jObj, 1);
 				} else if (!strcmp(type, BMT_CONFIRM_UPDATE)) {
 					process_run(uacc, process_confirm_update, jObj, 0);
@@ -840,7 +843,6 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 				#endif
 				}
 				#ifdef SUPPORT_SIGNATURE_VERIFICATION
-				}
 				else if (!strcmp(type, BMT_QUERY_KEY)) {
 					process_run(uacc, process_query_key, jObj, 0);
 				}
@@ -1118,10 +1120,6 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		}
 
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_STARTED);
-
-#ifdef SUPPORT_UA_DOWNLOAD
-		ua_dl_stop_sending_completed_status();
-#endif
 
 		get_pkg_rollback_version_from_json(jsonObj, &uacc->update_pkg.rollback_version);
 		pkgFile.version = S(uacc->update_pkg.rollback_version) ? uacc->update_pkg.rollback_version : uacc->update_pkg.version;
