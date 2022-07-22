@@ -22,3 +22,4 @@ libzip-build
 setup.cfg
 esync_libua.egg-info
 Makefile
+.vscode

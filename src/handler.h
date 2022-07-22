@@ -167,6 +167,7 @@ typedef struct comp_ctrl {
 	char* pkg_name;
 	int rb_disable;
 	update_rollback_t rb_type;
+	int enable_fake_rb_version;
 	char* custom_msg;
 
 	UT_hash_handle hh;
@@ -206,7 +207,6 @@ typedef struct ua_internal {
 	comp_ctrl_t* component_ctrl;
 	char* query_reply_id;
 	int seq_info_valid;
-	int enable_fake_rb_ver;
 	comp_sequence_t* seq_out;
 	json_object* query_updates;
 	char* cur_campaign_id;
@@ -261,7 +261,6 @@ typedef struct ua_component_context {
 	char* record_file;
 	comp_sequence_t* seq_in;
 	comp_state_info_t* st_info;
-	int enable_fake_rb_ver;
 	int is_rollback_installation;
 	int cleanup_ok_after_update;
 	int max_retry;

@@ -52,6 +52,7 @@ static char* update_stage_string(update_stage_t stage);
 static char* log_type_string(log_type_t log);
 static void release_comp_sequence(comp_sequence_t* seq);
 static char* get_component_custom_message(char* pkgName);
+static int is_fake_rb_version_enabled(const char* pkgName);
 void* runner_loop(void* arg);
 
 #ifdef SUPPORT_UA_DOWNLOAD
@@ -111,7 +112,6 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.record_file                   = S(ua_intl.backup_dir) ? JOIN(ua_intl.backup_dir, "backup", UPDATE_REC_FILE) : NULL;
 		ua_intl.backup_source                 = uaConfig->backup_source;
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
-		ua_intl.enable_fake_rb_ver            = uaConfig->enable_fake_rb_ver;
 		ua_intl.cur_campaign_id               = NULL;
 		ua_intl.max_retry                     = uaConfig->max_retry;
 
@@ -217,7 +217,6 @@ int ua_register(ua_handler_t* uah, int len)
 			BOLT_SYS(pthread_cond_init(&ri->component.update_status_info.cond, 0), "update status cond init");
 			ri->component.update_status_info.reply_id = NULL;
 			ri->component.record_file                 = ua_intl.record_file;
-			ri->component.enable_fake_rb_ver          = ua_intl.enable_fake_rb_ver;
 			ri->component.max_retry                   = ua_intl.max_retry;
 			ri->component.retry_cnt                   = 0;
 			ua_intl.state                             = UAI_STATE_HANDLER_REGISTERED;
@@ -1028,7 +1027,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				}
 			}
 
-			if (uacc->enable_fake_rb_ver && fake_rb_ver && uae == E_UA_OK ) {
+			if (is_fake_rb_version_enabled(pkgInfo.name) && fake_rb_ver && uae == E_UA_OK ) {
 				json_object* verListObject = json_object_new_object();
 				json_object* rbVersArray   = json_object_new_array();
 
@@ -1235,8 +1234,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 		if ( update_sts == INSTALL_COMPLETED &&
 		     !ua_rollback_disabled(uacc->update_pkg.name) &&
-		     !is_prepared_delta_package(uacc->update_file_info.file) &&
-			 comp_get_fake_rb_version(uacc->st_info,uacc->update_pkg.name) == NULL) {
+		     !is_prepared_delta_package(uacc->update_file_info.file) ) {
 			handler_backup_actions(uacc, uacc->update_pkg.name,  uacc->update_file_info.version);
 		}
 		ua_clear_custom_message(uacc->update_pkg.name);
@@ -2339,12 +2337,41 @@ void ua_rollback_control(const char* pkgName, int disable)
 
 }
 
-int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type)
+static int is_fake_rb_version_enabled(const char* pkgName)
 {
-	if ( rb_type != URB_NONE )
-		return comp_set_rb_type(&ua_intl.component_ctrl, pkgName, rb_type);
-	else
-		return E_UA_ERR;
+	comp_ctrl_t* ctl = NULL;
+	int enabled = 0;
+
+	if(pkgName){
+		HASH_FIND_STR(ua_intl.component_ctrl, pkgName, ctl);
+		if (ctl)
+			enabled = ctl->enable_fake_rb_version;		
+	}
+
+	return enabled;
+}
+
+int ua_enable_fake_rollback_version(const char* pkgName)
+{
+	comp_ctrl_t* rbc = NULL;
+
+	if(!pkgName) return E_UA_ERR;
+
+	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, rbc);
+	if (rbc) {
+		rbc->enable_fake_rb_version = 1;
+
+	} else {
+			A_INFO_MSG("Disable rollback for %s", pkgName);
+			rbc = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+			memset(rbc, 0, sizeof(comp_ctrl_t));
+			rbc->pkg_name   = f_strdup(pkgName);;
+			rbc->enable_fake_rb_version = 1;
+			HASH_ADD_KEYPTR( hh, ua_intl.component_ctrl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
+	}
+
+	return E_UA_OK;
+
 }
 
 char* get_component_custom_message(char* pkgName)

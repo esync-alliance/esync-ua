@@ -314,6 +314,8 @@ typedef struct ua_cfg {
 	//1 = disable, do not verify downloaded package against sha256
 	int package_verification_disabled;
 
+	// !!!!! DEPRECATED !!!!!
+	// PLEASE USE function ua_enable_fake_rollback_version()
 	//Enable fake rollback version in query-package response.
 	//0 = default, do NOT use fake rollback version.
 	//1 = enable, use fake rollback version.
@@ -554,6 +556,14 @@ XL4_PUB
  * @return E_UA_OK, or E_UA_ERR
  */
 int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type);
+
+XL4_PUB
+/**
+ * Enable using fake rollback version.
+ * @param pkgName package name of update component.
+ * @return E_UA_OK, or E_UA_ERR
+ */
+int ua_enable_fake_rollback_version(const char* pkgName);
 
 XL4_PUB
 /**
