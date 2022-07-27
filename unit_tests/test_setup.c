@@ -18,6 +18,7 @@
 #include "test_setup.h"
 
 extern char* handler_type;
+extern ua_internal_t ua_intl;
 ua_handler_t uah[] = {
 	{UT_DEFAULT_HANDLER_TYPE, get_tmpl_routine }
 };
@@ -48,6 +49,8 @@ int test_ua_setup(void** state)
 	if (handler_type)
 		uah[0].type_handler = handler_type;
 	ua_register(uah, sizeof(uah)/sizeof(uah[0]));
+
+	ua_intl.dmc_handler_done = 1;
 
 	return 0;
 }

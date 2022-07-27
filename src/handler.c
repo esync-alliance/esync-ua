@@ -305,7 +305,13 @@ void* ua_handle_dmc_presence(void* arg)
 			(*uar->on_dmc_presence)(&dmc->presence);
 		Z_FREE(dmc);
 	}
+	ua_intl.dmc_handler_done = 1;
 
+	return NULL;
+}
+
+void* update_sequence_info(void* arg)
+{
 	while (!ua_intl.seq_info_valid) {
 		send_sequence_query();
 		sleep(5);
@@ -497,6 +503,19 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 			while (ua_intl.state < UAI_STATE_HANDLER_REGISTERED)
 				sleep(1);
 
+			if(connection_state == BUS_CONN_DMC_CONNECTED) {
+				//Spawn a thread to re-sync sequence number.
+				pthread_t thread_si;
+				pthread_attr_t attr_si;
+				pthread_attr_init(&attr_si);
+				pthread_attr_setdetachstate(&attr_si, PTHREAD_CREATE_DETACHED);
+				if (pthread_create(&thread_si, &attr_si, update_sequence_info, NULL)) {
+					A_ERROR_MSG("Failed to spawn thread update_sequence_info.");
+				}
+				pthread_attr_destroy(&attr_si);
+
+			}
+
 			if (ua_intl.reboot_support && ua_intl.state < UAI_STATE_RESUME_STARTED)
 				update_handle_resume_from_reboot(ua_intl.record_file, ri_tree);
 
@@ -507,7 +526,7 @@ void handle_presence(int connected, int disconnected, esync_bus_conn_state_t con
 						pthread_t thread_dmc_presence;
 						pthread_attr_t attr;
 						pthread_attr_init(&attr);
-						pthread_attr_setdetachstate(&attr, 1);
+						pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 						dmc_handler_t* dmc = f_malloc(sizeof(*dmc));
 						dmc->uar            = uar;
 						dmc->presence.size  = sizeof(dmc->presence);
@@ -1186,6 +1205,11 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 
 static void process_ready_update(ua_component_context_t* uacc, json_object* jsonObj)
 {
+	if(!ua_intl.dmc_handler_done){
+		A_INFO_MSG("Waiting UA to finish dmc_handler operations, dropping this ready-update message.");
+		return;
+
+	}
 	install_state_t update_sts = INSTALL_READY;
 	json_object* jo            = json_object_get(jsonObj);
 
@@ -1482,7 +1506,6 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 	    ua_intl.query_reply_id ) {
 		if (!strcmp(replyTo, ua_intl.query_reply_id)) {
 			A_INFO_MSG("sequence-info with reply-id: %s", replyTo);
-			ua_intl.seq_info_valid = 1;
 			json_object* jo_seq = NULL;
 			get_seq_info_per_update_from_json(jsonObj, &jo_seq);
 			json_object_object_foreach(jo_seq, key, val) {
@@ -1494,6 +1517,9 @@ static void process_sequence_info(ua_component_context_t* uacc, json_object* jso
 					A_INFO_MSG("json value is not interger");
 				}
 			}
+
+			ua_intl.seq_info_valid = 1;
+
 
 		} else {
 			A_INFO_MSG("sequence-info with mismatched reply id: %s, expected: %s", replyTo, ua_intl.query_reply_id);
