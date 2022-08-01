@@ -365,7 +365,7 @@ static int zip_zip(const char* archive, const char* path)
 		char* wd;
 		if( (wd=getcwd(NULL, 0)) == NULL) {
 			A_ERROR_MSG("failed to get current directory\n");
-		} 
+		}
 #else
 		char* wd = (char*)get_current_dir_name();
 #endif
@@ -578,7 +578,13 @@ int calc_sha256(const char* fpath, unsigned char obuff[SHA256_DIGEST_LENGTH])
 {
 	int err = E_UA_OK;
 	FILE* file;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	SHA256_CTX ctx;
+#else /* OpenSSL 3.0 Support */
+	EVP_MD_CTX *ctx;
+	const EVP_MD *md;
+	unsigned int sha256_len;
+#endif /* OpenSSL 3.0 Support */
 	char* buf = 0;
 	size_t nread;
 
@@ -587,13 +593,28 @@ int calc_sha256(const char* fpath, unsigned char obuff[SHA256_DIGEST_LENGTH])
 
 		BOLT_MALLOC(buf, ua_rw_buff_size);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		SHA256_Init(&ctx);
+#else /* OpenSSL 3.0 Support */
+		md = EVP_get_digestbyname("sha256");
+		ctx = EVP_MD_CTX_new();
+		EVP_DigestInit_ex(ctx, md, NULL);
+#endif /* OpenSSL 3.0 Support */
 
 		while ((nread = fread(buf, sizeof(char), ua_rw_buff_size, file))) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			SHA256_Update(&ctx, buf, nread);
+#else /* OpenSSL 3.0 Support */
+			EVP_DigestUpdate(ctx, buf, nread);
+#endif /* OpenSSL 3.0 Support */
 		}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		SHA256_Final(obuff, &ctx);
+#else /* OpenSSL 3.0 Support */
+		EVP_DigestFinal_ex(ctx, obuff, &sha256_len);
+		EVP_MD_CTX_free(ctx);
+#endif /* OpenSSL 3.0 Support */
 
 		BOLT_SYS(fclose(file), "closing file: %s", fpath);
 
@@ -633,10 +654,16 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 	struct zip* za;
 	struct zip_file* zf;
 	struct zip_stat sb;
-	SHA256_CTX ctx;
 	struct sha256_list* sl         = 0;
 	struct sha256_list* aux        = 0;
 	struct sha256_list* sha256List = 0;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	SHA256_CTX ctx;
+#else /* OpenSSL 3.0 Support */
+	EVP_MD_CTX *ctx;
+	const EVP_MD *md;
+	unsigned int sha256_len;
+#endif /* OpenSSL 3.0 Support */
 
 	do {
 		BOLT_IF(!(za = zip_open(archive, ZIP_RDONLY, &zerr)), E_UA_ERR,
@@ -656,15 +683,26 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 
 				BOLT_IF(!(zf = zip_fopen_index(za, i, 0)), E_UA_ERR, "failed to open/find %s: %s", sb.name, zip_strerror(za));
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 				SHA256_Init(&ctx);
 				SHA256_Update(&ctx, sb.name, strlen(sb.name));
+#else /* OpenSSL 3.0 Support */
+				md = EVP_get_digestbyname("sha256");
+				ctx = EVP_MD_CTX_new();
+				EVP_DigestInit_ex(ctx, md, NULL);
+				EVP_DigestUpdate(ctx, sb.name, strlen(sb.name));
+#endif /* OpenSSL 3.0 Support */
 
 				sum = 0;
 				len = (zip_int64_t)ua_rw_buff_size;
 				while (len == (zip_int64_t)ua_rw_buff_size) {
 					BOLT_IF((len = zip_fread(zf, buf, (zip_uint64_t)ua_rw_buff_size)) == -1, E_UA_ERR, "error reading %s : %s", sb.name, zip_file_strerror(zf));
 					if(len > 0) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 						SHA256_Update(&ctx, buf, len);
+#else /* OpenSSL 3.0 Support */
+						EVP_DigestUpdate(ctx, buf, len);
+#endif /* OpenSSL 3.0 Support */
 						sum += (zip_uint64_t)len;
 					}
 				}
@@ -674,7 +712,12 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 				}
 
 				sl = f_malloc(sizeof(struct sha256_list));
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 				SHA256_Final(sl->sha256, &ctx);
+#else /* OpenSSL 3.0 Support */
+				EVP_DigestFinal_ex(ctx, sl->sha256, &sha256_len);
+				EVP_MD_CTX_free(ctx);
+#endif /* OpenSSL 3.0 Support */
 				LL_APPEND(sha256List, sl);
 
 				zip_fclose(zf);
@@ -682,12 +725,28 @@ int calc_sha256_x(const char* archive, char obuff[SHA256_B64_LENGTH])
 		}
 
 		if (!err) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			SHA256_Init(&ctx);
+#else /* OpenSSL 3.0 Support */
+			md = EVP_get_digestbyname("sha256");
+			ctx = EVP_MD_CTX_new();
+			EVP_DigestInit_ex(ctx, md, NULL);
+#endif /* OpenSSL 3.0 Support */
+
 			LL_SORT(sha256List, sha256cmp);
 			LL_FOREACH(sha256List, sl) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 				SHA256_Update(&ctx, sl->sha256, SHA256_DIGEST_LENGTH);
+#else /* OpenSSL 3.0 Support */
+				EVP_DigestUpdate(ctx, sl->sha256, SHA256_DIGEST_LENGTH);
+#endif /* OpenSSL 3.0 Support */
 			}
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			SHA256_Final(hash, &ctx);
+#else /* OpenSSL 3.0 Support */
+			EVP_DigestFinal_ex(ctx, hash, &sha256_len);
+			EVP_MD_CTX_free(ctx);
+#endif /* OpenSSL 3.0 Support */
 
 			err = base64_encode(hash, obuff);
 		}
