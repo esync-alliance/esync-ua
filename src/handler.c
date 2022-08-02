@@ -2400,6 +2400,14 @@ int ua_enable_fake_rollback_version(const char* pkgName)
 
 }
 
+int ua_set_rollback_type(const char* pkgName, update_rollback_t rb_type)
+{
+	if ( rb_type != URB_NONE )
+		return comp_set_rb_type(&ua_intl.component_ctrl, pkgName, rb_type);
+	else
+		return E_UA_ERR;
+}
+
 char* get_component_custom_message(char* pkgName)
 {
 	char* message   = NULL;
