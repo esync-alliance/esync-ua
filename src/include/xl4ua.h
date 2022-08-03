@@ -379,6 +379,15 @@ XL4_PUB
  */
 int ua_get_bus_status(void);
 
+
+XL4_PUB
+/**
+ * Process query-package asynchronously.
+ * 
+ * @return none
+ */
+void ua_set_async_query_package(void);
+
 XL4_PUB
 /**
  * Return the path name of component package archive.

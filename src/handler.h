@@ -212,6 +212,7 @@ typedef struct ua_internal {
 	char* cur_campaign_id;
 	int max_retry;
 	int dmc_handler_done;
+	int async_query_package;
 
 #ifdef SUPPORT_UA_DOWNLOAD
 	async_update_status_t update_status_info;

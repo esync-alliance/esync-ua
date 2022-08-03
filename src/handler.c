@@ -114,6 +114,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.package_verification_disabled = uaConfig->package_verification_disabled;
 		ua_intl.cur_campaign_id               = NULL;
 		ua_intl.max_retry                     = uaConfig->max_retry;
+		ua_intl.async_query_package           = 0;
 
 		srand(time(0));
 
@@ -468,6 +469,11 @@ void handle_status(int status)
 int ua_get_bus_status(void)
 {
 	return ua_intl.esync_bus_conn_status;
+}
+
+void ua_set_async_query_package(void)
+{
+	ua_intl.async_query_package = 1;
 }
 
 void handle_delivered(const char* msg, int ok)
@@ -827,7 +833,7 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 			}
 			if (!processed) {
 				if (!strcmp(type, BMT_QUERY_PACKAGE)) {
-					process_run(uacc, process_query_package, jObj, 0);
+					process_run(uacc, process_query_package, jObj, ua_intl.async_query_package);
 				} else if (!strcmp(type, BMT_READY_DOWNLOAD)) {
 					process_run(uacc, process_ready_download, jObj, 0);
 				} else if (!strcmp(type, BMT_READY_UPDATE)) {
