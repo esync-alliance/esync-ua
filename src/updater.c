@@ -228,6 +228,7 @@ int update_installed_version_same(ua_component_context_t* uacc, char* target_ver
 	ua_callback_ctl_t uactl = {0};
 	uactl.type     = uacc->update_pkg.type;
 	uactl.pkg_name = uacc->update_pkg.name;
+	uactl.pkg_path = uacc->update_file_info.file;
 	uactl.ref      = uacc->usr_ref;
 	if ((err = (uacc->uar->on_get_version)(&uactl)) == E_UA_OK)
 		install_version = uactl.version;

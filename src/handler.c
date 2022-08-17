@@ -213,7 +213,6 @@ int ua_register(ua_handler_t* uah, int len)
 			BOLT_SYS(pthread_cond_init(&ri->cond, 0), "cond init");
 			BOLT_SYS(pthread_create(&ri->thread, 0, runner_loop, ri), "pthread create");
 			query_hash_tree(ri_tree, ri, ri->component.type, 0, 0, 0);
-
 			BOLT_SYS(pthread_mutex_init(&ri->component.update_status_info.lock, NULL), "update status lock init");
 			BOLT_SYS(pthread_cond_init(&ri->component.update_status_info.cond, 0), "update status cond init");
 			ri->component.update_status_info.reply_id = NULL;
@@ -872,10 +871,10 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 				}
 				#endif
 				else {
-					A_ERROR_MSG("Nothing to do for type %s : %s", type, json_object_to_json_string(jObj));
+					A_ERROR_MSG("UA/lib does not have a handler for type %s : %s", type, json_object_to_json_string(jObj));
 				}
 			} else {
-				A_ERROR_MSG("Not processing message for type %s : %s", type, json_object_to_json_string(jObj));
+				A_ERROR_MSG("libary has no further action, since UA has processed this message %s", json_object_to_json_string(jObj));
 			}
 		}
 	} else {
