@@ -1043,7 +1043,6 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 				if (json_object_array_length(rbVersArray) > 0) {
 					json_object_object_add(pkgObject, "version-list", verListObject);
-					json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 				} else {
 					fake_rb_ver = 1;
 					json_object_put(verListObject);
@@ -1065,7 +1064,6 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 				json_object_array_add(rbVersArray, json_object_new_string(NULL_STR(installedVer)));
 
 				json_object_object_add(pkgObject, "version-list", verListObject);
-				json_object_object_add(pkgObject, "rollback-versions", rbVersArray);
 
 				comp_set_fake_rb_version(&uacc->st_info, pkgInfo.name, NULL_STR(installedVer));
 
