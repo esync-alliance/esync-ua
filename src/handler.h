@@ -214,11 +214,14 @@ typedef struct ua_internal {
 	int dmc_handler_done;
 	int async_query_package;
 
-#ifdef SUPPORT_UA_DOWNLOAD
+#if defined(SUPPORT_UA_DOWNLOAD) || defined(SUPPORT_SIGNATURE_VERIFICATION)
 	async_update_status_t update_status_info;
+	char* ua_dl_dir;
+#endif
+
+#ifdef SUPPORT_UA_DOWNLOAD
 	int ua_download_required;
 	char* ua_downloaded_filename;
-	char* ua_dl_dir;
 	int ua_dl_connect_timout_ms;
 	int ua_dl_download_timeout_ms;
 	char* ua_dl_ca_file;

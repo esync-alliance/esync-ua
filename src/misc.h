@@ -97,4 +97,9 @@ int chkdirp(const char* path);
 int run_cmd(const char* cmd, char* const argv[]);
 char* randstring(int length);
 int reply_id_matched(char* s1, char* s2);
+
+#ifdef SUPPORT_SIGNATURE_VERIFICATION
+int ua_dl_set_key(char* key);
+#endif
+
 #endif /* UA_MISC_H_ */
