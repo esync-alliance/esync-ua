@@ -17,13 +17,16 @@
 #include "updater.h"
 #include "component.h"
 
+#if defined(SUPPORT_SIGNATURE_VERIFICATION) || defined(SUPPORT_UA_DOWNLOAD)
+#include "ua_download.h"
+#include <libxl4bus/low_level.h>
+#endif
+
 #ifdef SUPPORT_UA_DOWNLOAD
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
-#include "ua_download.h"
 #include <stdbool.h>
-#include <libxl4bus/low_level.h>
 #endif
 static void process_message(ua_component_context_t* uacc, const char* msg, size_t len);
 static void process_run(ua_component_context_t* uacc, process_f func, json_object* jObj, int turnover);
@@ -121,6 +124,10 @@ int ua_init(ua_cfg_t* uaConfig)
 		#ifdef SUPPORT_LOGGING_INFO
 		ua_intl.diag_dir  = S(uaConfig->diag_dir) ? f_strdup(uaConfig->diag_dir) : NULL;
 		ua_intl.diag_file = S(ua_intl.diag_dir) ? JOIN(ua_intl.diag_dir, DIAGNOSTIC_DATA_FILE) : NULL;
+		#endif
+
+		#if defined(SUPPORT_SIGNATURE_VERIFICATION) && !defined(SUPPORT_UA_DOWNLOAD)
+		ua_intl.ua_dl_dir = S(uaConfig->backup_dir) ? f_strdup(uaConfig->backup_dir) : NULL;
 		#endif
 
 		#ifdef SUPPORT_UA_DOWNLOAD
@@ -1151,6 +1158,12 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 				A_INFO_MSG("version %s has been marked prepared, but found no version record.", uacc->update_pkg.version);
 			}
 		}
+
+
+		#if defined(SUPPORT_SIGNATURE_VERIFICATION) || defined(SUPPORT_UA_DOWNLOAD)
+			send_query_publickey();
+			sleep(5);
+		#endif
 
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_STARTED);
 
