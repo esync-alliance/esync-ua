@@ -1063,7 +1063,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 				json_object* versionObject = json_object_new_object();
 				json_object_object_add(versionObject, "file", json_object_new_string(""));
-				json_object_object_add(versionObject, "downloaded", json_object_new_boolean(1));
+				json_object_object_add(versionObject, "downloaded", json_object_new_boolean(false));
 				json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
 				json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
 				json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
@@ -2410,13 +2410,13 @@ int ua_enable_fake_rollback_version(const char* pkgName)
 	comp_ctrl_t* rbc = NULL;
 
 	if(!pkgName) return E_UA_ERR;
+	A_INFO_MSG("Enable fake rollback for %s", pkgName);
 
 	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, rbc);
 	if (rbc) {
 		rbc->enable_fake_rb_version = 1;
 
 	} else {
-			A_INFO_MSG("Disable rollback for %s", pkgName);
 			rbc = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
 			memset(rbc, 0, sizeof(comp_ctrl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
