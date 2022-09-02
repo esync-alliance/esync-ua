@@ -32,7 +32,7 @@ typedef struct ua_dl_record {
 	uint64_t bytes_written;
 	int step;
 	unsigned int crc32;
-	int last_bytes_written;
+	uint64_t last_bytes_written;
 	unsigned int last_crc32;
 	int e_tag_valid;
 	char e_tag[E_TAG_MAX_SIZE];
