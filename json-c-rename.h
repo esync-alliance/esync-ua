@@ -1,4 +1,3 @@
-
 #define JSON_BRUTAL_RENAME(x) __updateagent_hide_jsonc_##x
 
 #define printbuf_new JSON_BRUTAL_RENAME(printbuf_new)

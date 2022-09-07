@@ -277,7 +277,7 @@ static install_state_t pua_prepare_install(ua_callback_ctl_t* ctl)
 
 			if (PyList_Size(result) > 1 && (ret_path = pua_get_string_from_pylist_ob(result, 1))) {
 				PY_DBG("PUA prepare_install returned new update file path: %s", ret_path);
-				ctl->new_file_path = ret_path;
+				ctl->new_file_path = strdup(ret_path);
 			}
 
 		}else
@@ -345,8 +345,10 @@ static int pua_transfer_file(ua_callback_ctl_t* ctl)
 		if (result) {
 			rc = pua_get_int_from_pylist_ob(result, 0);
 
-			if (PyList_Size(result) > 1 && (ret_path = pua_get_string_from_pylist_ob(result, 1)))
+			if (PyList_Size(result) > 1 && (ret_path = pua_get_string_from_pylist_ob(result, 1))) {
 				PY_DBG("PUA do_transfer_file returned new update file path: %s", ret_path);
+				ctl->new_file_path = strdup(ret_path);
+			}
 
 		}else
 			PY_DBG("Error PyObject_CallFunction py_transfer_file");

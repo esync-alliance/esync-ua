@@ -10,6 +10,7 @@
 #else
 #include "xl4ua.h"
 #endif //LIBUA_VER_2_0
+#include <string.h>
 
 #include "build_config.h"
 #include "uthash.h"

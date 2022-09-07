@@ -41,37 +41,112 @@ typedef struct dmc_presence {
 }dmc_presence_t;
 
 /**
- * callback function for UA to return installed version string.
+ * Callback invoked when UA receives xl4.query-package to get ECU version.
+ *
  * @param type, UA component handler type.
  * @param pkgName, UA component package name.
- * @param version, UA shall return current installed version of UA,
- *        libary does not change/release memory pointed by version.
- *
+ * @param version, UA shall return the version of currently installed firmware
+ *        in the ECU, libary does not change/release memory pointed by version.
  * @return When UA returns E_UA_OK, library sends the version string to eSync
  *         client. If version is NULL, json null is used in version reporting.
- *         When UA returns E_UA_ERR, library sends "update-incapable"
- *         to eSync Client.
+ *         When UA returns E_UA_ERR, library sends "update-incapable" to eSync Client.
  */
 typedef int (*ua_on_get_version)(const char* type, const char* pkgName, char** version);
 
+/**
+ * Callback function invoked after successful update that allows UA to update
+ * local version database manually if needed.
+ *
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, Updated version string.
+ * @return E_UA_OK on successful operation.
+ */
 typedef int (*ua_on_set_version)(const char* type, const char* pkgName, const char* version);
 
+/**
+ * Callback invoked when UA receives xl4.ready-update
+ * This is first callback to allow ECU to initialized setup for update installaion.
+ *
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, New version string.
+ * @param pkgFile, Full path of downloaded installation package archive
+ * @return should return INSTALL_IN_PROGRESS if setup initialization is successful,
+ *         else return INSTALL_FAILED.
+ */
 typedef install_state_t (*ua_on_pre_install)(const char* type, const char* pkgName, const char* version, const char* pkgFile);
 
+/**
+ * Callback invoked when UA receives xl4.ready-update
+ * If ua_on_pre_install returns INSTALL_IN_PROGRESS, UA should perform/finished
+ * the update installation on this callback.
+ *
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, New version string.
+ * @param pkgFile, Full path of downloaded installation package archive
+ * @return should return INSTALL_COMPLETED on successful, INSTALL_FAILED on failure.
+ */
 typedef install_state_t (*ua_on_install)(const char* type, const char* pkgName, const char* version, const char* pkgFile);
 
+/**
+ * Callback invoked when UA receives xl4.ready-update
+ * If ua_on_install returns INSTALL_COMPLETED, this callback allows UA to perform
+ * any post installation operations/actions if any.
+ *
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ */
 typedef void (*ua_on_post_install)(const char* type, const char* pkgName);
 
+/**
+ * Callback invoked when UA receives xl4.prepare-update
+ * This allows UA to transfer file from a remote system if needed.
+ *
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, New version string.
+ * @param pkgFile, Full path of downloaded installation package archive
+ * @param newFile, optional, returns to inform the new installation package
+ *                 file path that will be used for further processing.
+ * @return E_UA_OK on successful operation.
+ */
 typedef int (*ua_on_transfer_file)(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile);
 
+/**
+ * Callback invoked when UA receives xl4.prepare-update
+ * Called after ua_on_transfer_file, allows UA to manage 'packageFile' path
+ * e.g.
+ * A system might need to copy 'packageFile' to a specific directory before
+ * update installation.
+ * In such case, UA shall return the new pathname, which will be passed to
+ * ua_on_install.
+ *
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, New version string.
+ * @param pkgFile, Full path of downloaded installation package archive
+ * @param newFile, optional, returns to inform the new installation package
+ *                 file path that will be used for further processing.
+ * @return should return INSTALL_READY when preparation is successful,
+ *         or INSTALL_FAILED on failure
+ */
 typedef install_state_t (*ua_on_prepare_install)(const char* type, const char* pkgName, const char* version, const char* pkgFile, char** newFile);
 
+/**
+ * Callback invoked when UA receives xl4.ready-download
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, New version string.
+ * @return DOWNLOAD_CONSENT to inform eSync Client to start downloading,
+ *         or DOWNLOAD_DENIED to inform eSync Client not to download.
+ */
 typedef download_state_t (*ua_on_prepare_download)(const char* type, const char* pkgName, const char* version);
 
 /**
- * callback function when eSync Client is connected to bus.
+ * Callback function when eSync Client is connected/disconnected to/from eSync bus.
  * @param dp, pointer to dmc_presence_t structure, reserved for future use.
- *
  * @return UA returns E_UA_OK, or E_UA_ERR.
  */
 typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
@@ -83,14 +158,20 @@ typedef int (*ua_on_dmc_presence)(dmc_presence_t* dp);
  */
 typedef void (*ua_on_esyncbus_status)(int status);
 
+/**
+ * Callback invoked for every eSync bus message received by libua
+ * Returning !0 in this function signals this message has been processed,
+ * libua will not invoke the default handler function for this messsage type.
+ * If this function returns 0, the default handler function will still be called.
+ *
+ * @param type, component handler type
+ * @param message, charater string containing raw eSync bus message
+ * @return !0 = message has been processed, 0 = not processed
+ */
 #ifdef _json_h_
-
 typedef int (*ua_on_message)(const char* msgType, json_object* message);
-
 #else
-
 typedef int (*ua_on_message)(const char* msgType, void* message);
-
 #endif /* _json_h_ */
 
 typedef struct ua_routine {
@@ -129,7 +210,6 @@ typedef struct ua_routine {
 
 } ua_routine_t;
 
- 
 typedef struct delta_tool {
 	char* algo;
 	char* path;
@@ -150,13 +230,13 @@ typedef struct delta_cfg {
 typedef enum update_rollback {
 	URB_NONE,
 
-	// UA signals INSTALL_FAILED after update failure. 
+	// UA signals INSTALL_FAILED after update failure.
 	// If next rollback version is available, it's included in the status message.
 	// If no available rollback version, terminal-failure is set to true.
 	// This is the default when rollback-versions is included in ready-update message.
 	URB_DMC_INITIATED_WITH_UA_INTENT,
 
-	// UA signals INSTALL_FAILED after update failure. 
+	// UA signals INSTALL_FAILED after update failure.
 	// No rollback version is included in the status message, regardless its availablity.
 	URB_DMC_INITIATED_NO_UA_INTENT,
 
@@ -183,7 +263,7 @@ typedef struct ua_cfg {
 	// specifies the diagnostic file directory
 	#ifdef SUPPORT_LOGGING_INFO
 	char* diag_dir;
-	#endif	
+	#endif
 
 	// enables delta support
 	int delta;
@@ -221,12 +301,12 @@ typedef struct ua_cfg {
 	//1 = enable, use fake rollback version.
 	int enable_fake_rb_ver;
 
-	//Password for x.509 certificate private key encryption. 
+	//Password for x.509 certificate private key encryption.
 	//It's only used when private_key_password is not NULL.
 	char* private_key_password;
 
 	//After install failure, UA will send INSTALL_FAILED "max_retry"
-	//times without rollback-versions property. 
+	//times without rollback-versions property.
 	//As a result eSync client will retry the current target installation,
 	//instead of initiating a rollback.
 	int max_retry;
@@ -243,8 +323,10 @@ typedef struct ua_cfg {
 
 
 typedef struct ua_handler {
+	//component handler type
 	char* type_handler;
 
+	//returns a pointer to a set of callback functions invoked by libua
 	ua_routine_t* (*get_routine)(void);
 
 } ua_handler_t;
@@ -265,35 +347,127 @@ XL4_PUB
  */
 int ua_init(ua_cfg_t* ua_config);
 
-XL4_PUB int ua_register(ua_handler_t* uah, int len);
+XL4_PUB
+/**
+ * Registers handler(s) and the corresponding context for UA instance.
+ * @param uah points to an array structure of UA handler data type(s).
+ * @param len num of handler type(s) in the array.
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_register(ua_handler_t* uah, int len);
 
-XL4_PUB int ua_unregister(ua_handler_t* uah, int len);
+XL4_PUB
+/**
+ * De-registers handler(s) and the corresponding context for UA instance.
+ * @param uah points to an array structure of UA handler data type(s).
+ * @param len num of handler type(s) in the array.
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_unregister(ua_handler_t* uah, int len);
 
-XL4_PUB int ua_stop(void);
+XL4_PUB
+/**
+ * Stop update agent, all related resource will be released.
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_stop(void);
 
-XL4_PUB const char* ua_get_updateagent_version(void);
+XL4_PUB
+/**
+ * Provide libua version string to the UA.
+ * @return version string
+ */
+const char* ua_get_updateagent_version(void);
 
-XL4_PUB const char* ua_get_xl4bus_version(void);
+XL4_PUB
+/**
+ * Provide libxl4bus version string to the UA.
+ * @return version string
+ */
+const char* ua_get_xl4bus_version(void);
 
-XL4_PUB int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent);
+XL4_PUB
+/**
+ * Send installation progress (US_INSTALL) via xl4.update-report status to eSync Client
+ * @param pkgName package name of update component
+ * @param version version string
+ * @param indeterminate 1 = indeterminate, 0 = not indeterminate
+ * @param percent progress percentage (0-100)
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_install_progress(const char* pkgName, const char* version, int indeterminate, int percent);
 
-XL4_PUB int ua_send_transfer_progress(const char* pkgName, const char* version, int indeterminate, int percent);
+XL4_PUB
+/**
+ * Send transfer progress (US_TRANSFER) via xl4.update-report status to eSync Client
+ * @param pkgName package name of update component
+ * @param version version string
+ * @param indeterminate 1 = indeterminate, 0 = not indeterminate
+ * @param percent progress percentage (0-100)
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_transfer_progress(const char* pkgName, const char* version, int indeterminate, int percent);
 
-XL4_PUB int ua_backup_package(char* type, char* pkgName, char* version);
+XL4_PUB
+/**
+ * Make a backup image of the installation package after successful update.
+ * libua performs the same backup automatically after successful installation.
+ * For ECU(s) reboots itself to start update installation (e.g. by boot loader),
+ * UA should call this fuction to make a backup image manually.
+ * @param type component handler type
+ * @param pkgName package name
+ * @param version installed version string
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_backup_package(char* type, char* pkgName, char* version);
 
-XL4_PUB int ua_send_message_string(char* message);
+XL4_PUB
+/**
+ * Send charater string as-is in "message" to eSync Client.
+ * Sender is fully responsible for the "correctness" of the message format.
+ * @param message character string
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_message_string(char* message);
 
-XL4_PUB int ua_send_message_string_with_address(char* message,  xl4bus_address_t* xl4_address);
+XL4_PUB
+/**
+ * Send charater string as-is in "message" to a eSync bus addressed node.
+ * Sender is fully responsible for the "correctness" of the message format.
+ * @param message character string
+ * @param address eSync bus address
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_message_string_with_address(char* message,  xl4bus_address_t* xl4_address);
 
 XL4_PUB int ua_send_current_report(const char * pkgName, const char * version);
 
 #ifdef _json_h_
 
-XL4_PUB int ua_send_message(json_object* message);
+XL4_PUB
+/**
+ * Send josn string formated by json_object "message" to eSync Client.
+ * Sender is fully responsible for the "correctness" of the message format.
+ * libua converts json_object "message" to json charater string.
+ * @param message character string
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_message(json_object* message);
 
-XL4_PUB int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address);
+XL4_PUB
+/**
+ * Send josn string formated by json_object "message" to a eSync bus addressed node.
+ * Sender is fully responsible for the "correctness" of the message format.
+ * libua converts json_object "message" to json charater string.
+ * @param message character string
+ * @param address eSync bus address
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_message_with_address(json_object* jsonObj, xl4bus_address_t* xl4_address);
 
-
+/**
+ * log level used in xl4.log-report messages
+ */
 typedef enum log_type {
 	LOG_EVENT,
 	LOG_INFO,
@@ -309,13 +483,21 @@ typedef struct log_data {
 	char* timestamp;
 } log_data_t;
 
-XL4_PUB int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata);
+XL4_PUB
+/**
+ * Send xl4.log-report to eSync Client
+ * @param pkgType component handler type
+ * @param logtype enum type log_type_t
+ * @param logdata log report data
+ * @return E_UA_OK on success, E_UA_ERR on failure
+ */
+int ua_send_log_report(char* pkgType, log_type_t logtype, log_data_t* logdata);
 
 #endif /* _json_h_ */
 
 XL4_PUB
 /**
- * Check if rollback has been disabled for pkgNmae.
+ * Check if rollback has been disabled for pkgName.
  * @param pkgName package name of update component.
  * @return !0 = disabled, 0 = enabled
  */
@@ -383,7 +565,7 @@ int ua_get_bus_status(void);
 XL4_PUB
 /**
  * Process query-package asynchronously.
- * 
+ *
  * @return none
  */
 void ua_set_async_query_package(void);

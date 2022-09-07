@@ -40,13 +40,13 @@ static inline const char* cut_path(const char* path)
         sprintf(__now+15, "%03d", (int)(__tv.tv_usec/1000))
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define A_INFO_MSG(fmt, a ...) do { if (ua_debug_lvl == 4 || ua_debug_lvl == 5) { \
+#define A_INFO_MSG(fmt, a ...) do { if (ua_debug_lvl >= 3) { \
 					    _ltime_; \
 					    printf("[%s] %s:%d " fmt "\n", __now, cut_path(__FILE__), __LINE__, ## a); \
 					    fflush(stdout); \
 				    } } while (0);
 #if 0
-#define A_INFO_MSG(a,b ...)    do { if (ua_debug == 4 || ua_debug == 5) { \
+#define A_INFO_MSG(a,b ...)    do { if (ua_debug >= 3) { \
 					    _ltime_; \
 					    char* _str = f_asprintf("[%s] %s:%d " a, __now, chop_path(__FILE__), __LINE__, ## b); \
 					    if (_str) { \
