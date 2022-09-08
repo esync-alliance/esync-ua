@@ -1611,11 +1611,7 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 			err =  verify_file_hash_b64(pkgFile->file, pkgFile->sha256b64);
 	}
 
-	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file) && !is_prepared_delta_package(pkgFile->file)) {
-		char* bname = f_basename(pkgFile->file);
-		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
-		free(bname);
-
+	if(err == E_UA_OK) {
 #ifdef LIBUA_VER_2_0
 		ua_callback_ctl_t uactl = {0};
 		uactl.type     = pkgInfo->type;
@@ -1623,13 +1619,27 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 		uactl.ref      = uacc->usr_ref;
 		if ((err = (*uar->on_get_version)(&uactl)) == E_UA_OK)
 			installedVer = uactl.version;
+		else {
+			A_INFO_MSG("prepare update get versin failed with error = %d", uactl.update_error);
+			*ue = uactl.update_error;
+		}
+
 #else
 		err = (*uar->on_get_version)(pkgInfo->type, pkgInfo->name, &installedVer);
+		if (err != E_UA_OK) {
+			A_ERROR_MSG("prepare update get version for %s failed!", pkgInfo->name);
+		}
 
 #endif
-		if (err != E_UA_OK) {
-			A_ERROR_MSG("get version for %s failed!", pkgInfo->name);
-		}
+	}
+
+
+		
+	if (err == E_UA_OK && ua_intl.delta && is_delta_package(pkgFile->file) && !is_prepared_delta_package(pkgFile->file)) {
+		char* bname = f_basename(pkgFile->file);
+		updateFile->file = JOIN(ua_intl.cache_dir, "delta", bname);
+		free(bname);
+
 
 		if (uacc->backup_manifest == NULL || (err = patch_delta(uacc->backup_manifest, installedVer, pkgFile->file, updateFile->file)) == E_UA_ERR) {
 			if (err == E_UA_ERR)
