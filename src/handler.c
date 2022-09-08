@@ -1085,19 +1085,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 		json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
 		json_object_object_add(jObject, "body", bodyObject);
 
-		if(uae == E_UA_SYS) {
-			A_INFO_MSG("signal terminal-failure status due to get version system error");
-
-			uacc->update_pkg.name = pkgInfo.name;
-			uacc->update_pkg.type = pkgInfo.type;
-			uacc->update_error = UE_TERMINAL_FAILURE;
-			send_install_status(uacc, INSTALL_FAILED, &uacc->update_file_info, uacc->update_error);
-			uacc->update_pkg.name = NULL;
-			uacc->update_pkg.name = NULL;
-			uacc->update_error = UE_NONE;
-
-		} else
-			ua_send_message(jObject);
+		ua_send_message(jObject);
 
 		json_object_put(jObject);
 
@@ -1920,7 +1908,7 @@ int send_install_status(ua_component_context_t* uacc, install_state_t state, pkg
 
 	json_object_object_add(pkgObject, "name", json_object_new_string(pkgInfo->name));
 	json_object_object_add(pkgObject, "type", json_object_new_string(pkgInfo->type));
-	json_object_object_add(pkgObject, "version", pkgInfo->version ? json_object_new_string(pkgInfo->version) : NULL);
+	json_object_object_add(pkgObject, "version", json_object_new_string(pkgInfo->version));
 	json_object_object_add(pkgObject, "status", json_object_new_string(install_state_string(state)));
 	if (pkgInfo->rollback_version && pkgFile) json_object_object_add(pkgObject, "rollback-version", json_object_new_string(pkgInfo->rollback_version));
 	if (pkgInfo->rollback_version && pkgInfo->rollback_versions && pkgFile) json_object_object_add(pkgObject, "rollback-versions", json_object_get(pkgInfo->rollback_versions));
