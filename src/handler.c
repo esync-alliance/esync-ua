@@ -1659,6 +1659,10 @@ install_state_t prepare_install_action(ua_component_context_t* uacc, pkg_file_t*
 			uactl.is_rollback = uacc->is_rollback_installation;
 			if ((state = (*uar->on_prepare_install)(&uactl)) == INSTALL_READY)
 				newFile = uactl.new_file_path;
+			else {
+				A_INFO_MSG("UA prepare update failed with error = %d", uactl.update_error);
+				*ue = uactl.update_error;
+			}
 
 #else
 			state = (*uar->on_prepare_install)(pkgInfo->type, pkgInfo->name, updateFile->version, updateFile->file, &newFile);

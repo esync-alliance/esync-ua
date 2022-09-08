@@ -31,6 +31,13 @@ typedef enum download_state {
 } download_state_t;
 
 
+typedef enum update_err {
+	UE_NONE,
+	UE_INCREMENTAL_FAILED,
+	UE_UPDATE_INCAPABLE,
+	UE_TERMINAL_FAILURE
+} update_err_t;
+
 #define E_UA_OK     ( 0)
 #define E_UA_ERR    (-1)
 #define E_UA_MEMORY (-2)
@@ -89,6 +96,15 @@ typedef struct ua_callback_ctl {
 	 *
 	 */
 	int is_rollback;
+
+
+	/**
+	 * Optional: Update Agent sets update_error upon return.
+	 * When this is set during prepare-update stage, update-status will include
+	 * this error in the status message.
+	 *
+	 */
+	update_err_t update_error;
 
 	/**
 	 * self reference pointer set by UA when calling ua_regitster,
