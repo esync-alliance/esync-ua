@@ -25,7 +25,7 @@
 
 #ifdef SUPPORT_SIGNATURE_VERIFICATION
 #include "handler.h"
-ua_internal_t ua_intl;
+extern ua_internal_t ua_intl;
 #endif
 
 static int libzip_archive_add_file(struct zip* za, const char* path, const char* base);

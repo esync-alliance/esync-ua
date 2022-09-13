@@ -39,6 +39,8 @@ void ua_install_log_handler(ua_log_handler_f handler)
 int ua_debug_lvl = 0;
 int ua_debug     = 1;
 
+ua_internal_t ua_intl = {0};
+
 static void _help(const char* app)
 {
 	printf("Construct eSync backup directory, mandatory arguments are package name, version, and file path.\n");
