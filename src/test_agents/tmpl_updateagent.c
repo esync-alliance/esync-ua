@@ -44,6 +44,12 @@ static void do_tmpl_post_install(ua_callback_ctl_t* ctl)
 	return;
 }
 
+static void do_tmpl_confirm_update(ua_callback_ctl_t* ctl)
+{
+	XL4_UNUSED(ctl);
+	return;
+}
+
 static install_state_t do_tmpl_prepare_install(ua_callback_ctl_t* ctl)
 {
 	XL4_UNUSED(ctl);
@@ -109,6 +115,15 @@ static void do_tmpl_post_install(const char *type, const char *pkgName)
 	return;
 }
 
+static void do_tmpl_confirm_update(const char* type, const char* pkgName, const char* version)
+{
+	XL4_UNUSED(type);
+	XL4_UNUSED(pkgName);
+	XL4_UNUSED(version);
+	return;
+}
+
+
 static install_state_t do_tmpl_prepare_install(const char *type,
                                                const char *pkgName,
                                                const char *version,
@@ -159,6 +174,7 @@ ua_routine_t tmpl_rtns = {
 	.on_pre_install     = do_tmpl_pre_install,
 	.on_install         = do_tmpl_install,
 	.on_post_install    = do_tmpl_post_install,
+	.on_confirm_update   = do_tmpl_confirm_update,
 	.on_prepare_install = do_tmpl_prepare_install,
 #if TMPL_UA_SUPPORT_SCP_TRANSFER
 	.on_transfer_file   = do_tmpl_transfer_file,

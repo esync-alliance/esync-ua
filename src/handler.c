@@ -1389,6 +1389,20 @@ static void process_confirm_update(ua_component_context_t* uacc, json_object* js
 
 				A_INFO_MSG("Removing update_manifest %s", update_manifest);
 				remove(update_manifest);
+
+				if (uacc->uar->on_confirm_update) {
+#ifdef LIBUA_VER_2_0
+					ua_callback_ctl_t uactl = {0};
+					uactl.type     = pkgInfo.type;
+					uactl.pkg_name = pkgInfo.name;
+					uactl.version  = pkgInfo.version;
+					uactl.ref      = uacc->usr_ref;
+					(uacc->uar->on_confirm_update)(&uactl);
+#else
+					(uacc->uar->on_confirm_update)(pkgInfo.type, pkgInfo.name, pkgInfo.version);
+#endif
+				}
+
 			} else {
 				A_ERROR_MSG("confirm-update did not find temp manifest %s", update_manifest);
 			}

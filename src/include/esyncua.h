@@ -180,6 +180,15 @@ typedef install_state_t (*ua_on_install)(ua_callback_ctl_t* ctl);
  */
 typedef void (*ua_on_post_install)(ua_callback_ctl_t* ctl);
 
+
+/**
+ * Callback invoked when handling xl4.confirm-update,
+ * 
+ * UA can perform clean up after update completion.
+ * @param clt UA control data struct
+ */
+typedef void (*ua_on_confirm_update)(ua_callback_ctl_t* ctl);
+
 /**
  * Callback invoked when eSync Client is connected/disconnected to/from eSync bus
  * @param dp, pointer to dmc_presence_t structure, reserved for future use.
@@ -239,6 +248,9 @@ typedef struct ua_routine {
 
 	// (optional) called when esyncbus status has changed.
 	ua_on_esyncbus_status on_esyncbus_status;
+
+	// (optional) called when update has concluded.
+	ua_on_confirm_update on_confirm_update;
 
 } ua_routine_t;
 

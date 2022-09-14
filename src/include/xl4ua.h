@@ -108,6 +108,16 @@ typedef install_state_t (*ua_on_install)(const char* type, const char* pkgName, 
 typedef void (*ua_on_post_install)(const char* type, const char* pkgName);
 
 /**
+ * Callback invoked when handling xl4.confirm-update,
+ * 
+ * UA can perform clean up after update completion.
+ * @param type, UA component handler type.
+ * @param pkgName, UA component package name.
+ * @param version, version string of last tried update.
+ */
+typedef void (*ua_on_confirm_update)(const char* type, const char* pkgName, const char* version);
+
+/**
  * Callback invoked when UA receives xl4.prepare-update
  * This allows UA to transfer file from a remote system if needed.
  *
@@ -214,6 +224,9 @@ typedef struct ua_routine {
 
 	// (optional) called when esyncbus status has changed.
 	ua_on_esyncbus_status on_esyncbus_status;
+
+	// (optional) called when update has concluded.
+	ua_on_confirm_update on_confirm_update;
 
 } ua_routine_t;
 
