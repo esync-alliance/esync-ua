@@ -841,8 +841,10 @@ int ua_dl_set_trust_info(ua_dl_trust_t* trust)
 
 int ua_dl_stop_sending_completed_status(void)
 {
-	if (ua_dlc) {
+	if (ua_dlc && ua_dlc->stop_completed_status == 0) {
 		ua_dlc->stop_completed_status = 1;
+		//allow download thread to exit so UA can process prepare-update timely.
+		sleep(3);
 	}
 	return E_UA_OK;
 }

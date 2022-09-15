@@ -846,7 +846,8 @@ static void process_message(ua_component_context_t* uacc, const char* msg, size_
 					process_run(uacc, process_ready_update, jObj, 1);
 				} else if (!strcmp(type, BMT_PREPARE_UPDATE)) {
 				#ifdef SUPPORT_UA_DOWNLOAD
-					ua_dl_stop_sending_completed_status();
+					if(ua_intl.ua_download_required)
+						ua_dl_stop_sending_completed_status();
 				#endif
 					process_run(uacc, process_prepare_update, jObj, 1);
 				} else if (!strcmp(type, BMT_CONFIRM_UPDATE)) {
