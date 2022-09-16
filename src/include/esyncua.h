@@ -359,6 +359,12 @@ typedef struct ua_cfg {
 	//instead of initiating a rollback.
 	int max_retry;
 
+	//Indicate query package response will include "failure" or "update-incapable"
+	//when read version failed.
+	//0 = default, "update-incapable" is sent on read version error.
+	//1 = enabled, "failure" is sent on read version error.
+	int qp_failure_response;
+
 #ifdef SUPPORT_UA_DOWNLOAD
 	// specifies whether UA is to handle package download.
 	int ua_download_required;

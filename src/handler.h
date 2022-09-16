@@ -213,6 +213,7 @@ typedef struct ua_internal {
 	int max_retry;
 	int dmc_handler_done;
 	int async_query_package;
+	int qp_failure_response;
 
 #if defined(SUPPORT_UA_DOWNLOAD) || defined(SUPPORT_SIGNATURE_VERIFICATION)
 	async_update_status_t update_status_info;

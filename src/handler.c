@@ -118,6 +118,7 @@ int ua_init(ua_cfg_t* uaConfig)
 		ua_intl.cur_campaign_id               = NULL;
 		ua_intl.max_retry                     = uaConfig->max_retry;
 		ua_intl.async_query_package           = 0;
+		ua_intl.qp_failure_response           = uaConfig->qp_failure_response;
 
 		srand(time(0));
 
@@ -1004,7 +1005,7 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			}
 
 			custom_msg = get_component_custom_message(pkgInfo.name);
-			if (custom_msg)
+			if (custom_msg && ua_intl.qp_failure_response == 0)
 				json_object_object_add(pkgObject, "message", json_object_new_string(custom_msg));
 
 			#ifdef SUPPORT_UA_DOWNLOAD
@@ -1013,8 +1014,14 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 			}
 			#endif
 
-			if (uae != E_UA_OK) {
-				json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
+			if (uae == E_UA_ERR) {
+				if( ua_intl.qp_failure_response ) {
+					json_object_object_add(bodyObject, "failure", custom_msg ? json_object_new_string(custom_msg) : json_object_new_string("Unknown Faiure"));
+
+				} else {
+					json_object_object_add(pkgObject, "update-incapable", json_object_new_boolean(1));
+
+				}
 			}
 
 			fake_rb_ver = delta_use_external_algo() || ua_rollback_disabled(pkgInfo.name);
@@ -1077,7 +1084,9 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 
 			}
 
-			json_object_object_add(bodyObject, "package", pkgObject);
+			if( !(ua_intl.qp_failure_response && uae == E_UA_ERR) )
+				json_object_object_add(bodyObject, "package", pkgObject);
+				
 			Z_FREE(backup_manifest);
 		}
 
@@ -1086,7 +1095,10 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 		json_object_object_add(jObject, "reply-to", json_object_new_string(replyId));
 		json_object_object_add(jObject, "body", bodyObject);
 
-		ua_send_message(jObject);
+		if(uae != E_UA_SYS)
+			ua_send_message(jObject);
+		else
+			A_INFO_MSG("Not sending query-package response, UA reported system error!");
 
 		json_object_put(jObject);
 
