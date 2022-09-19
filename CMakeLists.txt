@@ -389,7 +389,7 @@ if(BUILD_PY_LIBUA AND NOT ENABLE_YOCTO_BUILD)
 
         add_custom_target(pylibua ALL DEPENDS ${pylibua_SRC}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMAND ${CMAKE_COMMAND} -E env ${PYLIBUA_SETUP_ENV} ${PYTHON_BIN_PATH} ${SETUP_PY} build --build-base=${CMAKE_CURRENT_BINARY_DIR})
+            COMMAND ${CMAKE_COMMAND} -E env ${PYLIBUA_SETUP_ENV} ${PYTHON_BIN_PATH} ${SETUP_PY} build --build-base=${CMAKE_CURRENT_BINARY_DIR}  develop --user )
 
         add_dependencies(pylibua ua-shared ua-static)
 
