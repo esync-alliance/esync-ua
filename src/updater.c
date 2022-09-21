@@ -644,7 +644,7 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 
 		json_get_property(jsonObj, json_type_string, &ua_intl.cur_campaign_id, "body", "campaign", "id", NULL);
 		if(ua_intl.cur_campaign_id)
-			A_INFO_MSG("current campaign id is %s", ua_intl.cur_campaign_id);
+			A_INFO_MSG("ready-update: current campaign id is %s", ua_intl.cur_campaign_id);
 		else
 			A_INFO_MSG("no campaign id in ready-update");
 

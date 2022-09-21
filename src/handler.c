@@ -1130,7 +1130,11 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	#ifdef SUPPORT_UA_DOWNLOAD
 	char tmp_filename[PATH_MAX] = {0};
 	#endif
-
+	json_get_property(jsonObj, json_type_string, &ua_intl.cur_campaign_id, "body", "campaign", "id", NULL);
+	if(ua_intl.cur_campaign_id)
+		A_INFO_MSG("prepare-update: current campaign id is %s", ua_intl.cur_campaign_id);
+	else
+		A_INFO_MSG("no campaign id in prepare-update");
 	memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
 
 	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
@@ -2599,6 +2603,11 @@ char* ua_get_package_path(const char* pkgName, const char* pkgVersion)
 		A_INFO_MSG("Could not find update file for %s", pkgName);
 
 	return ret_path;
+}
+
+char* ua_get_cur_campaign_id(void)
+{
+	return ua_intl.cur_campaign_id;
 }
 
 #ifdef SUPPORT_SIGNATURE_VERIFICATION

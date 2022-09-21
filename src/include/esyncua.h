@@ -654,6 +654,13 @@ XL4_PUB
  */
 char* ua_get_package_path(const char* pkgName, const char* pkgVersion);
 
+XL4_PUB
+/**
+ * Return current campaign ID.
+ * @return current campaign ID.
+ */
+char* ua_get_cur_campaign_id(void);
+
 #ifdef HAVE_INSTALL_LOG_HANDLER
 typedef enum ua_log_type {
 	ua_debug_log,
