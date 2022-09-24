@@ -61,6 +61,21 @@ endif()
 
 include(${LOAD_CFG})
 
+if(BUILD_DEPENDENCIES)
+    if(NOT EXISTS ${PORT_DIR}/build_deps.done)
+        message(STATUS "Building ${PROJECT_NAME} External Dependendcies...")
+        execute_process(COMMAND ./build_deps.sh clean
+            OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsClean.log
+            ERROR_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsClean.log
+            WORKING_DIRECTORY "${PORT_DIR}")
+        execute_process(COMMAND ./build_deps.sh
+            OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsBuild.log
+            ERROR_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsBuild.log
+            WORKING_DIRECTORY "${PORT_DIR}")
+        message(STATUS "${PROJECT_NAME} External Dependencies Build Finished...")
+    endif()
+endif(BUILD_DEPENDENCIES)
+
 set(LOAD_CFG ${PORT_DIR}/deps.cmk)
 if((NOT EXISTS ${LOAD_CFG}) OR (IS_DIRECTORY ${LOAD_CFG}))
     set(LOAD_CFG ${PORT_DIR}/deps.cmk.tmpl)
@@ -96,21 +111,6 @@ endif()
 if (CMAKE_CROSSCOMPILING)
     set(THREADS_PTHREAD_ARG 2)
 endif()
-
-if(BUILD_DEPENDENCIES)
-    if(NOT EXISTS ${PORT_DIR}/build_deps.done)
-        message(STATUS "Building ${PROJECT_NAME} External Dependendcies...")
-        execute_process(COMMAND ./build_deps.sh clean
-            OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsClean.log
-            ERROR_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsClean.log
-            WORKING_DIRECTORY "${PORT_DIR}")
-        execute_process(COMMAND ./build_deps.sh
-            OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsBuild.log
-            ERROR_FILE ${CMAKE_CURRENT_BINARY_DIR}/CMakeExtDepsBuild.log
-            WORKING_DIRECTORY "${PORT_DIR}")
-        message(STATUS "${PROJECT_NAME} External Dependencies Build Finished...")
-    endif()
-endif(BUILD_DEPENDENCIES)
 
 set(BCH ${CMAKE_CURRENT_BINARY_DIR}/build_config.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/build_config.h.in ${BCH})
