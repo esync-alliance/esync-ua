@@ -45,6 +45,7 @@ char* f_dirname(const char* s);
 char* f_basename(const char* s);
 
 #define Z_FREE(p) {f_free(p); p=NULL; } do {} while (0)
+#define Z_STRDUP(d, s) {if(d){ f_free(d); d=NULL; } d = f_strdup(s); }do {} while (0)
 
 #ifdef SUPPORT_UA_DOWNLOAD
 int f_remove_dir(const char* dir);

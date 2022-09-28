@@ -642,10 +642,13 @@ int update_parse_json_ready_update(ua_component_context_t* uacc, json_object* js
 		if (err == E_UA_OK)
 			err = get_pkg_name_from_json(jsonObj, &uacc->update_pkg.name);
 
-		json_get_property(jsonObj, json_type_string, &ua_intl.cur_campaign_id, "body", "campaign", "id", NULL);
-		if(ua_intl.cur_campaign_id)
-			A_INFO_MSG("ready-update: current campaign id is %s", ua_intl.cur_campaign_id);
-		else
+		char* campaign_id = NULL;
+		json_get_property(jsonObj, json_type_string, &campaign_id, "body", "campaign", "id", NULL);
+		if(campaign_id) {
+			A_INFO_MSG("ready-update campaign id is %s", campaign_id);
+			Z_STRDUP(ua_intl.cur_campaign_id, campaign_id);
+
+		} else
 			A_INFO_MSG("no campaign id in ready-update");
 
 		if (err == E_UA_OK) {
@@ -749,6 +752,7 @@ void update_release_comp_context(ua_component_context_t* uacc)
 {
 	Z_FREE(uacc->update_file_info.version);
 	Z_FREE(uacc->update_file_info.file);
+	Z_FREE(ua_intl.cur_campaign_id);
 
 	uacc->update_pkg.name                 = NULL;
 	uacc->update_pkg.version              = NULL;

@@ -242,6 +242,7 @@ typedef struct comp_state_info {
 	char* prepared_ver;
 	ua_stage_t stage;
 	char* fake_rb_ver;
+	char* campaign_id;
 	UT_hash_handle hh;
 
 }comp_state_info_t;

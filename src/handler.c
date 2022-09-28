@@ -1130,11 +1130,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 	#ifdef SUPPORT_UA_DOWNLOAD
 	char tmp_filename[PATH_MAX] = {0};
 	#endif
-	json_get_property(jsonObj, json_type_string, &ua_intl.cur_campaign_id, "body", "campaign", "id", NULL);
-	if(ua_intl.cur_campaign_id)
-		A_INFO_MSG("prepare-update: current campaign id is %s", ua_intl.cur_campaign_id);
-	else
-		A_INFO_MSG("no campaign id in prepare-update");
+
 	memset(&uacc->update_pkg, 0, sizeof(pkg_info_t));
 
 	if (!get_pkg_type_from_json(jsonObj, &uacc->update_pkg.type) &&
@@ -1146,9 +1142,17 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 			return;
 
 		}
+		char* campaign_id = NULL;
+		json_get_property(jsonObj, json_type_string, &campaign_id, "body", "campaign", "id", NULL);
+		if(campaign_id) {
+			A_INFO_MSG("prepare-update campaign id is %s", campaign_id);
+			Z_STRDUP(ua_intl.cur_campaign_id, campaign_id);
+
+		} else
+			A_INFO_MSG("no campaign id in prepare-update");
 
 		if ( st == UA_STATE_PREPARE_UPDATE_DONE ) {
-			char* prepared_ver = comp_get_prepared_version(uacc->st_info, uacc->update_pkg.name);
+			char* prepared_ver = comp_get_prepared_version(uacc->st_info, uacc->update_pkg.name, ua_intl.cur_campaign_id);
 
 			if (prepared_ver) {
 				if (!strcmp(prepared_ver, uacc->update_pkg.version)) {
@@ -1225,7 +1229,7 @@ static void process_prepare_update(ua_component_context_t* uacc, json_object* js
 		}
 		if (state == INSTALL_READY) {
 			uacc->retry_cnt = 0;
-			comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, uacc->update_pkg.version);
+			comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, uacc->update_pkg.version, ua_intl.cur_campaign_id);
 			comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_PREPARE_UPDATE_DONE);
 		}
 		else
@@ -1250,7 +1254,7 @@ static void process_ready_update(ua_component_context_t* uacc, json_object* json
 
 	if (uacc && jo && update_parse_json_ready_update(uacc, jo, ua_intl.cache_dir, ua_intl.backup_dir) == E_UA_OK) {
 		comp_set_update_stage(&uacc->st_info, uacc->update_pkg.name, UA_STATE_READY_UPDATE_STARTED);
-		comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, NULL); //reset saved prepared_ver
+		comp_set_prepared_version(&uacc->st_info, uacc->update_pkg.name, NULL, ua_intl.cur_campaign_id); //reset saved prepared_ver
 
 		if (uacc->update_pkg.rollback_versions  && comp_get_rb_type(ua_intl.component_ctrl, uacc->update_pkg.name) == URB_NONE)
 			comp_set_rb_type(&ua_intl.component_ctrl, uacc->update_pkg.name, URB_DMC_INITIATED_WITH_UA_INTENT);
