@@ -272,6 +272,8 @@ install_state_t update_start_install_operations(ua_component_context_t* uacc, in
 	}
 	if (update_sts == INSTALL_COMPLETED)
 		A_INFO_MSG("Installation of %s for version %s has completed successfully.", uacc->update_pkg.name, uacc->update_file_info.version);
+	else if (update_sts == INSTALL_IN_PROGRESS)
+		A_INFO_MSG("Installation of %s for version %s is in progress.", uacc->update_pkg.name, uacc->update_file_info.version);
 	else
 		A_INFO_MSG("Installation of %s for version %s did not succeed.", uacc->update_pkg.name, uacc->update_file_info.version);
 	return update_sts;
