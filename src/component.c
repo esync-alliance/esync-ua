@@ -29,7 +29,6 @@ void comp_release_state_info(comp_state_info_t* cs_head)
 
 	HASH_ITER(hh, cs_head, cur, tmp) {
 		HASH_DEL(cs_head,cur);
-		f_free(cur->fake_rb_ver);
 		f_free(cur->pkg_name);
 		f_free(cur);
 	}
@@ -118,54 +117,6 @@ int comp_set_rb_type(comp_ctrl_t** cs_head, const char* pkg_name, update_rollbac
 		cs->pkg_name = f_strdup(pkg_name);
 		cs->rb_type  = rb_type;
 		HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );
-	}
-
-	return rc;
-}
-
-char* comp_get_fake_rb_version(comp_state_info_t* cs_head, char* pkg_name)
-{
-	char* fake_ver        = NULL;
-	comp_state_info_t* cs = NULL;
-
-	if (!pkg_name) {
-		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
-		return fake_ver;
-	}
-
-	HASH_FIND_STR(cs_head, pkg_name, cs);
-	if (cs) {
-		fake_ver = cs->fake_rb_ver;
-	}
-	A_INFO_MSG("fake rb version is %s", fake_ver ? fake_ver : "NIL");
-	return fake_ver;
-}
-
-int comp_set_fake_rb_version(comp_state_info_t** cs_head, char* pkg_name, char* fake_ver)
-{
-	int rc                = E_UA_OK;
-	comp_state_info_t* cs = NULL;
-
-	if (!pkg_name) {
-		A_INFO_MSG("NIL pointer: pkg_name=%p",pkg_name);
-		return E_UA_ERR;
-	}
-
-	HASH_FIND_STR(*cs_head, pkg_name, cs);
-	if (cs) {
-		A_INFO_MSG("change fake rb version of %s to %s", pkg_name, fake_ver);
-		Z_FREE(cs->fake_rb_ver);
-		cs->fake_rb_ver = f_strdup(fake_ver);
-	} else {
-		if (fake_ver) {
-			A_INFO_MSG("init fake rb version of %s to %s", pkg_name, fake_ver);
-			cs = (comp_state_info_t*)malloc(sizeof(comp_state_info_t));
-			memset(cs, 0, sizeof(comp_state_info_t));
-			cs->pkg_name    = f_strdup(pkg_name);
-			cs->fake_rb_ver = f_strdup(fake_ver);
-			HASH_ADD_KEYPTR( hh, *cs_head, cs->pkg_name, strlen(cs->pkg_name ), cs );
-		}
-
 	}
 
 	return rc;

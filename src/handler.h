@@ -168,6 +168,7 @@ typedef struct comp_ctrl {
 	int rb_disable;
 	update_rollback_t rb_type;
 	int enable_fake_rb_version;
+	int rb_download_required;
 	char* custom_msg;
 
 	UT_hash_handle hh;
@@ -241,7 +242,6 @@ typedef struct comp_state_info {
 	char* pkg_name;
 	char* prepared_ver;
 	ua_stage_t stage;
-	char* fake_rb_ver;
 	char* campaign_id;
 	UT_hash_handle hh;
 

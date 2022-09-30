@@ -55,7 +55,7 @@ static char* update_stage_string(update_stage_t stage);
 static char* log_type_string(log_type_t log);
 static void release_comp_sequence(comp_sequence_t* seq);
 static char* get_component_custom_message(char* pkgName);
-static int is_fake_rb_version_enabled(const char* pkgName);
+static int is_fake_rb_version_enabled(const char* pkgName, int* dl_required);
 void* runner_loop(void* arg);
 
 #ifdef SUPPORT_UA_DOWNLOAD
@@ -1064,23 +1064,23 @@ static void process_query_package(ua_component_context_t* uacc, json_object* jso
 					json_object_put(rbVersArray);
 				}
 			}
+			int dl_required_for_rollback = 0;
 
-			if (is_fake_rb_version_enabled(pkgInfo.name) && fake_rb_ver && uae == E_UA_OK ) {
+			if (uae == E_UA_OK && fake_rb_ver && is_fake_rb_version_enabled(pkgInfo.name, &dl_required_for_rollback) ) {
 				json_object* verListObject = json_object_new_object();
 				json_object* rbVersArray   = json_object_new_array();
 
 				json_object* versionObject = json_object_new_object();
-				json_object_object_add(versionObject, "file", json_object_new_string(""));
-				json_object_object_add(versionObject, "downloaded", json_object_new_boolean(false));
+				//json_object_object_add(versionObject, "file", json_object_new_string(""));
+				json_object_object_add(versionObject, "downloaded", json_object_new_boolean(dl_required_for_rollback ? false: true));
 				json_object_object_add(versionObject, "rollback-order", json_object_new_int(0));
-				json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
+				if(!dl_required_for_rollback)
+					json_object_object_add(versionObject, "sha-256", json_object_new_string(NULL_STR(installedVer)));
 				json_object_object_add(verListObject, NULL_STR(installedVer), versionObject);
 
 				json_object_array_add(rbVersArray, json_object_new_string(NULL_STR(installedVer)));
 
 				json_object_object_add(pkgObject, "version-list", verListObject);
-
-				comp_set_fake_rb_version(&uacc->st_info, pkgInfo.name, NULL_STR(installedVer));
 
 			}
 
@@ -2439,15 +2439,19 @@ void ua_rollback_control(const char* pkgName, int disable)
 
 }
 
-static int is_fake_rb_version_enabled(const char* pkgName)
+static int is_fake_rb_version_enabled(const char* pkgName, int* dl_required)
 {
 	comp_ctrl_t* ctl = NULL;
 	int enabled = 0;
 
 	if(pkgName){
 		HASH_FIND_STR(ua_intl.component_ctrl, pkgName, ctl);
-		if (ctl)
+		if (ctl) {
 			enabled = ctl->enable_fake_rb_version;
+			if(dl_required)
+				*dl_required = ctl->rb_download_required;
+
+		}
 	}
 
 	return enabled;
@@ -2469,6 +2473,31 @@ int ua_enable_fake_rollback_version(const char* pkgName)
 			memset(rbc, 0, sizeof(comp_ctrl_t));
 			rbc->pkg_name   = f_strdup(pkgName);;
 			rbc->enable_fake_rb_version = 1;
+			HASH_ADD_KEYPTR( hh, ua_intl.component_ctrl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
+	}
+
+	return E_UA_OK;
+
+}
+
+int ua_config_rollback_with_empty_backup(const char* pkgName, int enable, int download_required)
+{
+	comp_ctrl_t* rbc = NULL;
+
+	if(!pkgName) return E_UA_ERR;
+	A_INFO_MSG("Config rb with empty backup for %s, enable = %d, dl_required = %d", pkgName, download_required);
+
+	HASH_FIND_STR(ua_intl.component_ctrl, pkgName, rbc);
+	if (rbc) {
+		rbc->enable_fake_rb_version = enable;
+		rbc->rb_download_required = download_required;
+
+	} else {
+			rbc = (comp_ctrl_t*)malloc(sizeof(comp_ctrl_t));
+			memset(rbc, 0, sizeof(comp_ctrl_t));
+			rbc->pkg_name   = f_strdup(pkgName);;
+			rbc->enable_fake_rb_version = enable;
+			rbc->rb_download_required = download_required;
 			HASH_ADD_KEYPTR( hh, ua_intl.component_ctrl, rbc->pkg_name, strlen(rbc->pkg_name), rbc);
 	}
 

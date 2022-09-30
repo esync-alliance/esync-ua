@@ -601,6 +601,18 @@ int ua_enable_fake_rollback_version(const char* pkgName);
 
 XL4_PUB
 /**
+ * Enable using fake rollback version.
+ * @param pkgName package name of update component.
+ * @param enable when backup is empty, 0 = no rollback , 1 = enable rollback
+ * @param download_required this flag is only effective when enable = 1. 
+ *                          0 = rollback package has to be downloaded first. 
+ *                          1 = no need to download rollback package. 
+ * @return E_UA_OK, or E_UA_ERR
+ */
+int ua_config_rollback_with_empty_backup(const char* pkgName, int enable, int download_required);
+
+XL4_PUB
+/**
  * unzip utility.
  * @param zipfile   pathname of zip archive.
  * @param destpath  pathname of destination folder.

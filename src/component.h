@@ -18,8 +18,6 @@ int comp_set_update_stage(comp_state_info_t** cs_head, char* pkg_name, ua_stage_
 void comp_release_state_info(comp_state_info_t* cs_head);
 update_rollback_t comp_get_rb_type(comp_ctrl_t* cs_head, char* pkg_name);
 int comp_set_rb_type(comp_ctrl_t** cs_head, const char* pkg_name, update_rollback_t rb_type);
-char* comp_get_fake_rb_version(comp_state_info_t* cs_head, char* pkg_name);
-int comp_set_fake_rb_version(comp_state_info_t** cs_head, char* pkg_name, char* fake_ver);
 char* comp_get_prepared_version(comp_state_info_t* cs_head, char* pkg_name, char* cid);
 int comp_set_prepared_version(comp_state_info_t** cs_head, char* pkg_name, char* prepared_ver, char* cid);
 
